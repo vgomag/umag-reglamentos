@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMAG - Sistema de Seguimiento de Reglamentos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body, #root {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+    }
+
+    .app-body {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #0f172a;
+      color: white;
+      padding: 0 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+      height: 56px;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .user-info {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+
+    .logout-btn {
+      background-color: #1a56db;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .logout-btn:hover {
+      background-color: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: scale(0.98);
+    }
+
+    .sidebar {
+      width: 240px;
+      background-color: #0f172a;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-shrink: 0;
+      height: calc(100vh - 56px);
+    }
+
+    .sidebar-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-item.active {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.08);
+      border-left-color: #1a56db;
+    }
+
+    .nav-icon {
+      font-size: 1rem;
+      width: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      background-color: #f8fafc;
+    }
+
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .page-header p {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.25rem;
+      border-top: 4px solid #1a56db;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      transition: all 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-card.success { border-top-color: #10b981; }
+    .metric-card.warning { border-top-color: #f59e0b; }
+    .metric-card.danger { border-top-color: #ef4444; }
+
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background-color: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      padding: 1rem;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.875rem;
+      color: #475569;
+    }
+
+    tbody tr:hover { background-color: #f1f5f9; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge.pendiente { background-color: #f1f5f9; color: #64748b; }
+    .badge.en-proceso { background-color: #dbeafe; color: #1d4ed8; }
+    .badge.en-revision { background-color: #fef3c7; color: #d97706; }
+    .badge.aprobado { background-color: #d1fae5; color: #059669; }
+    .badge.alta { background-color: #fee2e2; color: #dc2626; }
+    .badge.media { background-color: #fef3c7; color: #d97706; }
+    .badge.baja { background-color: #d1fae5; color: #059669; }
+
+    button { font-family: inherit; }
+
+    .btn {
+      padding: 0.625rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary { background-color: #1a56db; color: white; }
+    .btn-primary:hover { background-color: #1e40af; transform: translateY(-1px); }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-secondary { background-color: white; color: #1e293b; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background-color: #f8fafc; }
+
+    .btn-danger { background-color: #ef4444; color: white; }
+    .btn-danger:hover { background-color: #dc2626; }
+
+    .btn-group { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+    .form-group { margin-bottom: 1.5rem; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.375rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    input[type="text"], input[type="email"], input[type="password"], select, textarea {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #1e293b;
+      transition: all 0.15s ease;
+    }
+
+    input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    textarea { resize: vertical; min-height: 100px; }
+
+    .detail-header {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .detail-title {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-meta { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+
+    .detail-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background-color: #f0f9ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #1d4ed8;
+    }
+
+    .detail-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .checklist { list-style: none; padding: 0; }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #1a56db;
+    }
+
+    .checklist-item label {
+      margin: 0;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #475569;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: #f8fafc;
+    }
+
+    .upload-area:hover {
+      border-color: #1a56db;
+      background-color: #f0f9ff;
+    }
+
+    .upload-area-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .upload-area-text { font-size: 0.875rem; color: #475569; margin-bottom: 0.25rem; }
+    .upload-area-hint { font-size: 0.75rem; color: #94a3b8; }
+    .upload-input { display: none; }
+
+    .file-list { margin-top: 1.5rem; }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .file-item:hover { background-color: #f8fafc; border-color: #cbd5e1; }
+
+    .file-item-info { display: flex; align-items: center; gap: 1rem; flex: 1; }
+
+    .file-item-icon {
+      font-size: 1.5rem;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f1f5f9;
+      border-radius: 8px;
+    }
+
+    .file-item-details { flex: 1; }
+    .file-item-name { font-size: 0.875rem; font-weight: 500; color: #1e293b; margin-bottom: 0.25rem; }
+    .file-item-meta { font-size: 0.75rem; color: #94a3b8; }
+
+    .file-item-actions { display: flex; gap: 0.5rem; }
+
+    .file-action-btn {
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      color: #475569;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      border-radius: 6px;
+    }
+
+    .file-action-btn:hover { color: #1e293b; background-color: #f1f5f9; }
+    .file-action-btn.danger:hover { color: #ef4444; background-color: #fee2e2; }
+
+    .login-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .login-subtitle {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-bottom: 2rem;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      transition: all 0.15s ease;
+    }
+
+    .login-input:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .login-button {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #1a56db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .login-button:hover { background-color: #1e40af; }
+    .login-button:active { transform: scale(0.98); }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1rem;
+    }
+
+    .modal-content { color: #475569; margin-bottom: 1.5rem; line-height: 1.6; }
+
+    .progress-bar {
+      height: 6px;
+      background-color: #e2e8f0;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1 0%, #1a56db 100%);
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-content { animation: fadeIn 0.3s ease; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const INITIAL_REGULATIONS = [
+      { id: 1, numero: 1, nombre: "Funcionamiento Interno del Consejo Superior", articulo: "Art. 12", contenidoMinimo: ["Renovación en parcialidades (art. 12)", "Forma de elección del presidente (Art. 17)", "Funcionamiento interno de este Consejo (Art. 20)"], formalidad: "Universidad definirá a través de reglamentos, y previo acuerdo del Consejo Superior", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 2, numero: 2, nombre: "Requisitos y procedimiento para nombramiento de miembros del Consejo Superior", articulo: "Art. 27 letra d", contenidoMinimo: ["Requisitos y procedimientos de nombramiento (Art. 13 y 27 letra d)"], formalidad: "Debe ser aprobado por el consejo universitario a propuesta del rector", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 3, numero: 3, nombre: "Declaración de bienes de especial interés institucional", articulo: "Art. 18 letra g", contenidoMinimo: ["Normativa y procedimiento para la declaración de bienes de especial interés (Art 18 letra g)"], formalidad: "Dictado por el Rector con aprobación del Consejo Universitario", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 4, numero: 4, nombre: "Reglamento de elección del rector o rectora", articulo: "Art. 22", contenidoMinimo: [], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 5, numero: 5, nombre: "Funcionamiento interno de Consejo Universitario", articulo: "Art. 28 letra h", contenidoMinimo: ["Quienes representen a los estamentos que integran el Consejo Universitario (Art. 29)"], formalidad: "Elaborado y aprobado por el Consejo Universitario", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 6, numero: 6, nombre: "Reglamento General de Elecciones", articulo: "Art. 30", contenidoMinimo: ["Quienes representen a los estamentos que integran el Consejo Universitario (Art. 29)", "La forma y condiciones para elegir a los miembros del Consejo Universitario (Art. 30)", "La definición de los cargos electos (Art. 37)", "Votación elección decanos (Art. 45)", "Elección personas que integran el Consejo de Facultad (Art. 58)", "La elección del director o directora de Departamento, así como las personas que integran su Consejo (Art. 61)", "La elección del director o directora y de quienes integren los Consejos de Institutos (Art. 62)", "Elección de directora o director de los centros (Art. 63)"], formalidad: "Debe ser aprobado con el voto de los 2/3 de los miembros en ejercicio del Consejo Universitario, a proposición del Rector o por iniciativa de, al menos, la mayoría de sus integrantes.", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 7, numero: 7, nombre: "Reglamento Secretaría General", articulo: "Art. 39", contenidoMinimo: ["Definirá las unidades que componen la Secretaría General, y las responsabilidades y tareas de cada una de ellas (Art. 39)"], formalidad: "Debe ser aprobado por el consejo universitario", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 8, numero: 8, nombre: "Reglamento General de Facultades", articulo: "Art. 46 letra g", contenidoMinimo: ["Puede establecer atribuciones a decanos"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 9, numero: 9, nombre: "Reglamentos para procesos de gestión, evaluación y aseguramiento de la calidad y acreditación", articulo: "Art. 53 letra a y b", contenidoMinimo: [], formalidad: "", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] },
+      { id: 10, numero: 10, nombre: "Reglamentos de Comité de Aseguramiento de la Calidad", articulo: "Art. 54", contenidoMinimo: ["Organización Interna (Art. 54)", "El número, la forma de designación, duración y requisitos que deberán cumplir sus integrantes, sus atribuciones específicas y sus normas de funcionamiento (Art. 54)"], formalidad: "Debe ser aprobado por el Consejo Universitario por los dos tercios de sus miembros en ejercicio, previa propuesta del Rector o la Rectora o por iniciativa de, al menos, la mayoría simple de sus integrantes.", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 11, numero: 11, nombre: "Reglamento de los Centros", articulo: "Art. 63", contenidoMinimo: ["Facultades de directoras o directores de centros"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 12, numero: 12, nombre: "Reglamentos de estructuras académicas", articulo: "Art. 64", contenidoMinimo: ["Las atribuciones, funciones, organización interna, normas de funcionamiento y otras materias atingentes a las estructuras académicas"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 13, numero: 13, nombre: "Carrera Académica", articulo: "Art. 66", contenidoMinimo: ["Jerarquías (Art. 66)", "Las funciones; Plazo de Nombramiento, Derechos y Obligaciones de los académicos (Art. 67)", "Jerarquías; el ingreso; la permanencia, la promoción y cesación de funciones (Art. 67)", "Procedimientos de evaluación y calificación de los académicos (Art. 67)", "Metas y Objetivos en áreas de docencia, investigación y vinculación con el medio (Art. 67)", "Las políticas de estímulos e incentivos (Art. 67)"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 14, numero: 14, nombre: "Carga Académica", articulo: "Art. 66", contenidoMinimo: [], formalidad: "", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] },
+      { id: 15, numero: 15, nombre: "Jerarquía Académica", articulo: "Art. 66", contenidoMinimo: [], formalidad: "", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] },
+      { id: 16, numero: 16, nombre: "Comisión de Nombramiento y Promoción de Académicos", articulo: "Art. 68", contenidoMinimo: ["Composición y funcionamiento (Art. 68)", "Criterios de selección y promoción (Art. 68)"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 17, numero: 17, nombre: "Estímulos e incentivos a Funcionarios de apoyo a la actividad Universitaria", articulo: "Art. 71", contenidoMinimo: ["Política de Estímulos e Incentivos (Art. 71)"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 18, numero: 18, nombre: "Contratación para funciones de carácter transitorio, específicos o accidentales", articulo: "Art. 73", contenidoMinimo: ["Procedimiento de contratación (Art. 73)", "Naturaleza de las funciones a contratar (Art. 73)"], formalidad: "Debe ser aprobado por el consejo superior", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] },
+      { id: 19, numero: 19, nombre: "Reglamento de uso de bienes y servicios de la Universidad", articulo: "Art. 78", contenidoMinimo: ["El uso de bienes y servicios de la Universidad por los miembros de la comunidad Universitaria"], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 20, numero: 20, nombre: "Reglamento sobre administración financiera y patrimonial de la Universidad", articulo: "Art. 86 letra g", contenidoMinimo: [], formalidad: "", existe: "", observaciones: "La redacción del artículo es similar a lo establecido en el reglamento 3, apunta a lo mismo", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 21, numero: 21, nombre: "General de Estudiantes", articulo: "Art. 77", contenidoMinimo: [], formalidad: "Con participación del estudiantado", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] },
+      { id: 22, numero: 22, nombre: "Reglamentación disciplinaria", articulo: "Art. 80", contenidoMinimo: [], formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 23, numero: 23, nombre: "Del Consejo de Convivencia Universitaria", articulo: "Art. 81", contenidoMinimo: ["Composición (Art. 81)", "Atribuciones (Art. 81)", "Organización y funcionamiento (Art. 81)", "Cualquier otra relacionada con el consejo (Art. 81)"], formalidad: "Debe ser aprobado por el consejo superior a propuesta del consejo universitario", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: [] },
+      { id: 24, numero: 24, nombre: "Propiedad intelectual e industrial", articulo: "Art. 90", contenidoMinimo: ["Política de propiedad intelectual e industrial (Art. 90)", "Formas de acceso público al conocimiento creado en la Universidad (Art. 90)"], formalidad: "", existe: "Sí", observaciones: "", estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: [] }
+    ];
+
+    const PLAZOS = [
+      { gestion: "Comisión Triestamental", plazo: "5 días de la publicación", objeto: "Llevará adelante el proceso de elección de este Consejo", formalidad: "Designación por rector", requisito: "Composición mismo % señalado por la ley al consejo universitario (2/3 de académicos). Estatutos: 10 académicos, 2 funcionarios y 2 estudiantes" },
+      { gestion: "Consejo Universitario", plazo: "4 meses desde la publicación", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Consejo Superior", plazo: "9 meses entrada en vigencia", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Contralor", plazo: "3 meses desde la constitución del consejo superior", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Reglamentos", plazo: "12 meses desde la entrada en vigencia del estatuto", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Estructuras establecidas en el estatuto", plazo: "1 año de la constitución del consejo superior", objeto: "", formalidad: "", requisito: "" }
+    ];
+
+    function LoginPage({ onLogin }) {
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState("");
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (password === "umag2026") {
+          onLogin();
+        } else {
+          setError("Contraseña incorrecta");
+          setPassword("");
+        }
+      };
+
+      return (
+        <div className="login-page">
+          <div className="login-card">
+            <h1 className="login-title">UMAG</h1>
+            <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
+            <form onSubmit={handleSubmit}>
+              <input type="password" className="login-input" placeholder="Contraseña" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} />
+              {error && <div style={{ color: "#ef4444", fontSize: "0.875rem", marginBottom: "1rem" }}>{error}</div>}
+              <button type="submit" className="login-button">Acceder</button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function Header({ userName, onLogout }) {
+      return (
+        <div className="header">
+          <h1>UMAG - Reglamentos</h1>
+          <div className="header-actions">
+            <div className="user-info">{userName}</div>
+            <button className="logout-btn" onClick={onLogout}>Salir</button>
+          </div>
+        </div>
+      );
+    }
+
+    function Sidebar({ activeView, onViewChange }) {
+      const views = [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "regulations", label: "Reglamentos", icon: "📋" },
+        { id: "plazos", label: "Plazos", icon: "⏰" },
+        { id: "new", label: "Nuevo Reglamento", icon: "➕" },
+        { id: "settings", label: "Configuración", icon: "⚙️" }
+      ];
+
+      return (
+        <div className="sidebar">
+          <div className="sidebar-header">Navegación</div>
+          {views.map(view => (
+            <div key={view.id} className={`nav-item ${activeView === view.id ? "active" : ""}`} onClick={() => onViewChange(view.id)}>
+              <div className="nav-icon">{view.icon}</div>
+              <span>{view.label}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function Dashboard({ regulations }) {
+      const total = regulations.length;
+      const approved = regulations.filter(r => r.estado === "Aprobado").length;
+      const pending = regulations.filter(r => r.estado === "Pendiente").length;
+      const inProcess = regulations.filter(r => r.estado === "En Proceso").length;
+      const avgProgress = Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total);
+      const highPriority = regulations.filter(r => r.prioridad === "Alta").length;
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Dashboard</h2>
+            <p>Vista general del estado de los reglamentos</p>
+          </div>
+
+          <div className="dashboard-grid">
+            <div className="metric-card success">
+              <div className="metric-value">{approved}</div>
+              <div className="metric-label">Aprobados</div>
+            </div>
+            <div className="metric-card warning">
+              <div className="metric-value">{pending}</div>
+              <div className="metric-label">Pendientes</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{inProcess}</div>
+              <div className="metric-label">En Proceso</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{highPriority}</div>
+              <div className="metric-label">Alta Prioridad</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{avgProgress}%</div>
+              <div className="metric-label">Progreso Promedio</div>
+            </div>
+          </div>
+
+          <div className="table-container" style={{ marginTop: "2rem" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                  <th>Prioridad</th>
+                  <th>Progreso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regulations.map(reg => (
+                  <tr key={reg.id}>
+                    <td>#{reg.numero}</td>
+                    <td>{reg.nombre}</td>
+                    <td><span className={`badge ${reg.estado.toLowerCase().replace(/\s+/g, "-")}`}>{reg.estado}</span></td>
+                    <td><span className={`badge ${reg.prioridad.toLowerCase()}`}>{reg.prioridad}</span></td>
+                    <td>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${reg.progreso}%` }}></div>
+                      </div>
+                      <div className="progress-text">{reg.progreso}%</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function RegulationsList({ regulations, onSelectRegulation }) {
+      const [searchTerm, setSearchTerm] = useState("");
+      const [filterStatus, setFilterStatus] = useState("Todos");
+      const [filterPriority, setFilterPriority] = useState("Todos");
+
+      const filtered = regulations.filter(reg => {
+        const matchSearch = reg.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || reg.numero.toString().includes(searchTerm);
+        const matchStatus = filterStatus === "Todos" || reg.estado === filterStatus;
+        const matchPriority = filterPriority === "Todos" || reg.prioridad === filterPriority;
+        return matchSearch && matchStatus && matchPriority;
+      });
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Reglamentos</h2>
+            <p>Listado completo de todos los reglamentos requeridos</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+            <div className="form-group">
+              <label>Buscar</label>
+              <input type="text" placeholder="Nombre o número..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Estado</label>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option>Todos</option>
+                <option>Pendiente</option>
+                <option>En Proceso</option>
+                <option>En Revisión</option>
+                <option>Aprobado</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Prioridad</label>
+              <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                <option>Todos</option>
+                <option>Alta</option>
+                <option>Media</option>
+                <option>Baja</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: "60px" }}>Núm.</th>
+                  <th>Nombre</th>
+                  <th style={{ width: "100px" }}>Artículo</th>
+                  <th style={{ width: "80px" }}>Estado</th>
+                  <th style={{ width: "80px" }}>Prioridad</th>
+                  <th style={{ width: "60px" }}>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(reg => (
+                  <tr key={reg.id}>
+                    <td>#{reg.numero}</td>
+                    <td>{reg.nombre}</td>
+                    <td>{reg.articulo}</td>
+                    <td><span className={`badge ${reg.estado.toLowerCase().replace(/\s+/g, "-")}`}>{reg.estado}</span></td>
+                    <td><span className={`badge ${reg.prioridad.toLowerCase()}`}>{reg.prioridad}</span></td>
+                    <td><button className="btn btn-secondary" style={{ padding: "0.4rem 0.8rem", fontSize: "0.75rem" }} onClick={() => onSelectRegulation(reg)}>Ver</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
+      const [formData, setFormData] = useState(regulation);
+      const [adjuntos, setAdjuntos] = useState(regulation.adjuntos || []);
+      const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+      const handleFieldChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const handleFileUpload = (e) => {
+        const files = Array.from(e.target.files || e.dataTransfer?.files || []);
+        const maxSize = 5 * 1024 * 1024;
+
+        files.forEach(file => {
+          if (file.size > maxSize) {
+            alert(`${file.name} excede el límite de 5MB`);
+            return;
+          }
+          const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+          if (!validTypes.includes(file.type)) {
+            alert(`${file.name}: Solo se permiten archivos PDF, Word y Excel`);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const newAttachment = {
+              id: Date.now(),
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              data: event.target.result,
+              date: new Date().toISOString()
+            };
+            setAdjuntos(prev => [...prev, newAttachment]);
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+
+      const handleDownloadFile = (attachment) => {
+        const link = document.createElement('a');
+        link.href = attachment.data;
+        link.download = attachment.name;
+        link.click();
+      };
+
+      const handleDeleteFile = (id) => {
+        setAdjuntos(prev => prev.filter(f => f.id !== id));
+      };
+
+      const getFileIcon = (type) => {
+        if (type.includes('pdf')) return '📄';
+        if (type.includes('word')) return '📝';
+        if (type.includes('sheet') || type.includes('excel')) return '📊';
+        return '📎';
+      };
+
+      const formatFileSize = (bytes) => {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      };
+
+      const handleSave = () => {
+        onSave({ ...formData, adjuntos });
+      };
+
+      return (
+        <div className="page-content">
+          <div style={{ marginBottom: "1.5rem" }}>
+            <button className="btn btn-secondary" onClick={onBack}>← Volver</button>
+          </div>
+
+          <div className="detail-header">
+            <h2 className="detail-title">{formData.nombre}</h2>
+            <div className="detail-meta">
+              <div className="detail-badge">Reglamento #{formData.numero}</div>
+              <div className="detail-badge">{formData.articulo}</div>
+            </div>
+          </div>
+
+          <div className="detail-sections">
+            <div className="section">
+              <div className="section-title">Información General</div>
+              <div className="form-group">
+                <label>Estado</label>
+                <select value={formData.estado} onChange={(e) => handleFieldChange("estado", e.target.value)}>
+                  <option>Pendiente</option>
+                  <option>En Proceso</option>
+                  <option>En Revisión</option>
+                  <option>Aprobado</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Prioridad</label>
+                <select value={formData.prioridad} onChange={(e) => handleFieldChange("prioridad", e.target.value)}>
+                  <option>Alta</option>
+                  <option>Media</option>
+                  <option>Baja</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Responsable</label>
+                <input type="text" value={formData.responsable} onChange={(e) => handleFieldChange("responsable", e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Progreso (%)</label>
+                <input type="text" value={formData.progreso} onChange={(e) => handleFieldChange("progreso", parseInt(e.target.value) || 0)} />
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${formData.progreso}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="section">
+              <div className="section-title">Detalles</div>
+              <div className="form-group">
+                <label>¿Existe?</label>
+                <select value={formData.existe} onChange={(e) => handleFieldChange("existe", e.target.value)}>
+                  <option value="">Seleccionar</option>
+                  <option>Sí</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Formalidad</label>
+                <textarea value={formData.formalidad} onChange={(e) => handleFieldChange("formalidad", e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Observaciones</label>
+                <textarea value={formData.observaciones} onChange={(e) => handleFieldChange("observaciones", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="section" style={{ marginBottom: "2rem" }}>
+            <div className="section-title">Contenido Mínimo Requerido</div>
+            <ul className="checklist">
+              {formData.contenidoMinimo.map((item, index) => (
+                <li key={index} className="checklist-item">
+                  <input type="checkbox" id={`check-${index}`} />
+                  <label htmlFor={`check-${index}`}>{item}</label>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="section" style={{ marginBottom: "2rem" }}>
+            <div className="section-title">Notas Internas</div>
+            <div className="form-group">
+              <textarea value={formData.notas} onChange={(e) => handleFieldChange("notas", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="section" style={{ marginBottom: "2rem" }}>
+            <div className="section-title">Documentos Adjuntos</div>
+            <div className="upload-area" onClick={() => document.getElementById("file-input").click()}>
+              <div className="upload-area-icon">📁</div>
+              <div className="upload-area-text">Arrastra archivos aquí o haz clic para seleccionar</div>
+              <div className="upload-area-hint">PDF, Word o Excel - Máximo 5MB por archivo</div>
+            </div>
+            <input id="file-input" type="file" multiple accept=".pdf,.docx,.xlsx" onChange={handleFileUpload} className="upload-input" />
+
+            {adjuntos.length > 0 && (
+              <div className="file-list">
+                {adjuntos.map(file => (
+                  <div key={file.id} className="file-item">
+                    <div className="file-item-info">
+                      <div className="file-item-icon">{getFileIcon(file.type)}</div>
+                      <div className="file-item-details">
+                        <div className="file-item-name">{file.name}</div>
+                        <div className="file-item-meta">{formatFileSize(file.size)} • {new Date(file.date).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                    <div className="file-item-actions">
+                      <button className="file-action-btn" onClick={() => handleDownloadFile(file)} title="Descargar">⬇️</button>
+                      <button className="file-action-btn danger" onClick={() => handleDeleteFile(file.id)} title="Eliminar">🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="btn-group">
+            <button className="btn btn-primary" onClick={handleSave}>Guardar Cambios</button>
+            <button className="btn btn-danger" onClick={() => setShowDeleteConfirm(true)}>Eliminar</button>
+          </div>
+
+          {showDeleteConfirm && (
+            <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Confirmar eliminación</h3>
+                <p className="modal-content">¿Estás seguro de que deseas eliminar este reglamento? Esta acción no se puede deshacer.</p>
+                <div className="btn-group" style={{ marginTop: "1.5rem" }}>
+                  <button className="btn btn-danger" onClick={() => { onDelete(); setShowDeleteConfirm(false); }}>Eliminar</button>
+                  <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function NewRegulation({ onCreate, onCancel }) {
+      const [formData, setFormData] = useState({
+        numero: 25, nombre: "", articulo: "", formalidad: "", existe: "", observaciones: "", estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, contenidoMinimo: [], adjuntos: []
+      });
+
+      const handleFieldChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const handleCreate = () => {
+        if (!formData.nombre.trim()) {
+          alert("El nombre del reglamento es requerido");
+          return;
+        }
+        onCreate(formData);
+      };
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Nuevo Reglamento</h2>
+            <p>Agregar un nuevo reglamento al sistema</p>
+          </div>
+
+          <div className="detail-sections">
+            <div className="section">
+              <div className="section-title">Información Básica</div>
+              <div className="form-group">
+                <label>Número</label>
+                <input type="text" value={formData.numero} onChange={(e) => handleFieldChange("numero", parseInt(e.target.value) || 0)} />
+              </div>
+              <div className="form-group">
+                <label>Nombre del Reglamento</label>
+                <input type="text" value={formData.nombre} onChange={(e) => handleFieldChange("nombre", e.target.value)} placeholder="Ej: Reglamento de Elecciones" />
+              </div>
+              <div className="form-group">
+                <label>Artículo</label>
+                <input type="text" value={formData.articulo} onChange={(e) => handleFieldChange("articulo", e.target.value)} placeholder="Ej: Art. 30" />
+              </div>
+            </div>
+
+            <div className="section">
+              <div className="section-title">Configuración</div>
+              <div className="form-group">
+                <label>Estado</label>
+                <select value={formData.estado} onChange={(e) => handleFieldChange("estado", e.target.value)}>
+                  <option>Pendiente</option>
+                  <option>En Proceso</option>
+                  <option>En Revisión</option>
+                  <option>Aprobado</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Prioridad</label>
+                <select value={formData.prioridad} onChange={(e) => handleFieldChange("prioridad", e.target.value)}>
+                  <option>Alta</option>
+                  <option>Media</option>
+                  <option>Baja</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Responsable</label>
+                <input type="text" value={formData.responsable} onChange={(e) => handleFieldChange("responsable", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="section" style={{ marginBottom: "2rem" }}>
+            <div className="section-title">Detalles</div>
+            <div className="form-group">
+              <label>Formalidad</label>
+              <textarea value={formData.formalidad} onChange={(e) => handleFieldChange("formalidad", e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Observaciones</label>
+              <textarea value={formData.observaciones} onChange={(e) => handleFieldChange("observaciones", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="btn-group">
+            <button className="btn btn-primary" onClick={handleCreate}>Crear Reglamento</button>
+            <button className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
+          </div>
+        </div>
+      );
+    }
+
+    function PlazosList() {
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Plazos Clave</h2>
+            <p>Cronograma de implementación de reglamentos</p>
+          </div>
+
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Gestión</th>
+                  <th>Plazo</th>
+                  <th>Objeto</th>
+                  <th>Formalidad</th>
+                  <th>Requisito</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLAZOS.map((plazo, index) => (
+                  <tr key={index}>
+                    <td>{plazo.gestion}</td>
+                    <td><strong>{plazo.plazo}</strong></td>
+                    <td>{plazo.objeto}</td>
+                    <td>{plazo.formalidad}</td>
+                    <td>{plazo.requisito}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function Settings({ regulations, onReset, onExport }) {
+      const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Configuración</h2>
+            <p>Gestión y mantenimiento del sistema</p>
+          </div>
+
+          <div className="section" style={{ maxWidth: "600px" }}>
+            <div className="section-title">Datos</div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h3 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>Información del Sistema</h3>
+              <p style={{ color: "#64748b", marginBottom: "0.5rem" }}>Total de reglamentos: <strong>{regulations.length}</strong></p>
+              <p style={{ color: "#64748b" }}>Última actualización: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1.5rem" }}>
+              <h3 style={{ fontSize: "1rem", marginBottom: "1rem" }}>Acciones</h3>
+              <button className="btn btn-secondary" onClick={onExport} style={{ marginRight: "0.75rem" }}>📥 Exportar Datos</button>
+              <button className="btn btn-danger" onClick={() => setShowResetConfirm(true)}>🔄 Restablecer Datos</button>
+            </div>
+          </div>
+
+          {showResetConfirm && (
+            <div className="modal-overlay" onClick={() => setShowResetConfirm(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Restablecer todos los datos</h3>
+                <p className="modal-content">Esta acción eliminará todos los cambios y restaurará los datos originales. ¿Estás seguro?</p>
+                <div className="btn-group" style={{ marginTop: "1.5rem" }}>
+                  <button className="btn btn-danger" onClick={() => { onReset(); setShowResetConfirm(false); }}>Restablecer</button>
+                  <button className="btn btn-secondary" onClick={() => setShowResetConfirm(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [regulations, setRegulations] = useState(() => {
+        const saved = localStorage.getItem("regulations");
+        return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
+      });
+      const [activeView, setActiveView] = useState("dashboard");
+      const [selectedRegulation, setSelectedRegulation] = useState(null);
+
+      useEffect(() => {
+        localStorage.setItem("regulations", JSON.stringify(regulations));
+      }, [regulations]);
+
+      const handleLogin = () => {
+        sessionStorage.setItem("umag_auth", "true");
+        setIsLoggedIn(true);
+      };
+
+      const handleLogout = () => {
+        sessionStorage.removeItem("umag_auth");
+        setIsLoggedIn(false);
+        setActiveView("dashboard");
+      };
+
+      const handleSelectRegulation = (reg) => {
+        setSelectedRegulation(reg);
+        setActiveView("detail");
+      };
+
+      const handleSaveRegulation = (updatedReg) => {
+        setRegulations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
+        setSelectedRegulation(updatedReg);
+        alert("Reglamento guardado correctamente");
+      };
+
+      const handleDeleteRegulation = () => {
+        setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
+        setActiveView("regulations");
+        setSelectedRegulation(null);
+        alert("Reglamento eliminado");
+      };
+
+      const handleCreateRegulation = (newReg) => {
+        const id = Math.max(...regulations.map(r => r.id), 0) + 1;
+        const created = { ...newReg, id, historial: [], adjuntos: [] };
+        setRegulations(prev => [...prev, created]);
+        setActiveView("regulations");
+        alert("Reglamento creado correctamente");
+      };
+
+      const handleExport = () => {
+        const data = JSON.stringify(regulations, null, 2);
+        const link = document.createElement("a");
+        link.href = "data:application/json;charset=utf-8," + encodeURIComponent(data);
+        link.download = `reglamentos_${new Date().toISOString().split("T")[0]}.json`;
+        link.click();
+      };
+
+      const handleReset = () => {
+        setRegulations(INITIAL_REGULATIONS);
+        setActiveView("dashboard");
+        alert("Datos restablecidos");
+      };
+
+      if (!isLoggedIn) {
+        return <LoginPage onLogin={handleLogin} />;
+      }
+
+      return (
+        <div className="app-wrapper">
+          <Header userName="Usuario UMAG" onLogout={handleLogout} />
+          <div className="app-body">
+            <Sidebar activeView={activeView} onViewChange={setActiveView} />
+            <div className="content">
+              <div className="page-container">
+                {activeView === "dashboard" && <Dashboard regulations={regulations} />}
+                {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} />}
+                {activeView === "detail" && selectedRegulation && (
+                  <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
+                )}
+                {activeView === "new" && (
+                  <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
+                )}
+                {activeView === "plazos" && <PlazosList />}
+                {activeView === "settings" && (
+                  <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
