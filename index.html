@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMAG - Sistema de Seguimiento de Reglamentos</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body, #root {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background-color: #F5F7FA;
+      color: #333;
+    }
+
+    /* CRITICAL FIX: App wrapper structure */
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+    }
+
+    .app-body {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Header - Fixed at top, full width */
+    .header {
+      background: linear-gradient(135deg, #003366 0%, #004499 100%);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      flex-shrink: 0;
+      height: 60px;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .user-info {
+      font-size: 0.95rem;
+      margin-right: 0.5rem;
+    }
+
+    .logout-btn {
+      background-color: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 0.6rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Sidebar - Fixed width, scrollable */
+    .sidebar {
+      width: 220px;
+      background-color: white;
+      border-right: 1px solid #E0E0E0;
+      padding: 0;
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: sticky;
+      top: 0;
+      flex-shrink: 0;
+      height: calc(100vh - 60px);
+    }
+
+    .nav-item {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #555;
+    }
+
+    .nav-item:hover {
+      background-color: #F5F7FA;
+      color: #003366;
+    }
+
+    .nav-item.active {
+      background-color: #E8F0F7;
+      border-left-color: #0066CC;
+      color: #003366;
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    /* Main Content - Takes remaining space, scrollable */
+    .main-content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: calc(100vh - 60px);
+    }
+
+    .page-title {
+      font-size: 1.8rem;
+      color: #003366;
+      margin-bottom: 2rem;
+      font-weight: 600;
+    }
+
+    /* Login Screen */
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #003366 0%, #004499 100%);
+    }
+
+    .login-box {
+      background: white;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-box h2 {
+      color: #003366;
+      margin-bottom: 0.5rem;
+      font-size: 1.8rem;
+    }
+
+    .login-box p {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #DDD;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #0066CC;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background-color: #0066CC;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #0052A3;
+      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+    }
+
+    .btn-secondary {
+      background-color: #E0E0E0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background-color: #D0D0D0;
+    }
+
+    .btn-danger {
+      background-color: #DC3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #C82333;
+    }
+
+    .btn-success {
+      background-color: #28A745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #218838;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    /* Cards and Panels */
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #003366;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+
+    .card h3 {
+      color: #003366;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border-top: 4px solid #0066CC;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .summary-card.aprobado {
+      border-top-color: #28A745;
+    }
+
+    .summary-card.en-proceso {
+      border-top-color: #FFC107;
+    }
+
+    .summary-card.pendiente {
+      border-top-color: #6C757D;
+    }
+
+    .summary-card.avance {
+      border-top-color: #00A3E0;
+    }
+
+    .summary-card h4 {
+      color: #666;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .summary-card .value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #003366;
+    }
+
+    .summary-card .unit {
+      font-size: 0.9rem;
+      color: #999;
+      margin-top: 0.25rem;
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      background-color: #E0E0E0;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0066CC 0%, #00A3E0 100%);
+      border-radius: 6px;
+      transition: width 0.3s ease;
+    }
+
+    /* Table */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    thead {
+      background-color: #F5F7FA;
+      border-bottom: 2px solid #E0E0E0;
+      position: sticky;
+      top: 0;
+    }
+
+    th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: #003366;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid #E0E0E0;
+      font-size: 0.95rem;
+    }
+
+    tbody tr:hover {
+      background-color: #F5F7FA;
+      cursor: pointer;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-pendiente {
+      background-color: #E8E8E8;
+      color: #555;
+    }
+
+    .badge-en-proceso {
+      background-color: #E3F2FD;
+      color: #1565C0;
+    }
+
+    .badge-en-revision {
+      background-color: #FFF3E0;
+      color: #E65100;
+    }
+
+    .badge-aprobado {
+      background-color: #E8F5E9;
+      color: #2E7D32;
+    }
+
+    .badge-alta {
+      background-color: #FFEBEE;
+      color: #C62828;
+    }
+
+    .badge-media {
+      background-color: #FFF8E1;
+      color: #F57F17;
+    }
+
+    .badge-baja {
+      background-color: #E0F2F1;
+      color: #00695C;
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-input {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .filter-select {
+      min-width: 150px;
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+
+    .timeline-item {
+      padding-bottom: 1.5rem;
+      border-left: 2px solid #E0E0E0;
+      padding-left: 1.5rem;
+      margin-left: -2rem;
+      position: relative;
+    }
+
+    .timeline-item:before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #0066CC;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #0066CC;
+    }
+
+    .timeline-item:last-child {
+      border-left: none;
+      padding-bottom: 0;
+    }
+
+    .timeline-date {
+      font-size: 0.85rem;
+      color: #999;
+      font-weight: 600;
+    }
+
+    .timeline-content {
+      color: #555;
+      margin-top: 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    /* Attachment List */
+    .attachments {
+      margin-top: 1rem;
+    }
+
+    .attachment-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background-color: #F5F7FA;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .attachment-info {
+      flex: 1;
+    }
+
+    .attachment-name {
+      font-weight: 500;
+      color: #003366;
+      margin-bottom: 0.25rem;
+    }
+
+    .attachment-date {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .attachment-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Detail View */
+    .detail-header {
+      margin-bottom: 2rem;
+    }
+
+    .detail-header h2 {
+      color: #003366;
+      font-size: 1.8rem;
+    }
+
+    .detail-back {
+      color: #0066CC;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    .detail-back:hover {
+      text-decoration: underline;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .detail-field {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .detail-field label {
+      display: block;
+      color: #666;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-field .value {
+      font-size: 1rem;
+      color: #333;
+      word-break: break-word;
+    }
+
+    .detail-field input[type="range"] {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    .progress-value {
+      color: #0066CC;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+    }
+
+    .checklist li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #E0E0E0;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+
+    .checklist input[type="checkbox"] {
+      margin-right: 0.75rem;
+      margin-top: 0.25rem;
+      cursor: pointer;
+    }
+
+    .checklist label {
+      cursor: pointer;
+      flex: 1;
+      color: #333;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal h3 {
+      color: #003366;
+      margin-bottom: 1rem;
+    }
+
+    .modal p {
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .slider-container input[type="range"] {
+      flex: 1;
+    }
+
+    /* Error Message */
+    .error-message {
+      background-color: #FFEBEE;
+      color: #C62828;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* Success Message */
+    .success-message {
+      background-color: #E8F5E9;
+      color: #2E7D32;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive - Mobile */
+    @media (max-width: 768px) {
+      .header {
+        padding: 0.5rem 1rem;
+        height: 50px;
+      }
+
+      .header h1 {
+        font-size: 1rem;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        display: flex;
+        border-right: none;
+        border-bottom: 1px solid #E0E0E0;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      .app-body {
+        flex-direction: column;
+      }
+
+      .nav-item {
+        padding: 0.75rem 1rem;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .nav-item.active {
+        border-left: none;
+        border-bottom-color: #0066CC;
+        background-color: transparent;
+      }
+
+      .main-content {
+        padding: 1rem;
+        height: auto;
+        flex: 1;
+      }
+
+      .page-title {
+        font-size: 1.4rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .summary-card {
+        padding: 0.75rem;
+      }
+
+      .summary-card .value {
+        font-size: 1.8rem;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-input,
+      .filter-select {
+        min-width: auto;
+      }
+
+      th, td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+      }
+    }
+
+    @media print {
+      .header, .sidebar {
+        display: none;
+      }
+
+      .app-body {
+        flex-direction: column;
+      }
+
+      .main-content {
+        padding: 0;
+      }
+    }
+  </style>
+
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback, createContext, useContext } = React;
+
+    // ============================================
+    // INITIAL DATA
+    // ============================================
+
+    const INITIAL_REGULATIONS = [
+      {
+        id: 1, numero: 1,
+        nombre: "Funcionamiento Interno del Consejo Superior",
+        articulo: "Art. 12",
+        contenidoMinimo: ["Renovación en parcialidades (art. 12)", "Forma de elección del presidente (Art. 17)", "Funcionamiento interno de este Consejo (Art. 20)"],
+        formalidad: "Universidad definirá a través de reglamentos, y previo acuerdo del Consejo Superior",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 2, numero: 2,
+        nombre: "Requisitos y procedimiento para nombramiento de miembros del Consejo Superior",
+        articulo: "Art. 27 letra d",
+        contenidoMinimo: ["Requisitos y procedimientos de nombramiento (Art. 13 y 27 letra d)"],
+        formalidad: "Debe ser aprobado por el consejo universitario a propuesta del rector",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 3, numero: 3,
+        nombre: "Declaración de bienes de especial interés institucional",
+        articulo: "Art. 18 letra g",
+        contenidoMinimo: ["Normativa y procedimiento para la declaración de bienes de especial interés (Art 18 letra g)"],
+        formalidad: "Dictado por el Rector con aprobación del Consejo Universitario",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 4, numero: 4,
+        nombre: "Reglamento de elección del rector o rectora",
+        articulo: "Art. 22",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 5, numero: 5,
+        nombre: "Funcionamiento interno de Consejo Universitario",
+        articulo: "Art. 28 letra h",
+        contenidoMinimo: ["Quienes representen a los estamentos que integran el Consejo Universitario (Art. 29)"],
+        formalidad: "Elaborado y aprobado por el Consejo Universitario",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 6, numero: 6,
+        nombre: "Reglamento General de Elecciones",
+        articulo: "Art. 30",
+        contenidoMinimo: ["Quienes representen a los estamentos que integran el Consejo Universitario (Art. 29)", "La forma y condiciones para elegir a los miembros del Consejo Universitario (Art. 30)", "La definición de los cargos electos (Art. 37)", "Votación elección decanos (Art. 45)", "Elección personas que integran el Consejo de Facultad (Art. 58)", "La elección del director o directora de Departamento, así como las personas que integran su Consejo (Art. 61)", "La elección del director o directora y de quienes integren los Consejos de Institutos (Art. 62)", "Elección de directora o director de los centros (Art. 63)"],
+        formalidad: "Debe ser aprobado con el voto de los 2/3 de los miembros en ejercicio del Consejo Universitario, a proposición del Rector o por iniciativa de, al menos, la mayoría de sus integrantes.",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 7, numero: 7,
+        nombre: "Reglamento Secretaría General",
+        articulo: "Art. 39",
+        contenidoMinimo: ["Definirá las unidades que componen la Secretaría General, y las responsabilidades y tareas de cada una de ellas (Art. 39)"],
+        formalidad: "Debe ser aprobado por el consejo universitario",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 8, numero: 8,
+        nombre: "Reglamento General de Facultades",
+        articulo: "Art. 46 letra g",
+        contenidoMinimo: ["Puede establecer atribuciones a decanos"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 9, numero: 9,
+        nombre: "Reglamentos para procesos de gestión, evaluación y aseguramiento de la calidad y acreditación",
+        articulo: "Art. 53 letra a y b",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      },
+      {
+        id: 10, numero: 10,
+        nombre: "Reglamentos de Comité de Aseguramiento de la Calidad",
+        articulo: "Art. 54",
+        contenidoMinimo: ["Organización Interna (Art. 54)", "El número, la forma de designación, duración y requisitos que deberán cumplir sus integrantes, sus atribuciones específicas y sus normas de funcionamiento (Art. 54)"],
+        formalidad: "Debe ser aprobado por el Consejo Universitario por los dos tercios de sus miembros en ejercicio, previa propuesta del Rector o la Rectora o por iniciativa de, al menos, la mayoría simple de sus integrantes.",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 11, numero: 11,
+        nombre: "Reglamento de los Centros",
+        articulo: "Art. 63",
+        contenidoMinimo: ["Facultades de directoras o directores de centros"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 12, numero: 12,
+        nombre: "Reglamentos de estructuras académicas",
+        articulo: "Art. 64",
+        contenidoMinimo: ["Las atribuciones, funciones, organización interna, normas de funcionamiento y otras materias atingentes a las estructuras académicas"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 13, numero: 13,
+        nombre: "Carrera Académica",
+        articulo: "Art. 66",
+        contenidoMinimo: ["Jerarquías (Art. 66)", "Las funciones; Plazo de Nombramiento, Derechos y Obligaciones de los académicos (Art. 67)", "Jerarquías; el ingreso; la permanencia, la promoción y cesación de funciones (Art. 67)", "Procedimientos de evaluación y calificación de los académicos (Art. 67)", "Metas y Objetivos en áreas de docencia, investigación y vinculación con el medio (Art. 67)", "Las políticas de estímulos e incentivos (Art. 67)"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Alta", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 14, numero: 14,
+        nombre: "Carga Académica",
+        articulo: "Art. 66",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      },
+      {
+        id: 15, numero: 15,
+        nombre: "Jerarquía Académica",
+        articulo: "Art. 66",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      },
+      {
+        id: 16, numero: 16,
+        nombre: "Comisión de Nombramiento y Promoción de Académicos",
+        articulo: "Art. 68",
+        contenidoMinimo: ["Composición y funcionamiento (Art. 68)", "Criterios de selección y promoción (Art. 68)"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 17, numero: 17,
+        nombre: "Estímulos e incentivos a Funcionarios de apoyo a la actividad Universitaria",
+        articulo: "Art. 71",
+        contenidoMinimo: ["Política de Estímulos e Incentivos (Art. 71)"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 18, numero: 18,
+        nombre: "Contratación para funciones de carácter transitorio, específicos o accidentales",
+        articulo: "Art. 73",
+        contenidoMinimo: ["Procedimiento de contratación (Art. 73)", "Naturaleza de las funciones a contratar (Art. 73)"],
+        formalidad: "Debe ser aprobado por el consejo superior",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      },
+      {
+        id: 19, numero: 19,
+        nombre: "Reglamento de uso de bienes y servicios de la Universidad",
+        articulo: "Art. 78",
+        contenidoMinimo: ["El uso de bienes y servicios de la Universidad por los miembros de la comunidad Universitaria"],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 20, numero: 20,
+        nombre: "Reglamento sobre administración financiera y patrimonial de la Universidad",
+        articulo: "Art. 86 letra g",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "", observaciones: "La redacción del artículo es similar a lo establecido en el reglamento 3, apunta a lo mismo",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 21, numero: 21,
+        nombre: "General de Estudiantes",
+        articulo: "Art. 77",
+        contenidoMinimo: [],
+        formalidad: "Con participación del estudiantado",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      },
+      {
+        id: 22, numero: 22,
+        nombre: "Reglamentación disciplinaria",
+        articulo: "Art. 80",
+        contenidoMinimo: [],
+        formalidad: "",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 23, numero: 23,
+        nombre: "Del Consejo de Convivencia Universitaria",
+        articulo: "Art. 81",
+        contenidoMinimo: ["Composición (Art. 81)", "Atribuciones (Art. 81)", "Organización y funcionamiento (Art. 81)", "Cualquier otra relacionada con el consejo (Art. 81)"],
+        formalidad: "Debe ser aprobado por el consejo superior a propuesta del consejo universitario",
+        existe: "", observaciones: "",
+        estado: "Pendiente", prioridad: "Media", responsable: "", notas: "", progreso: 0, historial: [], adjuntos: []
+      },
+      {
+        id: 24, numero: 24,
+        nombre: "Propiedad intelectual e industrial",
+        articulo: "Art. 90",
+        contenidoMinimo: ["Política de propiedad intelectual e industrial (Art. 90)", "Formas de acceso público al conocimiento creado en la Universidad (Art. 90)"],
+        formalidad: "",
+        existe: "Sí", observaciones: "",
+        estado: "Aprobado", prioridad: "Media", responsable: "", notas: "", progreso: 100, historial: [], adjuntos: []
+      }
+    ];
+
+    const PLAZOS = [
+      { gestion: "Comisión Triestamental", plazo: "5 días de la publicación", objeto: "Llevará adelante el proceso de elección de este Consejo", formalidad: "Designación por rector", requisito: "Composición mismo % señalado por la ley al consejo universitario (2/3 de académicos). Estatutos: 10 académicos, 2 funcionarios y 2 estudiantes" },
+      { gestion: "Consejo Universitario", plazo: "4 meses desde la publicación", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Consejo Superior", plazo: "9 meses entrada en vigencia", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Contralor", plazo: "3 meses desde la constitución del consejo superior", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Reglamentos", plazo: "12 meses desde la entrada en vigencia del estatuto", objeto: "", formalidad: "", requisito: "" },
+      { gestion: "Estructuras establecidas en el estatuto", plazo: "1 año de la constitución del consejo superior", objeto: "", formalidad: "", requisito: "" }
+    ];
+
+    // ============================================
+    // COMPONENTS
+    // ============================================
+
+    function LoginPage({ onLogin }) {
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (password === 'umag2026') {
+          onLogin();
+        } else {
+          setError('Contraseña incorrecta');
+        }
+      };
+
+      return (
+        <div className="login-container">
+          <div className="login-box">
+            <h2>UMAG</h2>
+            <p>Sistema de Seguimiento de Reglamentos</p>
+            {error && <div className="error-message">{error}</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="password">Contraseña</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Ingrese la contraseña"
+                  autoFocus
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                Acceder
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function Header({ onLogout }) {
+      return (
+        <div className="header">
+          <h1>UMAG - Sistema de Seguimiento de Reglamentos</h1>
+          <div className="header-actions">
+            <span className="user-info">Administrador</span>
+            <button className="logout-btn" onClick={onLogout}>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Sidebar({ currentPage, onNavigate }) {
+      const navItems = [
+        { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+        { id: 'reglamentos', icon: '📋', label: 'Reglamentos' },
+        { id: 'nuevo', icon: '➕', label: 'Nuevo Reglamento' },
+        { id: 'plazos', icon: '📅', label: 'Plazos' },
+        { id: 'configuracion', icon: '⚙️', label: 'Configuración' }
+      ];
+
+      return (
+        <nav className="sidebar">
+          {navItems.map(item => (
+            <div
+              key={item.id}
+              className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
+              onClick={() => onNavigate(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </nav>
+      );
+    }
+
+    function Dashboard({ regulations }) {
+      const stats = useMemo(() => {
+        const total = regulations.length;
+        const aprobados = regulations.filter(r => r.estado === 'Aprobado').length;
+        const enProceso = regulations.filter(r => r.estado === 'En Proceso').length;
+        const pendientes = regulations.filter(r => r.estado === 'Pendiente').length;
+        const avgProgress = Math.round(
+          regulations.reduce((sum, r) => sum + r.progreso, 0) / total
+        );
+
+        return { total, aprobados, enProceso, pendientes, avgProgress };
+      }, [regulations]);
+
+      const recentActivity = useMemo(() => {
+        const allHistories = regulations
+          .flatMap(r => r.historial.map(h => ({ ...h, regulationName: r.nombre })))
+          .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+          .slice(0, 5);
+        return allHistories;
+      }, [regulations]);
+
+      return (
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+
+          <div className="summary-grid">
+            <div className="summary-card">
+              <h4>Total de Reglamentos</h4>
+              <div className="value">{stats.total}</div>
+            </div>
+            <div className="summary-card aprobado">
+              <h4>Aprobados</h4>
+              <div className="value">{stats.aprobados}</div>
+            </div>
+            <div className="summary-card en-proceso">
+              <h4>En Proceso</h4>
+              <div className="value">{stats.enProceso}</div>
+            </div>
+            <div className="summary-card pendiente">
+              <h4>Pendientes</h4>
+              <div className="value">{stats.pendientes}</div>
+            </div>
+            <div className="summary-card avance">
+              <h4>% Avance General</h4>
+              <div className="value">{stats.avgProgress}%</div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${stats.avgProgress}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Plazos Importantes</h2>
+            <div className="table-container">
+              <table className="plazos-table">
+                <thead>
+                  <tr>
+                    <th>Gestión</th>
+                    <th>Plazo</th>
+                    <th>Objeto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PLAZOS.map((plazo, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: 600, color: '#003366' }}>{plazo.gestion}</td>
+                      <td>{plazo.plazo}</td>
+                      <td>{plazo.objeto}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Actividad Reciente</h2>
+            {recentActivity.length > 0 ? (
+              <div className="timeline">
+                {recentActivity.map((item, idx) => (
+                  <div key={idx} className="timeline-item">
+                    <div className="timeline-date">
+                      {new Date(item.fecha).toLocaleDateString('es-CL', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                    <div className="timeline-content">
+                      <strong>{item.regulationName}</strong>: {item.descripcion}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>Sin actividad registrada</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function RegulationsList({ regulations, onSelectRegulation }) {
+      const [searchTerm, setSearchTerm] = useState('');
+      const [filterEstado, setFilterEstado] = useState('');
+      const [filterPrioridad, setFilterPrioridad] = useState('');
+
+      const filtered = useMemo(() => {
+        return regulations.filter(r => {
+          const matchesSearch = r.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesEstado = filterEstado === '' || r.estado === filterEstado;
+          const matchesPrioridad = filterPrioridad === '' || r.prioridad === filterPrioridad;
+          return matchesSearch && matchesEstado && matchesPrioridad;
+        });
+      }, [regulations, searchTerm, filterEstado, filterPrioridad]);
+
+      const getEstadoBadgeClass = (estado) => {
+        const map = {
+          'Pendiente': 'badge-pendiente',
+          'En Proceso': 'badge-en-proceso',
+          'En Revisión': 'badge-en-revision',
+          'Aprobado': 'badge-aprobado'
+        };
+        return map[estado] || 'badge-pendiente';
+      };
+
+      const getPrioridadBadgeClass = (prioridad) => {
+        const map = {
+          'Alta': 'badge-alta',
+          'Media': 'badge-media',
+          'Baja': 'badge-baja'
+        };
+        return map[prioridad] || 'badge-media';
+      };
+
+      return (
+        <div>
+          <h1 className="page-title">Reglamentos</h1>
+
+          <div className="filters">
+            <div className="filter-input">
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <select
+              className="filter-select"
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+            >
+              <option value="">Todos los Estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Proceso">En Proceso</option>
+              <option value="En Revisión">En Revisión</option>
+              <option value="Aprobado">Aprobado</option>
+            </select>
+            <select
+              className="filter-select"
+              value={filterPrioridad}
+              onChange={(e) => setFilterPrioridad(e.target.value)}
+            >
+              <option value="">Todas las Prioridades</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Nombre</th>
+                  <th>Artículo</th>
+                  <th>Estado</th>
+                  <th>Prioridad</th>
+                  <th>Progreso</th>
+                  <th>Existe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(reg => (
+                  <tr key={reg.id} onClick={() => onSelectRegulation('detalle', reg.id)}>
+                    <td>{reg.numero}</td>
+                    <td style={{ fontWeight: 500 }}>{reg.nombre}</td>
+                    <td>{reg.articulo}</td>
+                    <td>
+                      <span className={`badge ${getEstadoBadgeClass(reg.estado)}`}>
+                        {reg.estado}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${getPrioridadBadgeClass(reg.prioridad)}`}>
+                        {reg.prioridad}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '60px' }}>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${reg.progreso}%` }}></div>
+                          </div>
+                        </div>
+                        <span>{reg.progreso}%</span>
+                      </div>
+                    </td>
+                    <td>{reg.existe === 'Sí' ? '✓' : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filtered.length === 0 && (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+              No se encontraron reglamentos
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
+      const [formData, setFormData] = useState(regulation);
+      const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+      const [successMessage, setSuccessMessage] = useState('');
+
+      const handleFieldChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const handleAddAttachment = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const attachment = {
+              name: file.name,
+              type: file.type,
+              data: event.target.result,
+              date: new Date().toISOString()
+            };
+            setFormData(prev => ({
+              ...prev,
+              adjuntos: [...prev.adjuntos, attachment]
+            }));
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const handleDeleteAttachment = (idx) => {
+        setFormData(prev => ({
+          ...prev,
+          adjuntos: prev.adjuntos.filter((_, i) => i !== idx)
+        }));
+      };
+
+      const handleDownloadAttachment = (attachment) => {
+        const link = document.createElement('a');
+        link.href = attachment.data;
+        link.download = attachment.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      const handleSave = () => {
+        const changes = [];
+        Object.keys(formData).forEach(key => {
+          if (key !== 'historial' && key !== 'adjuntos' && JSON.stringify(formData[key]) !== JSON.stringify(regulation[key])) {
+            changes.push(`${key}: ${regulation[key]} → ${formData[key]}`);
+          }
+        });
+
+        if (changes.length > 0 || formData.adjuntos.length !== regulation.adjuntos.length) {
+          const newHistorial = [...formData.historial];
+          const timestamp = new Date().toISOString();
+          changes.forEach(change => {
+            newHistorial.push({
+              fecha: timestamp,
+              descripcion: change
+            });
+          });
+
+          if (formData.adjuntos.length > regulation.adjuntos.length) {
+            newHistorial.push({
+              fecha: timestamp,
+              descripcion: `Se agregaron ${formData.adjuntos.length - regulation.adjuntos.length} archivo(s)`
+            });
+          }
+
+          setFormData(prev => ({ ...prev, historial: newHistorial }));
+          onSave({ ...formData, historial: newHistorial });
+          setSuccessMessage('Cambios guardados correctamente');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        }
+      };
+
+      const handleConfirmDelete = () => {
+        onDelete(formData.id);
+        setShowConfirmDelete(false);
+      };
+
+      return (
+        <div>
+          <div className="detail-back" onClick={onBack}>
+            ← Volver a Reglamentos
+          </div>
+
+          {successMessage && <div className="success-message">{successMessage}</div>}
+
+          <div className="detail-header">
+            <div>
+              <h2>{formData.nombre}</h2>
+              <p style={{ color: '#666', marginTop: '0.5rem' }}>Reglamento Nº {formData.numero}</p>
+            </div>
+          </div>
+
+          <div className="detail-grid" style={{ marginBottom: '2rem' }}>
+            <div className="detail-field">
+              <label>Artículo</label>
+              <input
+                type="text"
+                value={formData.articulo}
+                onChange={(e) => handleFieldChange('articulo', e.target.value)}
+              />
+            </div>
+            <div className="detail-field">
+              <label>Estado</label>
+              <select
+                value={formData.estado}
+                onChange={(e) => handleFieldChange('estado', e.target.value)}
+              >
+                <option>Pendiente</option>
+                <option>En Proceso</option>
+                <option>En Revisión</option>
+                <option>Aprobado</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Prioridad</label>
+              <select
+                value={formData.prioridad}
+                onChange={(e) => handleFieldChange('prioridad', e.target.value)}
+              >
+                <option>Alta</option>
+                <option>Media</option>
+                <option>Baja</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Existe</label>
+              <select
+                value={formData.existe}
+                onChange={(e) => handleFieldChange('existe', e.target.value)}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="Sí">Sí</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Responsable</label>
+              <input
+                type="text"
+                value={formData.responsable}
+                onChange={(e) => handleFieldChange('responsable', e.target.value)}
+                placeholder="Nombre del responsable"
+              />
+            </div>
+            <div className="detail-field">
+              <label>Progreso: <span className="progress-value">{formData.progreso}%</span></label>
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={formData.progreso}
+                  onChange={(e) => handleFieldChange('progreso', parseInt(e.target.value))}
+                />
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${formData.progreso}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="detail-grid">
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Formalidad</label>
+              <textarea
+                value={formData.formalidad}
+                onChange={(e) => handleFieldChange('formalidad', e.target.value)}
+                placeholder="Describe la formalidad requerida"
+              />
+            </div>
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Observaciones</label>
+              <textarea
+                value={formData.observaciones}
+                onChange={(e) => handleFieldChange('observaciones', e.target.value)}
+                placeholder="Notas adicionales"
+              />
+            </div>
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Notas</label>
+              <textarea
+                value={formData.notas}
+                onChange={(e) => handleFieldChange('notas', e.target.value)}
+                placeholder="Notas internas"
+              />
+            </div>
+          </div>
+
+          {formData.contenidoMinimo && formData.contenidoMinimo.length > 0 && (
+            <div className="card">
+              <h3>Contenido Mínimo Requerido</h3>
+              <ul className="checklist">
+                {formData.contenidoMinimo.map((item, idx) => (
+                  <li key={idx}>
+                    <input type="checkbox" id={`contenido-${idx}`} />
+                    <label htmlFor={`contenido-${idx}`}>{item}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="card">
+            <h3>Archivos Adjuntos</h3>
+            <div className="form-group">
+              <label htmlFor="file-input">Agregar archivo</label>
+              <input
+                id="file-input"
+                type="file"
+                onChange={handleAddAttachment}
+              />
+            </div>
+            {formData.adjuntos.length > 0 && (
+              <div className="attachments">
+                {formData.adjuntos.map((attachment, idx) => (
+                  <div key={idx} className="attachment-item">
+                    <div className="attachment-info">
+                      <div className="attachment-name">📄 {attachment.name}</div>
+                      <div className="attachment-date">
+                        {new Date(attachment.date).toLocaleDateString('es-CL')}
+                      </div>
+                    </div>
+                    <div className="attachment-actions">
+                      <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => handleDownloadAttachment(attachment)}
+                      >
+                        Descargar
+                      </button>
+                      <button
+                        className="btn btn-danger btn-small"
+                        onClick={() => handleDeleteAttachment(idx)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {formData.adjuntos.length === 0 && <p>No hay archivos adjuntos</p>}
+          </div>
+
+          <div className="card">
+            <h3>Historial de Cambios</h3>
+            {formData.historial && formData.historial.length > 0 ? (
+              <div className="timeline">
+                {[...formData.historial].reverse().map((item, idx) => (
+                  <div key={idx} className="timeline-item">
+                    <div className="timeline-date">
+                      {new Date(item.fecha).toLocaleDateString('es-CL', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                    <div className="timeline-content">{item.descripcion}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>Sin cambios registrados</p>
+            )}
+          </div>
+
+          <div className="btn-group">
+            <button className="btn btn-primary" onClick={handleSave}>
+              Guardar Cambios
+            </button>
+            <button className="btn btn-secondary" onClick={onBack}>
+              Cancelar
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => setShowConfirmDelete(true)}
+            >
+              Eliminar
+            </button>
+          </div>
+
+          {showConfirmDelete && (
+            <div className="modal-overlay" onClick={() => setShowConfirmDelete(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3>Confirmar eliminación</h3>
+                <p>¿Está seguro de que desea eliminar este reglamento?</p>
+                <div className="modal-actions">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowConfirmDelete(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    onClick={handleConfirmDelete}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function NewRegulation({ regulations, onSave, onCancel }) {
+      const [formData, setFormData] = useState({
+        numero: regulations.length + 1,
+        nombre: '',
+        articulo: '',
+        contenidoMinimo: [],
+        formalidad: '',
+        existe: '',
+        observaciones: '',
+        estado: 'Pendiente',
+        prioridad: 'Media',
+        responsable: '',
+        notas: '',
+        progreso: 0,
+        historial: [],
+        adjuntos: []
+      });
+
+      const [contentInput, setContentInput] = useState('');
+
+      const handleFieldChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const handleAddContent = () => {
+        if (contentInput.trim()) {
+          setFormData(prev => ({
+            ...prev,
+            contenidoMinimo: [...prev.contenidoMinimo, contentInput.trim()]
+          }));
+          setContentInput('');
+        }
+      };
+
+      const handleRemoveContent = (idx) => {
+        setFormData(prev => ({
+          ...prev,
+          contenidoMinimo: prev.contenidoMinimo.filter((_, i) => i !== idx)
+        }));
+      };
+
+      const handleSubmit = () => {
+        if (!formData.nombre.trim()) {
+          alert('Por favor ingrese el nombre del reglamento');
+          return;
+        }
+
+        const newReg = {
+          ...formData,
+          id: Math.max(...regulations.map(r => r.id), 0) + 1,
+          historial: [{
+            fecha: new Date().toISOString(),
+            descripcion: 'Reglamento creado'
+          }]
+        };
+
+        onSave(newReg);
+      };
+
+      return (
+        <div>
+          <h1 className="page-title">Nuevo Reglamento</h1>
+
+          <div className="detail-grid">
+            <div className="detail-field">
+              <label>Nombre *</label>
+              <input
+                type="text"
+                value={formData.nombre}
+                onChange={(e) => handleFieldChange('nombre', e.target.value)}
+                placeholder="Nombre del reglamento"
+              />
+            </div>
+            <div className="detail-field">
+              <label>Artículo</label>
+              <input
+                type="text"
+                value={formData.articulo}
+                onChange={(e) => handleFieldChange('articulo', e.target.value)}
+              />
+            </div>
+            <div className="detail-field">
+              <label>Estado</label>
+              <select
+                value={formData.estado}
+                onChange={(e) => handleFieldChange('estado', e.target.value)}
+              >
+                <option>Pendiente</option>
+                <option>En Proceso</option>
+                <option>En Revisión</option>
+                <option>Aprobado</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Prioridad</label>
+              <select
+                value={formData.prioridad}
+                onChange={(e) => handleFieldChange('prioridad', e.target.value)}
+              >
+                <option>Alta</option>
+                <option>Media</option>
+                <option>Baja</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Existe</label>
+              <select
+                value={formData.existe}
+                onChange={(e) => handleFieldChange('existe', e.target.value)}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="Sí">Sí</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="detail-field">
+              <label>Responsable</label>
+              <input
+                type="text"
+                value={formData.responsable}
+                onChange={(e) => handleFieldChange('responsable', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="detail-grid">
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Formalidad</label>
+              <textarea
+                value={formData.formalidad}
+                onChange={(e) => handleFieldChange('formalidad', e.target.value)}
+              />
+            </div>
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Observaciones</label>
+              <textarea
+                value={formData.observaciones}
+                onChange={(e) => handleFieldChange('observaciones', e.target.value)}
+              />
+            </div>
+            <div className="detail-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Notas</label>
+              <textarea
+                value={formData.notas}
+                onChange={(e) => handleFieldChange('notas', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="card">
+            <h3>Contenido Mínimo</h3>
+            <div className="form-group">
+              <label>Agregar contenido</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={contentInput}
+                  onChange={(e) => setContentInput(e.target.value)}
+                  placeholder="Ingrese un elemento"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddContent()}
+                />
+                <button className="btn btn-secondary" onClick={handleAddContent}>
+                  Agregar
+                </button>
+              </div>
+            </div>
+            {formData.contenidoMinimo.length > 0 && (
+              <ul className="checklist">
+                {formData.contenidoMinimo.map((item, idx) => (
+                  <li key={idx}>
+                    <span style={{ flex: 1 }}>{item}</span>
+                    <button
+                      className="btn btn-danger btn-small"
+                      onClick={() => handleRemoveContent(idx)}
+                    >
+                      Quitar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="btn-group">
+            <button className="btn btn-primary" onClick={handleSubmit}>
+              Crear Reglamento
+            </button>
+            <button className="btn btn-secondary" onClick={onCancel}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function PlazosList() {
+      return (
+        <div>
+          <h1 className="page-title">Plazos Importantes</h1>
+
+          <div className="card">
+            <div className="table-container">
+              <table className="plazos-table">
+                <thead>
+                  <tr>
+                    <th>Gestión / Entidad</th>
+                    <th>Plazo</th>
+                    <th>Objeto</th>
+                    <th>Formalidad</th>
+                    <th>Requisitos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PLAZOS.map((plazo, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: 600, color: '#003366' }}>{plazo.gestion}</td>
+                      <td>{plazo.plazo}</td>
+                      <td>{plazo.objeto}</td>
+                      <td>{plazo.formalidad}</td>
+                      <td>{plazo.requisito}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Settings({ onReset, onExport }) {
+      const [showConfirmReset, setShowConfirmReset] = useState(false);
+
+      return (
+        <div>
+          <h1 className="page-title">Configuración</h1>
+
+          <div className="card">
+            <h3>Datos</h3>
+            <p>Exporte o reinicie los datos del sistema</p>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button className="btn btn-success" onClick={onExport}>
+                Exportar Datos (JSON)
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => setShowConfirmReset(true)}
+              >
+                Reiniciar Datos
+              </button>
+            </div>
+          </div>
+
+          {showConfirmReset && (
+            <div className="modal-overlay" onClick={() => setShowConfirmReset(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3>Confirmar reinicio</h3>
+                <p>¿Está seguro de que desea reiniciar todos los datos a su estado inicial? Esta acción no se puede deshacer.</p>
+                <div className="modal-actions">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowConfirmReset(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => {
+                      onReset();
+                      setShowConfirmReset(false);
+                    }}
+                  >
+                    Reiniciar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================
+    // MAIN APP COMPONENT
+    // ============================================
+
+    function App() {
+      const [isAuthenticated, setIsAuthenticated] = useState(() => {
+        return sessionStorage.getItem('umag-auth') === 'true';
+      });
+
+      const [page, setPage] = useState('dashboard');
+      const [selectedId, setSelectedId] = useState(null);
+      const [regulations, setRegulations] = useState(() => {
+        const stored = localStorage.getItem('umag-reglamentos-data');
+        if (stored) {
+          try {
+            return JSON.parse(stored);
+          } catch {
+            return INITIAL_REGULATIONS;
+          }
+        }
+        return INITIAL_REGULATIONS;
+      });
+
+      useEffect(() => {
+        localStorage.setItem('umag-reglamentos-data', JSON.stringify(regulations));
+      }, [regulations]);
+
+      const navigateTo = useCallback((pageName, id = null) => {
+        setPage(pageName);
+        setSelectedId(id);
+        window.scrollTo(0, 0);
+      }, []);
+
+      const handleLogin = () => {
+        sessionStorage.setItem('umag-auth', 'true');
+        setIsAuthenticated(true);
+      };
+
+      const handleLogout = () => {
+        sessionStorage.removeItem('umag-auth');
+        setIsAuthenticated(false);
+        setPage('dashboard');
+      };
+
+      const handleSaveRegulation = (updated) => {
+        setRegulations(prev => prev.map(r => r.id === updated.id ? updated : r));
+        navigateTo('reglamentos');
+      };
+
+      const handleDeleteRegulation = (id) => {
+        setRegulations(prev => prev.filter(r => r.id !== id));
+        navigateTo('reglamentos');
+      };
+
+      const handleAddRegulation = (newReg) => {
+        setRegulations(prev => [...prev, newReg]);
+        navigateTo('reglamentos');
+      };
+
+      const handleExportData = () => {
+        const dataToExport = {
+          regulations,
+          exportedAt: new Date().toISOString(),
+          version: '1.0'
+        };
+        const dataStr = JSON.stringify(dataToExport, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `umag-reglamentos-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      };
+
+      const handleResetData = () => {
+        setRegulations(INITIAL_REGULATIONS);
+      };
+
+      if (!isAuthenticated) {
+        return <LoginPage onLogin={handleLogin} />;
+      }
+
+      return (
+        <div className="app-wrapper">
+          <Header onLogout={handleLogout} />
+          <div className="app-body">
+            <Sidebar currentPage={page} onNavigate={navigateTo} />
+            <main className="main-content">
+              {page === 'dashboard' && <Dashboard regulations={regulations} />}
+              {page === 'reglamentos' && (
+                <RegulationsList
+                  regulations={regulations}
+                  onSelectRegulation={navigateTo}
+                />
+              )}
+              {page === 'detalle' && selectedId !== null && (
+                <RegulationDetail
+                  regulation={regulations.find(r => r.id === selectedId)}
+                  onBack={() => navigateTo('reglamentos')}
+                  onSave={handleSaveRegulation}
+                  onDelete={handleDeleteRegulation}
+                />
+              )}
+              {page === 'nuevo' && (
+                <NewRegulation
+                  regulations={regulations}
+                  onSave={handleAddRegulation}
+                  onCancel={() => navigateTo('reglamentos')}
+                />
+              )}
+              {page === 'plazos' && <PlazosList />}
+              {page === 'configuracion' && (
+                <Settings
+                  onReset={handleResetData}
+                  onExport={handleExportData}
+                />
+              )}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================
+    // RENDER APP
+    // ============================================
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
