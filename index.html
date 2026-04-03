@@ -1189,6 +1189,10 @@
           progreso: regulation.progreso,
           prioridad: regulation.prioridad,
           responsable: regulation.responsable || '',
+          observaciones: regulation.observaciones || '',
+          enlace: regulation.enlace || '',
+          decreto: regulation.decreto || '',
+          articulo_estatuto: regulation.articulo_estatuto || '',
           historial: regulation.historial || [],
           adjuntos: regulation.adjuntos || []
         });
@@ -1223,6 +1227,10 @@
           progreso: regulation.progreso,
           prioridad: regulation.prioridad,
           responsable: regulation.responsable || '',
+          observaciones: regulation.observaciones || '',
+          enlace: regulation.enlace || '',
+          decreto: regulation.decreto || '',
+          articulo_estatuto: regulation.articulo_estatuto || '',
           historial: regulation.historial || [],
           adjuntos: regulation.adjuntos || []
         }).select().single();
@@ -1271,32 +1279,39 @@
       );
     }
 
-    // Initial data - 24 regulations
+    // Initial data - 31 reglamentos reales del nuevo estatuto UMAG
     const INITIAL_REGULATIONS = [
-      { id: 1, numero: "1", nombre: "Estatuto Orgánico", articulo: "Art. 1-50", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Rectoría", historial: [], adjuntos: [] },
-      { id: 2, numero: "2", nombre: "Reglamento General de Estudiantes", articulo: "Art. 51-150", estado: "En Proceso", progreso: 75, prioridad: "alta", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 3, numero: "3", nombre: "Reglamento de Personal Académico", articulo: "Art. 151-250", estado: "En Proceso", progreso: 60, prioridad: "alta", responsable: "VRA", historial: [], adjuntos: [] },
-      { id: 4, numero: "4", nombre: "Reglamento Administrativo", articulo: "Art. 251-350", estado: "En Revisión", progreso: 45, prioridad: "media", responsable: "Administración", historial: [], adjuntos: [] },
-      { id: 5, numero: "5", nombre: "Reglamento Financiero", articulo: "Art. 351-450", estado: "Pendiente", progreso: 0, prioridad: "media", responsable: "Tesorería", historial: [], adjuntos: [] },
-      { id: 6, numero: "6", nombre: "Reglamento de Docencia", articulo: "Art. 451-550", estado: "En Proceso", progreso: 50, prioridad: "alta", responsable: "VRA", historial: [], adjuntos: [] },
-      { id: 7, numero: "7", nombre: "Reglamento de Investigación", articulo: "Art. 551-650", estado: "En Revisión", progreso: 40, prioridad: "media", responsable: "VRI", historial: [], adjuntos: [] },
-      { id: 8, numero: "8", nombre: "Reglamento de Extensión", articulo: "Art. 651-750", estado: "Pendiente", progreso: 0, prioridad: "baja", responsable: "VRE", historial: [], adjuntos: [] },
-      { id: 9, numero: "9", nombre: "Reglamento de Postgrado", articulo: "Art. 751-850", estado: "En Proceso", progreso: 55, prioridad: "media", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 10, numero: "10", nombre: "Reglamento de Posgrado", articulo: "Art. 851-950", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 11, numero: "11", nombre: "Reglamento de Becas", articulo: "Art. 951-1050", estado: "En Revisión", progreso: 35, prioridad: "media", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 12, numero: "12", nombre: "Reglamento de Bienestar", articulo: "Art. 1051-1150", estado: "Pendiente", progreso: 0, prioridad: "baja", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 13, numero: "13", nombre: "Reglamento de Asuntos Estudiantiles", articulo: "Art. 1151-1250", estado: "En Proceso", progreso: 65, prioridad: "alta", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 14, numero: "14", nombre: "Reglamento Disciplinario", articulo: "Art. 1251-1350", estado: "En Revisión", progreso: 50, prioridad: "alta", responsable: "VRAE", historial: [], adjuntos: [] },
-      { id: 15, numero: "15", nombre: "Reglamento de Seguridad", articulo: "Art. 1351-1450", estado: "Pendiente", progreso: 0, prioridad: "media", responsable: "Administración", historial: [], adjuntos: [] },
-      { id: 16, numero: "16", nombre: "Reglamento de Biblioteca", articulo: "Art. 1451-1550", estado: "En Proceso", progreso: 70, prioridad: "baja", responsable: "Biblioteca", historial: [], adjuntos: [] },
-      { id: 17, numero: "17", nombre: "Reglamento de Sostenibilidad", articulo: "Art. 1551-1650", estado: "Aprobado", progreso: 100, prioridad: "media", responsable: "Rectoría", historial: [], adjuntos: [] },
-      { id: 18, numero: "18", nombre: "Reglamento de Acreditación", articulo: "Art. 1651-1750", estado: "En Revisión", progreso: 55, prioridad: "alta", responsable: "VRA", historial: [], adjuntos: [] },
-      { id: 19, numero: "19", nombre: "Reglamento de Calidad", articulo: "Art. 1751-1850", estado: "En Proceso", progreso: 60, prioridad: "alta", responsable: "VRA", historial: [], adjuntos: [] },
-      { id: 20, numero: "20", nombre: "Reglamento de Comunicaciones", articulo: "Art. 1851-1950", estado: "Pendiente", progreso: 10, prioridad: "baja", responsable: "Comunicaciones", historial: [], adjuntos: [] },
-      { id: 21, numero: "21", nombre: "Reglamento de Tecnología", articulo: "Art. 1951-2050", estado: "En Proceso", progreso: 45, prioridad: "media", responsable: "TIC", historial: [], adjuntos: [] },
-      { id: 22, numero: "22", nombre: "Reglamento de Compras", articulo: "Art. 2051-2150", estado: "En Revisión", progreso: 40, prioridad: "media", responsable: "Administración", historial: [], adjuntos: [] },
-      { id: 23, numero: "23", nombre: "Reglamento de Propiedad Intelectual", articulo: "Art. 2151-2250", estado: "Aprobado", progreso: 100, prioridad: "media", responsable: "VRI", historial: [], adjuntos: [] },
-      { id: 24, numero: "24", nombre: "Reglamento de Resolución de Conflictos", articulo: "Art. 2251-2350", estado: "En Proceso", progreso: 55, prioridad: "alta", responsable: "Rectoría", historial: [], adjuntos: [] }
+      { id: 1, numero: "1", nombre: "Reglamento de Funcionamiento del Consejo Superior", articulo: "Título IV, Art. 11-15", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "", decreto: "", articulo_estatuto: "Art. 11-15", historial: [], adjuntos: [] },
+      { id: 2, numero: "2", nombre: "Declaración de Bienes de Especial Interés Institucional", articulo: "", estado: "En Revisión", progreso: 40, prioridad: "media", responsable: "VRAF", observaciones: "Se remitió a VRAF para observaciones", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 3, numero: "3", nombre: "Reglamento de Elección del Rector o Rectora", articulo: "", estado: "En Revisión", progreso: 35, prioridad: "alta", responsable: "Secretaría General", observaciones: "Revisar el actual reglamento (Dec. Ex. 20/2022)", enlace: "https://drive.google.com/file/d/1_aUgV1I19T2AwTcB12pfBxtWbvrZ5SJr/view?usp=sharing", decreto: "DEC EX. 20/2022", articulo_estatuto: "Art. 16-19", historial: [], adjuntos: [] },
+      { id: 4, numero: "4", nombre: "Reglamento para Nombramiento de Miembros de la Comunidad Universitaria en el Consejo Superior", articulo: "Art. 12-13", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "https://gestor.umag.cl/storage/2025/326/versiones/13/firmas/DEC-N2SU2025PDF-firmado-1.pdf", decreto: "DEC N°2/SU/2025", articulo_estatuto: "Art. 12-13", historial: [], adjuntos: [] },
+      { id: 5, numero: "5", nombre: "Reglamento de Funcionamiento Interno del Consejo Universitario", articulo: "Art. 23-28", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "https://gestor.umag.cl/storage/2025/324/versiones/4/firmas/DEC-N001SU2025PDF-firmado-1.pdf", decreto: "DEC N°001/SU/2025", articulo_estatuto: "Art. 23-28", historial: [], adjuntos: [] },
+      { id: 6, numero: "6", nombre: "Reglamento General de Elecciones", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "Propuestas de mejora: incorporar al art. 20 alternativas cuando no se presenten candidatos; eliminar art. 47 sobre consejeros de centro", enlace: "https://gestor.umag.cl/verificar/IenybNt1", decreto: "DEC N°007/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 7, numero: "7", nombre: "Reglamento de Secretaría General", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "Se debe presentar al CU del 28/08/2025", enlace: "https://gestor.umag.cl/storage/2025/2347/versiones/4/firmas/DEC-N28SU2025PDF-firmado-1.pdf", decreto: "DEC N°28/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 8, numero: "8", nombre: "Reglamento General de Facultades", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "VRAC", observaciones: "Revisar si se puede fusionar con el reglamento de estructuras", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 9, numero: "9", nombre: "Reglamento de Gestión, Evaluación y Aseguramiento de la Calidad", articulo: "Art. 53 letra a y b", estado: "En Revisión", progreso: 35, prioridad: "alta", responsable: "Dir. Aseguramiento de la Calidad", observaciones: "Art. 53 Estatutos letra a y b", enlace: "", decreto: "", articulo_estatuto: "Art. 53", historial: [], adjuntos: [] },
+      { id: 10, numero: "10", nombre: "Reglamento de Estudios", articulo: "Art. 55", estado: "Pendiente", progreso: 10, prioridad: "alta", responsable: "VRAC", observaciones: "Art. 55 del estatuto. Revisar con Mario.", enlace: "", decreto: "", articulo_estatuto: "Art. 55", historial: [], adjuntos: [] },
+      { id: 11, numero: "11", nombre: "Reglamento de Estructuras Académicas", articulo: "", estado: "En Revisión", progreso: 35, prioridad: "media", responsable: "VRAC / Dir. Docencia", observaciones: "Se presentó propuesta a VRAC, VRAF, SG y D. de Docencia. Coordinar reunión con decanos para revisión y posible unificación con reglamento general de facultades.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 12, numero: "12", nombre: "Reglamento del Comité de Aseguramiento de la Calidad", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "Dir. Aseguramiento de la Calidad", observaciones: "Fue remitido con observaciones a la Dirección de Aseguramiento de la Calidad", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 13, numero: "13", nombre: "Reglamento de Carrera Académica", articulo: "Art. 67", estado: "En Revisión", progreso: 25, prioridad: "alta", responsable: "Dir. Docencia", observaciones: "Art. 67. Se podría fusionar con jerarquía y carga. Reunión pendiente entre DJ, DD y Unidad de Gestión Docente.", enlace: "", decreto: "", articulo_estatuto: "Art. 67", historial: [], adjuntos: [] },
+      { id: 14, numero: "14", nombre: "Reglamento de Asignación de Carga Académica", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Dir. Docencia", observaciones: "Propuesta de mejora: considerar en la carga administrativa a los coordinadores de campus", enlace: "https://gestor.umag.cl/verificar/hBeJOFkT", decreto: "DEC N°15/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 15, numero: "15", nombre: "Reglamento de Jerarquía Académica", articulo: "", estado: "En Revisión", progreso: 25, prioridad: "media", responsable: "Dir. Docencia", observaciones: "Dirección de Docencia propuso generar reunión entre DJ, DD y la Unidad de Gestión docente.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 16, numero: "16", nombre: "Reglamento de Promoción de un Académico", articulo: "Art. 68", estado: "En Proceso", progreso: 15, prioridad: "media", responsable: "Dir. Docencia", observaciones: "Art. 68. En redacción.", enlace: "", decreto: "", articulo_estatuto: "Art. 68", historial: [], adjuntos: [] },
+      { id: 17, numero: "17", nombre: "Reglamento de Estímulos e Incentivos a Funcionarios de Apoyo", articulo: "Art. 71", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "VRAF", observaciones: "Art. 71. En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 71", historial: [], adjuntos: [] },
+      { id: 18, numero: "18", nombre: "Reglamento General de Estudiantes", articulo: "", estado: "En Proceso", progreso: 45, prioridad: "alta", responsable: "VRAE", observaciones: "Propuesta presentada al Consejo Universitario", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 19, numero: "19", nombre: "Reglamento para Uso de Bienes y Servicios de la Universidad", articulo: "Art. 78 letra f)", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "VRAF", observaciones: "Art. 78 letra f). En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 78", historial: [], adjuntos: [] },
+      { id: 20, numero: "20", nombre: "Reglamento de Procedimientos Disciplinarios de Estudiantes", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "El día 27 de agosto de 2025 se responden observaciones del Sr. Contralor", enlace: "https://gestor.umag.cl/storage/2025/538/versiones/3/firmas/DEC-N21SU2025PDF-firmado-1.pdf", decreto: "DEC N°21/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 21, numero: "21", nombre: "Reglamento del Consejo de Convivencia Universitaria", articulo: "Art. 81", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "Secretaría General", observaciones: "Art. 81. En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 81", historial: [], adjuntos: [] },
+      { id: 22, numero: "22", nombre: "Reglamento sobre Administración Financiera y Patrimonial", articulo: "Art. 86 letra g)", estado: "Pendiente", progreso: 5, prioridad: "alta", responsable: "VRAF", observaciones: "Art. 86 letra g). En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 86", historial: [], adjuntos: [] },
+      { id: 23, numero: "23", nombre: "Reglamento sobre Propiedad Intelectual", articulo: "Art. 90", estado: "Pendiente", progreso: 15, prioridad: "media", responsable: "VRI / Pedro Herrera", observaciones: "Pedro Herrera realizará ajuste normativo. Solicitud de presentación para CU de octubre 2025.", enlace: "https://drive.google.com/file/d/1C32f_54Amsw6CY9YGTIm3yYnvKftIEKy/view?usp=sharing", decreto: "DEC N°004/SU/2023", articulo_estatuto: "Art. 90", historial: [], adjuntos: [] },
+      { id: 24, numero: "24", nombre: "Protocolo de Protección de Datos", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "Secretaría General", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 25, numero: "25", nombre: "Reglamento de Orden, Higiene y Seguridad", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "VRAF", observaciones: "", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 26, numero: "26", nombre: "Normativa del Mediador Universitario", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "Secretaría General", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 27, numero: "27", nombre: "Normativa Relativa para la Emisión de Normas", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "media", responsable: "Secretaría General", observaciones: "Se debe crear normativa que regule en qué caso debe emitirse una política, reglamento, instructivo, circular. Además podría incluirse materias relativas a decretos y resoluciones.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 28, numero: "28", nombre: "Reglamento de Tramitación de Convenios y Contratos", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "media", responsable: "Secretaría General", observaciones: "Pasos: Crear Drive con material, reunir normativa similar, recabar opinión de Contraloría, reunión equipo jurídico, redacción de documento.", enlace: "", decreto: "Res. N°216/2019", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 29, numero: "29", nombre: "Normativa de Compatibilidad Estudios con Vida Familiar", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "alta", responsable: "VRAE", observaciones: "Se debe redactar normativa de acuerdo al tenor de la Ley 21.790 sobre derechos de estudiantes cuidadores.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 30, numero: "30", nombre: "Reglamento de Incentivo al Retiro", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "VRAF", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 31, numero: "31", nombre: "Reglamento de Votaciones Bienestar", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "VRAE / Bienestar", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] }
     ];
 
     const PLAZOS_DATA = [
@@ -1634,10 +1649,11 @@
                   <tr>
                     <th>N°</th>
                     <th>Nombre</th>
-                    <th>Artículo</th>
+                    <th>Artículo Estatuto</th>
                     <th>Estado</th>
                     <th>Progreso</th>
                     <th>Responsable</th>
+                    <th>Decreto</th>
                     <th>Acción</th>
                   </tr>
                 </thead>
@@ -1646,7 +1662,7 @@
                     <tr key={r.id}>
                       <td>{r.numero}</td>
                       <td>{r.nombre}</td>
-                      <td>{r.articulo}</td>
+                      <td>{r.articulo_estatuto || r.articulo || '-'}</td>
                       <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
                       <td>
                         <div className="progress-bar">
@@ -1654,13 +1670,14 @@
                         </div>
                       </td>
                       <td>{r.responsable}</td>
+                      <td style={{ fontSize: '0.75rem' }}>{r.decreto ? (r.enlace ? <a href={r.enlace} target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>{r.decreto}</a> : r.decreto) : '-'}</td>
                       <td>
                         <button className="btn btn-primary btn-small" onClick={() => onSelectRegulation(r)}>Ver</button>
                       </td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No se encontraron reglamentos con esos filtros</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No se encontraron reglamentos con esos filtros</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1677,8 +1694,9 @@
                       <span className="kanban-column-count">{columnRegs.length}</span>
                     </div>
                     {columnRegs.map(r => (
-                      <div key={r.id} className={`kanban-card ${r.prioridad}`} onClick={() => onSelectRegulation(r)}>
+                      <div key={r.id} className={`kanban-card ${r.prioridad}`} onClick={() => onSelectRegulation(r)} title={r.observaciones || ''}>
                         <div className="kanban-card-title">{r.numero}. {r.nombre}</div>
+                        {r.observaciones && <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.375rem', lineHeight: '1.3', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.observaciones}</div>}
                         <div className="kanban-card-meta">
                           <span>{r.responsable}</span>
                           <div className="kanban-card-progress">
@@ -1909,6 +1927,25 @@
                   <option>baja</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label>Decreto / Resolución</label>
+                <input type="text" value={formData.decreto || ''} onChange={(e) => setFormData(prev => ({ ...prev, decreto: e.target.value }))} placeholder="ej: DEC N°001/SU/2025" />
+              </div>
+              <div className="form-group">
+                <label>Artículo del Estatuto</label>
+                <input type="text" value={formData.articulo_estatuto || ''} onChange={(e) => setFormData(prev => ({ ...prev, articulo_estatuto: e.target.value }))} placeholder="ej: Art. 67" />
+              </div>
+              <div className="form-group">
+                <label>Observaciones</label>
+                <textarea value={formData.observaciones || ''} onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))} placeholder="Notas, pendientes, acuerdos..." style={{ minHeight: '80px' }}></textarea>
+              </div>
+              <div className="form-group">
+                <label>Enlace al documento</label>
+                <input type="text" value={formData.enlace || ''} onChange={(e) => setFormData(prev => ({ ...prev, enlace: e.target.value }))} placeholder="https://..." />
+                {formData.enlace && (
+                  <a href={formData.enlace} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#1a56db', display: 'inline-block', marginTop: '0.25rem' }}>🔗 Abrir documento</a>
+                )}
+              </div>
               <div className="btn-group">
                 <button className="btn btn-primary" onClick={() => { onSave(formData); }}>Guardar Cambios</button>
                 <button className="btn btn-danger" onClick={onDelete}>Eliminar</button>
@@ -2041,7 +2078,11 @@
         estado: "Pendiente",
         progreso: 0,
         prioridad: "media",
-        responsable: ""
+        responsable: "",
+        decreto: "",
+        articulo_estatuto: "",
+        observaciones: "",
+        enlace: ""
       });
 
       const handleCreate = () => {
@@ -2081,6 +2122,22 @@
                 <option>media</option>
                 <option>baja</option>
               </select>
+            </div>
+            <div className="form-group">
+              <label>Decreto / Resolución</label>
+              <input type="text" value={formData.decreto} onChange={(e) => setFormData(prev => ({ ...prev, decreto: e.target.value }))} placeholder="ej: DEC N°001/SU/2025" />
+            </div>
+            <div className="form-group">
+              <label>Artículo del Estatuto</label>
+              <input type="text" value={formData.articulo_estatuto} onChange={(e) => setFormData(prev => ({ ...prev, articulo_estatuto: e.target.value }))} placeholder="ej: Art. 67" />
+            </div>
+            <div className="form-group">
+              <label>Observaciones</label>
+              <textarea value={formData.observaciones} onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))} placeholder="Notas, pendientes, acuerdos..."></textarea>
+            </div>
+            <div className="form-group">
+              <label>Enlace al documento</label>
+              <input type="text" value={formData.enlace} onChange={(e) => setFormData(prev => ({ ...prev, enlace: e.target.value }))} placeholder="https://..." />
             </div>
             <div className="btn-group">
               <button className="btn btn-primary" onClick={handleCreate}>Crear Reglamento</button>
