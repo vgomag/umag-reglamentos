@@ -1303,10 +1303,15 @@
     const SUPABASE_URL = 'https://pzqzupcjalggdlibplcw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6cXp1cGNqYWxnZ2RsaWJwbGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTI4MzAsImV4cCI6MjA5MDgyODgzMH0.3mP_NgsS5awP4k4_5J2x4YQwc-OaoMLsSFMFKBV2WJw';
 
-    // Inicializar cliente Supabase (solo si está configurado)
-    const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      : null;
+    // Inicializar cliente Supabase (solo si está configurado y la librería cargó)
+    let supabase = null;
+    try {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      console.warn('Supabase no disponible, usando localStorage:', e.message);
+    }
 
     /*
     -- SQL para crear la tabla en Supabase (ejecutar en SQL Editor):
@@ -1427,17 +1432,21 @@
     async function supabaseSeedIfEmpty() {
       if (!supabase) return;
       try {
-        const { count } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
+        const { count, error: countError } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
+        if (countError) { console.warn('Supabase count error:', countError.message); return; }
         if (count === 0) {
           const { error } = await supabase.from('regulations').insert(INITIAL_REGULATIONS.map(r => ({
             numero: r.numero, nombre: r.nombre, articulo: r.articulo,
             estado: r.estado, progreso: r.progreso, prioridad: r.prioridad,
-            responsable: r.responsable, historial: r.historial, adjuntos: r.adjuntos
+            responsable: r.responsable, observaciones: r.observaciones || '',
+            enlace: r.enlace || '', decreto: r.decreto || '',
+            articulo_estatuto: r.articulo_estatuto || '',
+            historial: r.historial, adjuntos: r.adjuntos
           })));
-          if (error) console.error('Seed error:', error);
+          if (error) console.warn('Seed error:', error.message);
         }
       } catch (e) {
-        console.error('Seed check error:', e);
+        console.warn('Seed check error:', e.message);
       }
     }
 
@@ -1651,7 +1660,7 @@
             </div>
           </div>
 
-          <div className="deadline-banner ${bannerClass}" style={{ background: bannerClass === 'critical' ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : bannerClass === 'warning' ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: bannerClass === 'critical' ? '1px solid #fecaca' : bannerClass === 'warning' ? '1px solid #fde68a' : '1px solid #bbf7d0' }}>
+          <div className={`deadline-banner ${bannerClass}`} style={{ background: bannerClass === 'critical' ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : bannerClass === 'warning' ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: bannerClass === 'critical' ? '1px solid #fecaca' : bannerClass === 'warning' ? '1px solid #fde68a' : '1px solid #bbf7d0' }}>
             <div className="deadline-icon">{bannerIcon}</div>
             <div className="deadline-info">
               <div className="deadline-title" style={{ color: bannerClass === 'critical' ? '#991b1b' : bannerClass === 'warning' ? '#92400e' : '#166534' }}>
