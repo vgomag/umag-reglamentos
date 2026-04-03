@@ -724,6 +724,345 @@
       flex-wrap: wrap;
     }
 
+    /* Search and Filters */
+    .filters-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.625rem 0.75rem 0.625rem 2.25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #1e293b;
+      transition: all 0.15s ease;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 0.75rem center;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .filter-select {
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #1e293b;
+      background: white;
+      cursor: pointer;
+      min-width: 140px;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: #1a56db;
+    }
+
+    .active-filters {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #1d4ed8;
+      cursor: pointer;
+    }
+
+    .filter-tag:hover {
+      background: #dbeafe;
+    }
+
+    .results-count {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 1rem;
+    }
+
+    /* Kanban Board */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      min-height: 400px;
+    }
+
+    .kanban-column {
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 1rem;
+      min-height: 300px;
+    }
+
+    .kanban-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid;
+    }
+
+    .kanban-column-header.pendiente { border-bottom-color: #94a3b8; }
+    .kanban-column-header.en-proceso { border-bottom-color: #3b82f6; }
+    .kanban-column-header.en-revision { border-bottom-color: #f59e0b; }
+    .kanban-column-header.aprobado { border-bottom-color: #10b981; }
+
+    .kanban-column-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+    }
+
+    .kanban-column-count {
+      background: white;
+      border-radius: 9999px;
+      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .kanban-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .kanban-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .kanban-card.alta { border-left-color: #ef4444; }
+    .kanban-card.media { border-left-color: #f59e0b; }
+    .kanban-card.baja { border-left-color: #10b981; }
+
+    .kanban-card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+
+    .kanban-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .kanban-card-progress {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .kanban-card-progress .progress-bar {
+      width: 50px;
+      height: 4px;
+    }
+
+    .kanban-move-btns {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+    }
+
+    .kanban-move-btn {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.15s ease;
+    }
+
+    .kanban-move-btn:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    /* View toggle */
+    .view-toggle {
+      display: flex;
+      gap: 0.25rem;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 0.25rem;
+    }
+
+    .view-toggle-btn {
+      padding: 0.5rem 0.75rem;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #64748b;
+      transition: all 0.15s ease;
+    }
+
+    .view-toggle-btn.active {
+      background: white;
+      color: #1e293b;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .chart-card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .bar-label {
+      font-size: 0.8rem;
+      color: #475569;
+      width: 90px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      padding-left: 0.5rem;
+    }
+
+    .bar-fill span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .bar-fill.pendiente { background: linear-gradient(90deg, #94a3b8, #64748b); }
+    .bar-fill.en-proceso { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+    .bar-fill.en-revision { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .bar-fill.aprobado { background: linear-gradient(90deg, #34d399, #10b981); }
+
+    /* Donut chart */
+    .donut-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    .donut-svg {
+      transform: rotate(-90deg);
+    }
+
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    .donut-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Priority bar chart */
+    .priority-chart { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .bar-fill.alta { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .bar-fill.media { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .bar-fill.baja { background: linear-gradient(90deg, #34d399, #10b981); }
+
+    @media (max-width: 900px) {
+      .kanban-board {
+        grid-template-columns: 1fr;
+      }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .toast {
       position: fixed;
       bottom: 2rem;
@@ -762,12 +1101,155 @@
 <body>
   <div id="root"></div>
 
+  <!-- Supabase Client -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
+
+    // ============================================================
+    // SUPABASE CONFIGURATION
+    // Para activar Supabase, reemplaza estos valores con los de tu proyecto:
+    // 1. Ve a https://supabase.com/dashboard y crea un nuevo proyecto
+    // 2. En Settings > API, copia la URL y la anon key
+    // 3. Ejecuta el SQL que está más abajo para crear la tabla
+    // ============================================================
+    const SUPABASE_URL = '';  // ej: 'https://xxxxx.supabase.co'
+    const SUPABASE_ANON_KEY = '';  // ej: 'eyJhbGciOiJIUzI1NiIs...'
+
+    // Inicializar cliente Supabase (solo si está configurado)
+    const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    /*
+    -- SQL para crear la tabla en Supabase (ejecutar en SQL Editor):
+
+    CREATE TABLE regulations (
+      id SERIAL PRIMARY KEY,
+      numero TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      articulo TEXT DEFAULT '',
+      estado TEXT DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'En Proceso', 'En Revisión', 'Aprobado')),
+      progreso INTEGER DEFAULT 0 CHECK (progreso >= 0 AND progreso <= 100),
+      prioridad TEXT DEFAULT 'media' CHECK (prioridad IN ('alta', 'media', 'baja')),
+      responsable TEXT DEFAULT '',
+      historial JSONB DEFAULT '[]',
+      adjuntos JSONB DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Habilitar RLS (Row Level Security)
+    ALTER TABLE regulations ENABLE ROW LEVEL SECURITY;
+
+    -- Política para permitir acceso público (ajustar según necesidad)
+    CREATE POLICY "Allow all access" ON regulations FOR ALL USING (true) WITH CHECK (true);
+
+    -- Función para actualizar updated_at automáticamente
+    CREATE OR REPLACE FUNCTION update_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      NEW.updated_at = NOW();
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trigger_update_timestamp
+      BEFORE UPDATE ON regulations
+      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    */
+
+    // Helper functions para Supabase
+    async function supabaseFetchAll() {
+      if (!supabase) return null;
+      try {
+        const { data, error } = await supabase.from('regulations').select('*').order('id');
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Supabase fetch error:', e);
+        return null;
+      }
+    }
+
+    async function supabaseUpsert(regulation) {
+      if (!supabase) return false;
+      try {
+        const { error } = await supabase.from('regulations').upsert({
+          id: regulation.id,
+          numero: regulation.numero,
+          nombre: regulation.nombre,
+          articulo: regulation.articulo || '',
+          estado: regulation.estado,
+          progreso: regulation.progreso,
+          prioridad: regulation.prioridad,
+          responsable: regulation.responsable || '',
+          historial: regulation.historial || [],
+          adjuntos: regulation.adjuntos || []
+        });
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error('Supabase upsert error:', e);
+        return false;
+      }
+    }
+
+    async function supabaseDelete(id) {
+      if (!supabase) return false;
+      try {
+        const { error } = await supabase.from('regulations').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error('Supabase delete error:', e);
+        return false;
+      }
+    }
+
+    async function supabaseInsert(regulation) {
+      if (!supabase) return null;
+      try {
+        const { data, error } = await supabase.from('regulations').insert({
+          numero: regulation.numero,
+          nombre: regulation.nombre,
+          articulo: regulation.articulo || '',
+          estado: regulation.estado,
+          progreso: regulation.progreso,
+          prioridad: regulation.prioridad,
+          responsable: regulation.responsable || '',
+          historial: regulation.historial || [],
+          adjuntos: regulation.adjuntos || []
+        }).select().single();
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Supabase insert error:', e);
+        return null;
+      }
+    }
+
+    async function supabaseSeedIfEmpty() {
+      if (!supabase) return;
+      try {
+        const { count } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
+        if (count === 0) {
+          const { error } = await supabase.from('regulations').insert(INITIAL_REGULATIONS.map(r => ({
+            numero: r.numero, nombre: r.nombre, articulo: r.articulo,
+            estado: r.estado, progreso: r.progreso, prioridad: r.prioridad,
+            responsable: r.responsable, historial: r.historial, adjuntos: r.adjuntos
+          })));
+          if (error) console.error('Seed error:', error);
+        }
+      } catch (e) {
+        console.error('Seed check error:', e);
+      }
+    }
 
     // Google Configuration
     const GOOGLE_CLIENT_ID = '1043885369261-imrf6apaog9gbprdtkkp8em3sau03ua3.apps.googleusercontent.com';
@@ -882,11 +1364,56 @@
       );
     }
 
+    function DonutChart({ data, size = 140, strokeWidth = 20 }) {
+      const radius = (size - strokeWidth) / 2;
+      const circumference = 2 * Math.PI * radius;
+      const center = size / 2;
+      let accumulated = 0;
+
+      return (
+        <svg className="donut-svg" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={strokeWidth} />
+          {data.map((item, i) => {
+            const dashLength = (item.value / 100) * circumference;
+            const dashOffset = -(accumulated / 100) * circumference;
+            accumulated += item.value;
+            return (
+              <circle key={i} cx={center} cy={center} r={radius} fill="none" stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${dashLength} ${circumference - dashLength}`} strokeDashoffset={dashOffset} style={{ transition: 'all 0.5s ease' }} />
+            );
+          })}
+          <text x={center} y={center - 6} textAnchor="middle" fontSize="1.5rem" fontWeight="700" fill="#0f172a" transform={`rotate(90, ${center}, ${center})`}>{Math.round(data.find(d => d.label === 'Aprobado')?.value || 0)}%</text>
+          <text x={center} y={center + 12} textAnchor="middle" fontSize="0.6rem" fill="#64748b" transform={`rotate(90, ${center}, ${center})`}>aprobados</text>
+        </svg>
+      );
+    }
+
     function Dashboard({ regulations }) {
       const approved = regulations.filter(r => r.estado === "Aprobado").length;
       const inProcess = regulations.filter(r => r.estado === "En Proceso").length;
+      const inReview = regulations.filter(r => r.estado === "En Revisión").length;
       const pending = regulations.filter(r => r.estado === "Pendiente").length;
       const progress = Math.round((approved / regulations.length) * 100);
+
+      const total = regulations.length;
+      const statusData = [
+        { label: "Pendiente", count: pending, pct: Math.round((pending / total) * 100), color: "#94a3b8", cls: "pendiente" },
+        { label: "En Proceso", count: inProcess, pct: Math.round((inProcess / total) * 100), color: "#3b82f6", cls: "en-proceso" },
+        { label: "En Revisión", count: inReview, pct: Math.round((inReview / total) * 100), color: "#f59e0b", cls: "en-revision" },
+        { label: "Aprobado", count: approved, pct: Math.round((approved / total) * 100), color: "#10b981", cls: "aprobado" }
+      ];
+
+      const donutData = statusData.map(s => ({ label: s.label, value: s.pct, color: s.color }));
+
+      const alta = regulations.filter(r => r.prioridad === "alta").length;
+      const media = regulations.filter(r => r.prioridad === "media").length;
+      const baja = regulations.filter(r => r.prioridad === "baja").length;
+      const priorityData = [
+        { label: "Alta", count: alta, pct: Math.round((alta / total) * 100), cls: "alta", color: "#ef4444" },
+        { label: "Media", count: media, pct: Math.round((media / total) * 100), cls: "media", color: "#f59e0b" },
+        { label: "Baja", count: baja, pct: Math.round((baja / total) * 100), cls: "baja", color: "#10b981" }
+      ];
+
+      const avgProgress = Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total);
 
       return (
         <div className="page-content">
@@ -894,9 +1421,10 @@
             <h2>Dashboard</h2>
             <p>Estado general del proceso de reglamentos</p>
           </div>
+
           <div className="dashboard-grid">
             <div className="metric-card">
-              <div className="metric-value">{regulations.length}</div>
+              <div className="metric-value">{total}</div>
               <div className="metric-label">Total de Reglamentos</div>
             </div>
             <div className="metric-card success">
@@ -904,18 +1432,95 @@
               <div className="metric-label">Aprobados</div>
             </div>
             <div className="metric-card warning">
-              <div className="metric-value">{inProcess}</div>
-              <div className="metric-label">En Proceso</div>
+              <div className="metric-value">{inProcess + inReview}</div>
+              <div className="metric-label">En Proceso / Revisión</div>
             </div>
             <div className="metric-card danger">
               <div className="metric-value">{pending}</div>
               <div className="metric-label">Pendientes</div>
             </div>
             <div className="metric-card">
-              <div className="metric-value">{progress}%</div>
-              <div className="metric-label">Avance General</div>
+              <div className="metric-value">{avgProgress}%</div>
+              <div className="metric-label">Progreso Promedio</div>
             </div>
           </div>
+
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="chart-card-title">Distribución por Estado</div>
+              <div className="donut-container">
+                <DonutChart data={donutData} />
+                <div className="donut-legend">
+                  {statusData.map((s, i) => (
+                    <div key={i} className="donut-legend-item">
+                      <div className="donut-legend-dot" style={{ backgroundColor: s.color }}></div>
+                      <span>{s.label}: {s.count} ({s.pct}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Avance por Estado</div>
+              <div className="bar-chart">
+                {statusData.map((s, i) => (
+                  <div key={i} className="bar-row">
+                    <div className="bar-label">{s.label}</div>
+                    <div className="bar-track">
+                      <div className={`bar-fill ${s.cls}`} style={{ width: `${Math.max(s.pct, 8)}%` }}>
+                        <span>{s.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Distribución por Prioridad</div>
+              <div className="bar-chart">
+                {priorityData.map((p, i) => (
+                  <div key={i} className="bar-row">
+                    <div className="bar-label">{p.label}</div>
+                    <div className="bar-track">
+                      <div className={`bar-fill ${p.cls}`} style={{ width: `${Math.max(p.pct, 8)}%` }}>
+                        <span>{p.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Progreso por Responsable</div>
+              <div className="bar-chart">
+                {(() => {
+                  const byResp = {};
+                  regulations.forEach(r => {
+                    if (!byResp[r.responsable]) byResp[r.responsable] = { total: 0, sum: 0 };
+                    byResp[r.responsable].total++;
+                    byResp[r.responsable].sum += r.progreso;
+                  });
+                  return Object.entries(byResp).sort((a, b) => (b[1].sum / b[1].total) - (a[1].sum / a[1].total)).map(([name, data], i) => {
+                    const avg = Math.round(data.sum / data.total);
+                    return (
+                      <div key={i} className="bar-row">
+                        <div className="bar-label" style={{ width: 110 }}>{name}</div>
+                        <div className="bar-track">
+                          <div className="bar-fill" style={{ width: `${Math.max(avg, 8)}%`, background: `linear-gradient(90deg, ${avg >= 75 ? '#34d399' : avg >= 40 ? '#60a5fa' : '#94a3b8'}, ${avg >= 75 ? '#10b981' : avg >= 40 ? '#3b82f6' : '#64748b'})` }}>
+                            <span>{avg}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+
           <div className="table-container">
             <table>
               <thead>
@@ -951,47 +1556,152 @@
       );
     }
 
-    function RegulationsList({ regulations, onSelectRegulation }) {
+    function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }) {
+      const [search, setSearch] = useState("");
+      const [filterEstado, setFilterEstado] = useState("");
+      const [filterPrioridad, setFilterPrioridad] = useState("");
+      const [filterResponsable, setFilterResponsable] = useState("");
+      const [viewMode, setViewMode] = useState("table");
+
+      const responsables = [...new Set(regulations.map(r => r.responsable).filter(Boolean))].sort();
+
+      const filtered = regulations.filter(r => {
+        const matchSearch = !search || r.nombre.toLowerCase().includes(search.toLowerCase()) || r.numero.includes(search) || (r.responsable && r.responsable.toLowerCase().includes(search.toLowerCase()));
+        const matchEstado = !filterEstado || r.estado === filterEstado;
+        const matchPrioridad = !filterPrioridad || r.prioridad === filterPrioridad;
+        const matchResponsable = !filterResponsable || r.responsable === filterResponsable;
+        return matchSearch && matchEstado && matchPrioridad && matchResponsable;
+      });
+
+      const activeFilters = [];
+      if (filterEstado) activeFilters.push({ label: filterEstado, clear: () => setFilterEstado("") });
+      if (filterPrioridad) activeFilters.push({ label: filterPrioridad, clear: () => setFilterPrioridad("") });
+      if (filterResponsable) activeFilters.push({ label: filterResponsable, clear: () => setFilterResponsable("") });
+
+      const STATES = ["Pendiente", "En Proceso", "En Revisión", "Aprobado"];
+
+      const handleKanbanMove = (reg, newEstado) => {
+        const newProgreso = newEstado === "Aprobado" ? 100 : newEstado === "Pendiente" ? 0 : reg.progreso;
+        onUpdateRegulation({ ...reg, estado: newEstado, progreso: newProgreso });
+      };
+
       return (
         <div className="page-content">
-          <div className="page-header">
-            <h2>Reglamentos</h2>
-            <p>Gestionar todos los reglamentos de la universidad</p>
+          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2>Reglamentos</h2>
+              <p>Gestionar todos los reglamentos de la universidad</p>
+            </div>
+            <div className="view-toggle">
+              <button className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>📋 Tabla</button>
+              <button className={`view-toggle-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>📊 Kanban</button>
+            </div>
           </div>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>N°</th>
-                  <th>Nombre</th>
-                  <th>Artículo</th>
-                  <th>Estado</th>
-                  <th>Progreso</th>
-                  <th>Responsable</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {regulations.map(r => (
-                  <tr key={r.id}>
-                    <td>{r.numero}</td>
-                    <td>{r.nombre}</td>
-                    <td>{r.articulo}</td>
-                    <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
-                    <td>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
-                      </div>
-                    </td>
-                    <td>{r.responsable}</td>
-                    <td>
-                      <button className="btn btn-primary btn-small" onClick={() => onSelectRegulation(r)}>Ver</button>
-                    </td>
+
+          <div className="filters-bar">
+            <input type="text" className="search-input" placeholder="Buscar por nombre, número o responsable..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select className="filter-select" value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)}>
+              <option value="">Todos los estados</option>
+              {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select className="filter-select" value={filterPrioridad} onChange={(e) => setFilterPrioridad(e.target.value)}>
+              <option value="">Toda prioridad</option>
+              <option value="alta">Alta</option>
+              <option value="media">Media</option>
+              <option value="baja">Baja</option>
+            </select>
+            <select className="filter-select" value={filterResponsable} onChange={(e) => setFilterResponsable(e.target.value)}>
+              <option value="">Todos los responsables</option>
+              {responsables.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+
+          {activeFilters.length > 0 && (
+            <div className="active-filters" style={{ marginBottom: '1rem' }}>
+              {activeFilters.map((f, i) => (
+                <span key={i} className="filter-tag" onClick={f.clear}>{f.label} ✕</span>
+              ))}
+              <span className="filter-tag" onClick={() => { setFilterEstado(""); setFilterPrioridad(""); setFilterResponsable(""); }} style={{ background: '#fee2e2', borderColor: '#fecaca', color: '#dc2626' }}>Limpiar todo ✕</span>
+            </div>
+          )}
+
+          <div className="results-count">{filtered.length} de {regulations.length} reglamentos</div>
+
+          {viewMode === 'table' ? (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>N°</th>
+                    <th>Nombre</th>
+                    <th>Artículo</th>
+                    <th>Estado</th>
+                    <th>Progreso</th>
+                    <th>Responsable</th>
+                    <th>Acción</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.map(r => (
+                    <tr key={r.id}>
+                      <td>{r.numero}</td>
+                      <td>{r.nombre}</td>
+                      <td>{r.articulo}</td>
+                      <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
+                      <td>
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
+                        </div>
+                      </td>
+                      <td>{r.responsable}</td>
+                      <td>
+                        <button className="btn btn-primary btn-small" onClick={() => onSelectRegulation(r)}>Ver</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No se encontraron reglamentos con esos filtros</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="kanban-board">
+              {STATES.map(estado => {
+                const columnRegs = filtered.filter(r => r.estado === estado);
+                const stateIdx = STATES.indexOf(estado);
+                return (
+                  <div key={estado} className="kanban-column">
+                    <div className={`kanban-column-header ${estado.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <span className="kanban-column-title">{estado}</span>
+                      <span className="kanban-column-count">{columnRegs.length}</span>
+                    </div>
+                    {columnRegs.map(r => (
+                      <div key={r.id} className={`kanban-card ${r.prioridad}`} onClick={() => onSelectRegulation(r)}>
+                        <div className="kanban-card-title">{r.numero}. {r.nombre}</div>
+                        <div className="kanban-card-meta">
+                          <span>{r.responsable}</span>
+                          <div className="kanban-card-progress">
+                            <div className="progress-bar" style={{ width: 50 }}>
+                              <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
+                            </div>
+                            <span>{r.progreso}%</span>
+                          </div>
+                        </div>
+                        <div className="kanban-move-btns" onClick={(e) => e.stopPropagation()}>
+                          {stateIdx > 0 && <button className="kanban-move-btn" onClick={() => handleKanbanMove(r, STATES[stateIdx - 1])}>← {STATES[stateIdx - 1]}</button>}
+                          {stateIdx < STATES.length - 1 && <button className="kanban-move-btn" onClick={() => handleKanbanMove(r, STATES[stateIdx + 1])}>{STATES[stateIdx + 1]} →</button>}
+                        </div>
+                      </div>
+                    ))}
+                    {columnRegs.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.8rem' }}>Sin reglamentos</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       );
     }
@@ -1422,7 +2132,7 @@
       );
     }
 
-    function Settings({ regulations, onReset, onExport, googleToken, isGoogleConnected, onGoogleDisconnect, googleUser }) {
+    function Settings({ regulations, onReset, onExport, googleToken, isGoogleConnected, onGoogleDisconnect, googleUser, dbMode }) {
       const [estatutoDate, setEstatutoDate] = useState(() => {
         const saved = localStorage.getItem("estatuto_date");
         return saved || "2025-01-18";
@@ -1559,6 +2269,32 @@
           </div>
 
           <div className="section" style={{ marginBottom: '2rem' }}>
+            <h3 className="section-title">Base de Datos</h3>
+            <div style={{ padding: '1rem', background: dbMode === 'supabase' ? '#d1fae5' : '#fef3c7', borderRadius: '8px', marginBottom: '1rem', borderLeft: `4px solid ${dbMode === 'supabase' ? '#10b981' : '#f59e0b'}` }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                {dbMode === 'supabase' ? '✓ Conectado a Supabase' : '⚠ Usando almacenamiento local'}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                {dbMode === 'supabase'
+                  ? 'Los datos se guardan en PostgreSQL (Supabase). Múltiples usuarios pueden acceder simultáneamente.'
+                  : 'Los datos se guardan en el navegador (localStorage). Para persistencia real y acceso multiusuario, configura Supabase.'
+                }
+              </div>
+            </div>
+            {dbMode !== 'supabase' && (
+              <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', fontSize: '0.85rem', color: '#475569', lineHeight: '1.6' }}>
+                <strong>Configurar Supabase:</strong>
+                <ol style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                  <li>Crea un proyecto en <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>supabase.com/dashboard</a></li>
+                  <li>Ve a SQL Editor y ejecuta el SQL incluido en el código</li>
+                  <li>Copia tu URL y Anon Key desde Settings → API</li>
+                  <li>Reemplaza SUPABASE_URL y SUPABASE_ANON_KEY en el código</li>
+                </ol>
+              </div>
+            )}
+          </div>
+
+          <div className="section" style={{ marginBottom: '2rem' }}>
             <h3 className="section-title">Parámetros de Sistema</h3>
             <div className="form-group">
               <label>Fecha de Entrada en Vigencia del Estatuto</label>
@@ -1606,7 +2342,27 @@
       const [activeView, setActiveView] = useState("dashboard");
       const [selectedRegulation, setSelectedRegulation] = useState(null);
       const [toast, setToast] = useState(null);
+      const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
+      const [isLoading, setIsLoading] = useState(!!supabase);
 
+      // Cargar datos desde Supabase al inicio
+      useEffect(() => {
+        if (supabase) {
+          (async () => {
+            await supabaseSeedIfEmpty();
+            const data = await supabaseFetchAll();
+            if (data) {
+              setRegulations(data);
+              setDbMode('supabase');
+            } else {
+              setDbMode('local');
+            }
+            setIsLoading(false);
+          })();
+        }
+      }, []);
+
+      // Sincronizar con localStorage como backup
       useEffect(() => {
         localStorage.setItem("regulations", JSON.stringify(regulations));
       }, [regulations]);
@@ -1701,20 +2457,31 @@
         setActiveView("detail");
       };
 
-      const handleSaveRegulation = (updatedReg) => {
+      const handleSaveRegulation = async (updatedReg) => {
         setRegulations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
         setSelectedRegulation(updatedReg);
+        if (dbMode === 'supabase') await supabaseUpsert(updatedReg);
         setToast({ type: 'success', message: 'Reglamento guardado' });
       };
 
-      const handleDeleteRegulation = () => {
+      const handleDeleteRegulation = async () => {
+        if (dbMode === 'supabase') await supabaseDelete(selectedRegulation.id);
         setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
         setActiveView("regulations");
         setSelectedRegulation(null);
         setToast({ type: 'success', message: 'Reglamento eliminado' });
       };
 
-      const handleCreateRegulation = (newReg) => {
+      const handleCreateRegulation = async (newReg) => {
+        if (dbMode === 'supabase') {
+          const created = await supabaseInsert(newReg);
+          if (created) {
+            setRegulations(prev => [...prev, created]);
+            setActiveView("regulations");
+            setToast({ type: 'success', message: 'Reglamento creado' });
+            return;
+          }
+        }
         const id = Math.max(...regulations.map(r => r.id), 0) + 1;
         const created = { ...newReg, id, historial: [], adjuntos: [] };
         setRegulations(prev => [...prev, created]);
@@ -1758,7 +2525,7 @@
             <div className="content">
               <div className="page-container">
                 {activeView === "dashboard" && <Dashboard regulations={regulations} />}
-                {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} />}
+                {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
                 {activeView === "detail" && selectedRegulation && (
                   <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} googleToken={googleToken} isGoogleConnected={isGoogleConnected} />
                 )}
@@ -1767,7 +2534,7 @@
                 )}
                 {activeView === "plazos" && <PlazosList />}
                 {activeView === "settings" && (
-                  <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} googleToken={googleToken} isGoogleConnected={isGoogleConnected} onGoogleDisconnect={handleGoogleDisconnect} googleUser={googleUser} />
+                  <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} googleToken={googleToken} isGoogleConnected={isGoogleConnected} onGoogleDisconnect={handleGoogleDisconnect} googleUser={googleUser} dbMode={dbMode} />
                 )}
               </div>
             </div>
