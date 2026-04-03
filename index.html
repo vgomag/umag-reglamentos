@@ -1274,6 +1274,83 @@
 
     .page-content { animation: fadeIn 0.3s ease; }
 
+    /* PDF Upload & Extraction */
+    .pdf-upload-zone {
+      border: 2px dashed #3b82f6;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      margin-bottom: 1rem;
+    }
+    .pdf-upload-zone:hover { border-color: #1d4ed8; background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%); }
+    .pdf-upload-zone.uploading { border-color: #f59e0b; background: #fffbeb; pointer-events: none; }
+    .pdf-upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .pdf-upload-title { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 0.25rem; }
+    .pdf-upload-hint { font-size: 0.8rem; color: #64748b; }
+
+    .pdf-extraction-result {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .pdf-extraction-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .pdf-extraction-title { font-size: 0.85rem; font-weight: 700; color: #059669; display: flex; align-items: center; gap: 0.5rem; }
+    .pdf-field-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .pdf-field-row:last-child { border-bottom: none; }
+    .pdf-field-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; min-width: 120px; }
+    .pdf-field-value { font-size: 0.85rem; color: #1e293b; flex: 1; }
+    .pdf-field-action { flex-shrink: 0; }
+    .pdf-apply-btn {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #10b981;
+      background: #ecfdf5;
+      color: #059669;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pdf-apply-btn:hover { background: #d1fae5; }
+    .pdf-apply-all-btn {
+      padding: 0.5rem 1rem;
+      background: #059669;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-top: 1rem;
+      width: 100%;
+    }
+    .pdf-apply-all-btn:hover { background: #047857; }
+    .pdf-progress { margin-top: 0.75rem; }
+    .pdf-progress-bar { height: 4px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .pdf-progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #1d4ed8); border-radius: 99px; transition: width 0.3s; }
+    .pdf-progress-text { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .pdf-stored-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.5rem; background: #dbeafe; color: #1d4ed8; border-radius: 6px; font-size: 0.7rem; font-weight: 500; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -1285,6 +1362,9 @@
 
   <!-- Supabase Client -->
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- PDF.js for PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }</script>
 
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -2137,10 +2217,178 @@
       const [meetingData, setMeetingData] = useState({ startTime: "", endTime: "", duration: "60", emails: "" });
       const [showDriveModal, setShowDriveModal] = useState(false);
       const fileInputRef = useRef(null);
+      const pdfInputRef = useRef(null);
+      const [pdfExtracting, setPdfExtracting] = useState(false);
+      const [pdfProgress, setPdfProgress] = useState('');
+      const [pdfExtractedData, setPdfExtractedData] = useState(null);
+      const [pdfUploading, setPdfUploading] = useState(false);
+
+      // Extract text from PDF using pdf.js
+      const extractPdfText = async (file) => {
+        if (!window.pdfjsLib) {
+          alert('La librería PDF.js no está disponible. Recarga la página.');
+          return null;
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          fullText += content.items.map(item => item.str).join(' ') + '\n';
+        }
+        return fullText;
+      };
+
+      // Parse extracted text to find regulation metadata
+      const parseRegulationData = (text) => {
+        const data = {};
+        // Detect decree number (DEC, DECRETO, RESOLUCIÓN patterns)
+        const decretoMatch = text.match(/(?:DEC(?:RETO)?\.?\s*(?:EX(?:ENTO)?\.?)?\s*(?:N[°º]?\s*)?(\d+[\w\/\-]*(?:\/SU\/\d{4})?))/i)
+          || text.match(/(?:DECRETO\s+(?:UNIVERSITARIO\s+)?(?:EXENTO\s+)?N[°º]?\s*(\d+[\w\/\-]*))/i)
+          || text.match(/(?:RESOL(?:UCIÓN)?\.?\s*(?:EX(?:ENTA)?\.?)?\s*N[°º]?\s*(\d+[\w\/\-]*))/i);
+        if (decretoMatch) data.decreto = decretoMatch[0].trim();
+
+        // Detect statute article references
+        const artMatch = text.match(/(?:Art(?:ículo)?\.?\s*(\d+(?:\s*(?:letra\s+\w\)|y\s+\d+|al?\s+\d+|,\s*\d+)*)?))/i);
+        if (artMatch) data.articulo_estatuto = artMatch[0].trim();
+
+        // Detect responsible unit
+        const respPatterns = [
+          /Secretar[ií]a\s+General/i, /VRAF/i, /VRAC/i, /VRAE/i, /VRI/i,
+          /Dir(?:ección|\.)\s+(?:de\s+)?(?:Docencia|Aseguramiento|Investigación)/i,
+          /Rector[ía]?a?/i, /Contraloría/i
+        ];
+        for (const p of respPatterns) {
+          const m = text.match(p);
+          if (m) { data.responsable = m[0]; break; }
+        }
+
+        // Detect regulation name from title patterns
+        const nameMatch = text.match(/(?:REGLAMENTO\s+(?:DE\s+|PARA\s+|SOBRE\s+|GENERAL\s+DE\s+)?[A-ZÁÉÍÓÚÑ\s,]+)/i);
+        if (nameMatch && nameMatch[0].length > 15 && nameMatch[0].length < 200) {
+          data.nombre_sugerido = nameMatch[0].trim().replace(/\s+/g, ' ');
+        }
+
+        // Detect dates
+        const dateMatch = text.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(\d{4})/i);
+        if (dateMatch) data.fecha_documento = dateMatch[0];
+
+        // Extract first ~500 chars as summary for observaciones
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        if (cleanText.length > 50) {
+          data.resumen = cleanText.substring(0, 500) + (cleanText.length > 500 ? '...' : '');
+        }
+
+        return data;
+      };
+
+      // Upload PDF to Supabase Storage
+      const uploadPdfToStorage = async (file) => {
+        if (!supabase) return null;
+        const fileName = `reg-${formData.id || 'new'}/${Date.now()}-${file.name}`;
+        try {
+          const { data, error } = await supabase.storage
+            .from('reglamentos-pdf')
+            .upload(fileName, file, { contentType: 'application/pdf', upsert: true });
+          if (error) throw error;
+          const { data: urlData } = supabase.storage.from('reglamentos-pdf').getPublicUrl(fileName);
+          return { path: fileName, url: urlData.publicUrl };
+        } catch (e) {
+          console.error('Error uploading PDF:', e);
+          return null;
+        }
+      };
+
+      // Main PDF upload handler
+      const handlePdfUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file || file.type !== 'application/pdf') {
+          if (file) alert('Por favor selecciona un archivo PDF');
+          return;
+        }
+
+        setPdfExtracting(true);
+        setPdfProgress('Leyendo PDF...');
+        setPdfExtractedData(null);
+
+        try {
+          // Step 1: Extract text
+          setPdfProgress('Extrayendo texto del PDF...');
+          const text = await extractPdfText(file);
+
+          // Step 2: Parse metadata
+          setPdfProgress('Analizando contenido...');
+          const extracted = text ? parseRegulationData(text) : {};
+          extracted._fileName = file.name;
+          extracted._fileSize = file.size;
+
+          // Step 3: Upload to Supabase Storage
+          setPdfProgress('Subiendo PDF a almacenamiento...');
+          setPdfUploading(true);
+          const storageResult = await uploadPdfToStorage(file);
+          setPdfUploading(false);
+
+          if (storageResult) {
+            extracted._storageUrl = storageResult.url;
+            extracted._storagePath = storageResult.path;
+          }
+
+          // Step 4: Add as attachment
+          const newAttachment = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            date: new Date().toLocaleDateString(),
+            source: storageResult ? 'supabase' : 'local',
+            url: storageResult?.url || null,
+            storagePath: storageResult?.path || null
+          };
+          setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+
+          setPdfExtractedData(extracted);
+          setPdfProgress('Extracción completada');
+        } catch (e) {
+          console.error('Error processing PDF:', e);
+          setPdfProgress('Error al procesar el PDF: ' + e.message);
+        } finally {
+          setPdfExtracting(false);
+          if (pdfInputRef.current) pdfInputRef.current.value = '';
+        }
+      };
+
+      // Apply a single extracted field
+      const applyExtractedField = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        setPdfExtractedData(prev => {
+          const updated = { ...prev };
+          updated['_applied_' + field] = true;
+          return updated;
+        });
+      };
+
+      // Apply all extracted fields
+      const applyAllExtracted = () => {
+        const updates = {};
+        if (pdfExtractedData.decreto && !pdfExtractedData._applied_decreto) updates.decreto = pdfExtractedData.decreto;
+        if (pdfExtractedData.articulo_estatuto && !pdfExtractedData._applied_articulo_estatuto) updates.articulo_estatuto = pdfExtractedData.articulo_estatuto;
+        if (pdfExtractedData.responsable && !pdfExtractedData._applied_responsable) updates.responsable = pdfExtractedData.responsable;
+        if (pdfExtractedData._storageUrl && !pdfExtractedData._applied_enlace) updates.enlace = pdfExtractedData._storageUrl;
+        setFormData(prev => ({ ...prev, ...updates }));
+        setPdfExtractedData(prev => {
+          const updated = { ...prev };
+          Object.keys(updates).forEach(k => updated['_applied_' + k] = true);
+          return updated;
+        });
+      };
 
       const handleFileUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
+          if (file.type === 'application/pdf') {
+            handlePdfUpload(event);
+            return;
+          }
           const reader = new FileReader();
           reader.onload = (e) => {
             const newAttachment = {
@@ -2376,10 +2624,66 @@
 
           <div className="section" style={{ marginBottom: "2rem" }}>
             <h3 className="section-title">Documentos Adjuntos</h3>
-            <div className="upload-area" onClick={() => fileInputRef.current?.click()}>
+
+            {/* PDF Upload Zone */}
+            <div className={`pdf-upload-zone ${pdfExtracting || pdfUploading ? 'uploading' : ''}`}
+                 onClick={() => !pdfExtracting && !pdfUploading && pdfInputRef.current?.click()}>
+              <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📄</div>
+              <div style={{ fontWeight: 600, color: "#1e40af", marginBottom: "0.25rem" }}>
+                {pdfExtracting ? 'Extrayendo datos...' : pdfUploading ? 'Subiendo PDF...' : 'Subir PDF de Reglamento'}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                {pdfExtracting || pdfUploading ? pdfProgress : 'El sistema extraerá automáticamente los datos del documento'}
+              </div>
+              <input type="file" accept=".pdf" style={{ display: 'none' }} ref={pdfInputRef} onChange={handlePdfUpload} />
+            </div>
+
+            {/* Extraction Progress */}
+            {(pdfExtracting || pdfUploading) && pdfProgress && (
+              <div className="pdf-progress">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div className="spinner" style={{ width: 18, height: 18, border: "2px solid #e5e7eb", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></div>
+                  <span>{pdfProgress}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Extraction Results */}
+            {pdfExtractedData && (
+              <div className="pdf-extraction-result">
+                <div className="pdf-extraction-header">
+                  <span>Datos Extraídos del PDF</span>
+                  <button className="pdf-apply-all-btn" onClick={applyAllExtracted}>Aplicar Todos</button>
+                </div>
+                {Object.entries(pdfExtractedData).filter(([k, v]) => v && k !== 'resumen').map(([field, value]) => {
+                  const labels = {
+                    decreto: 'Decreto/Resolución',
+                    articulo_estatuto: 'Artículo Estatuto',
+                    responsable: 'Responsable',
+                    nombre_sugerido: 'Nombre Sugerido',
+                    fecha_documento: 'Fecha Documento'
+                  };
+                  return (
+                    <div key={field} className="pdf-field-row">
+                      <span className="pdf-field-label">{labels[field] || field}</span>
+                      <span className="pdf-field-value">{value}</span>
+                      <button className="pdf-apply-btn" onClick={() => applyExtractedField(field, value)}>Aplicar</button>
+                    </div>
+                  );
+                })}
+                {pdfExtractedData.resumen && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#f9fafb", borderRadius: "6px", fontSize: "0.85rem", color: "#4b5563" }}>
+                    <strong>Resumen:</strong> {pdfExtractedData.resumen}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* General file upload */}
+            <div className="upload-area" onClick={() => fileInputRef.current?.click()} style={{ marginTop: "0.75rem" }}>
               <div className="upload-area-icon">📎</div>
-              <div className="upload-area-text">Arrastra archivos aquí o haz clic</div>
-              <div className="upload-area-hint">PDF, Word, Excel, etc.</div>
+              <div className="upload-area-text">Otros archivos (Word, Excel, etc.)</div>
+              <div className="upload-area-hint">Arrastra o haz clic para adjuntar</div>
               <input type="file" className="upload-input" ref={fileInputRef} onChange={handleFileUpload} />
             </div>
 
@@ -2394,15 +2698,23 @@
                 {formData.adjuntos.map((file, idx) => (
                   <div key={idx} className="file-item">
                     <div className="file-item-info">
-                      <div className="file-item-icon">{file.source === 'drive' ? '☁️' : '📄'}</div>
+                      <div className="file-item-icon">
+                        {file.source === 'drive' ? '☁️' : file.source === 'supabase' ? '🗄️' : '📄'}
+                      </div>
                       <div className="file-item-details">
-                        <div className="file-item-name">{file.name}</div>
+                        <div className="file-item-name">
+                          {file.name}
+                          {file.source === 'supabase' && <span className="pdf-stored-badge">Supabase</span>}
+                        </div>
                         <div className="file-item-meta">{file.date}{file.size ? ` • ${(file.size / 1024).toFixed(1)}KB` : ''}</div>
                       </div>
                     </div>
                     <div className="file-item-actions">
                       {file.source === 'drive' && file.driveUrl && (
                         <a href={file.driveUrl} target="_blank" rel="noopener noreferrer" className="file-action-btn" title="Abrir en Drive">🔗</a>
+                      )}
+                      {file.source === 'supabase' && file.url && (
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="file-action-btn" title="Ver PDF">🔗</a>
                       )}
                       <button className="file-action-btn danger" onClick={() => handleRemoveFile(idx)} title="Eliminar">🗑️</button>
                     </div>
