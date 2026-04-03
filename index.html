@@ -1054,6 +1054,188 @@
     .bar-fill.media { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
     .bar-fill.baja { background: linear-gradient(90deg, #34d399, #10b981); }
 
+    /* Resumen Ejecutivo */
+    .resumen-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      border-radius: 16px;
+      padding: 2rem;
+      color: white;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .resumen-hero::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(26, 86, 219, 0.3) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .resumen-hero-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .resumen-hero-subtitle {
+      font-size: 0.875rem;
+      opacity: 0.7;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumen-hero-stats {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .resumen-hero-stat {
+      text-align: center;
+    }
+
+    .resumen-hero-stat-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .resumen-hero-stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+
+    .deadline-banner {
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .deadline-banner.critical {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border: 1px solid #fecaca;
+    }
+
+    .deadline-banner.warning {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid #fde68a;
+    }
+
+    .deadline-banner.ok {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1px solid #bbf7d0;
+    }
+
+    .deadline-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .deadline-info { flex: 1; }
+
+    .deadline-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .deadline-banner.critical .deadline-title { color: #991b1b; }
+    .deadline-banner.warning .deadline-title { color: #92400e; }
+    .deadline-banner.ok .deadline-title { color: #166534; }
+
+    .deadline-text {
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .deadline-banner.critical .deadline-text { color: #b91c1c; }
+    .deadline-banner.warning .deadline-text { color: #a16207; }
+    .deadline-banner.ok .deadline-text { color: #15803d; }
+
+    .deadline-days {
+      text-align: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .deadline-banner.critical .deadline-days { background: #fee2e2; }
+    .deadline-banner.warning .deadline-days { background: #fef3c7; }
+    .deadline-banner.ok .deadline-days { background: #dcfce7; }
+
+    .deadline-days-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .deadline-banner.critical .deadline-days-value { color: #dc2626; }
+    .deadline-banner.warning .deadline-days-value { color: #d97706; }
+    .deadline-banner.ok .deadline-days-value { color: #16a34a; }
+
+    .deadline-days-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .risk-table { width: 100%; }
+
+    .risk-row {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      gap: 0.75rem;
+    }
+
+    .risk-row:last-child { border-bottom: none; }
+
+    .risk-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .risk-indicator.critical { background: #ef4444; }
+    .risk-indicator.warning { background: #f59e0b; }
+    .risk-indicator.ok { background: #10b981; }
+
+    .risk-name {
+      flex: 1;
+      font-size: 0.85rem;
+      color: #1e293b;
+    }
+
+    .risk-status {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .legal-ref {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: #f0f9ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+
     @media (max-width: 900px) {
       .kanban-board {
         grid-template-columns: 1fr;
@@ -1360,6 +1542,9 @@
       return (
         <div className="sidebar">
           <div className="sidebar-header">Navegación</div>
+          <div className="nav-item" onClick={() => onViewChange("resumen")} style={{ borderLeftColor: activeView === "resumen" ? "#1a56db" : "transparent" }}>
+            <span className="nav-icon">📑</span> Resumen Ejecutivo
+          </div>
           <div className="nav-item" onClick={() => onViewChange("dashboard")} style={{ borderLeftColor: activeView === "dashboard" ? "#1a56db" : "transparent" }}>
             <span className="nav-icon">📊</span> Dashboard
           </div>
@@ -1374,6 +1559,217 @@
           </div>
           <div className="nav-item" onClick={() => onViewChange("settings")} style={{ borderLeftColor: activeView === "settings" ? "#1a56db" : "transparent" }}>
             <span className="nav-icon">⚙️</span> Configuración
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // PLAZOS LEGALES - Disposiciones Transitorias del Estatuto UMAG
+    // Estatuto publicado en Diario Oficial: 12 de agosto de 2024
+    // ============================================================
+    const FECHA_ESTATUTO = new Date('2024-08-12');
+    // Consejo Superior: plazo máximo 9 meses desde entrada en vigencia
+    const FECHA_CS_MAX = new Date('2025-05-12');
+    // Plazo máximo para dictar reglamentos: 12 meses desde plena constitución del CS
+    const FECHA_LIMITE_REGLAMENTOS = new Date('2026-05-12');
+    // Art. quinto transitorio: normas de unidades académicas/admin, 12 meses desde estatuto
+    const FECHA_LIMITE_UNIDADES = new Date('2025-08-12');
+    // Ley 21.790 publicada: 19 de enero de 2026
+    const FECHA_LEY_21790 = new Date('2026-01-19');
+
+    function calcDaysRemaining(targetDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(targetDate);
+      target.setHours(0, 0, 0, 0);
+      return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+    }
+
+    function ResumenEjecutivo({ regulations }) {
+      const total = regulations.length;
+      const aprobados = regulations.filter(r => r.estado === 'Aprobado').length;
+      const enRevision = regulations.filter(r => r.estado === 'En Revisión').length;
+      const enProceso = regulations.filter(r => r.estado === 'En Proceso').length;
+      const pendientes = regulations.filter(r => r.estado === 'Pendiente').length;
+      const faltantes = total - aprobados;
+      const pctAprobado = Math.round((aprobados / total) * 100);
+      const avgProgress = Math.round(regulations.reduce((s, r) => s + r.progreso, 0) / total);
+
+      const diasRestantes = calcDaysRemaining(FECHA_LIMITE_REGLAMENTOS);
+      const diasUnidades = calcDaysRemaining(FECHA_LIMITE_UNIDADES);
+
+      const bannerClass = diasRestantes <= 30 ? 'critical' : diasRestantes <= 90 ? 'warning' : 'ok';
+      const bannerIcon = diasRestantes <= 30 ? '🚨' : diasRestantes <= 90 ? '⚠️' : '✅';
+
+      // Reglamentos en riesgo (no aprobados y con poco progreso)
+      const enRiesgo = regulations
+        .filter(r => r.estado !== 'Aprobado')
+        .map(r => {
+          const riskLevel = r.progreso < 15 ? 'critical' : r.progreso < 40 ? 'warning' : 'ok';
+          return { ...r, riskLevel };
+        })
+        .sort((a, b) => a.progreso - b.progreso);
+
+      const criticos = enRiesgo.filter(r => r.riskLevel === 'critical').length;
+      const medios = enRiesgo.filter(r => r.riskLevel === 'warning').length;
+
+      // Velocidad requerida
+      const regsPerMonth = diasRestantes > 0 ? (faltantes / (diasRestantes / 30)).toFixed(1) : 'N/A';
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Resumen Ejecutivo</h2>
+            <p>Estado de implementación de los reglamentos del nuevo Estatuto UMAG</p>
+          </div>
+
+          <div className="resumen-hero">
+            <div className="resumen-hero-title">Implementación Nuevo Estatuto UMAG</div>
+            <div className="resumen-hero-subtitle">DFL Núm. 27 — Publicado en Diario Oficial el 12 de agosto de 2024</div>
+            <div className="resumen-hero-stats">
+              <div className="resumen-hero-stat">
+                <div className="resumen-hero-stat-value">{total}</div>
+                <div className="resumen-hero-stat-label">Reglamentos Totales</div>
+              </div>
+              <div className="resumen-hero-stat">
+                <div className="resumen-hero-stat-value" style={{ color: '#34d399' }}>{aprobados}</div>
+                <div className="resumen-hero-stat-label">Aprobados</div>
+              </div>
+              <div className="resumen-hero-stat">
+                <div className="resumen-hero-stat-value" style={{ color: '#fbbf24' }}>{faltantes}</div>
+                <div className="resumen-hero-stat-label">Pendientes</div>
+              </div>
+              <div className="resumen-hero-stat">
+                <div className="resumen-hero-stat-value" style={{ color: '#60a5fa' }}>{pctAprobado}%</div>
+                <div className="resumen-hero-stat-label">Avance</div>
+              </div>
+              <div className="resumen-hero-stat">
+                <div className="resumen-hero-stat-value" style={{ color: diasRestantes <= 30 ? '#f87171' : diasRestantes <= 90 ? '#fbbf24' : '#34d399' }}>{diasRestantes}</div>
+                <div className="resumen-hero-stat-label">Días Restantes</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="deadline-banner ${bannerClass}" style={{ background: bannerClass === 'critical' ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : bannerClass === 'warning' ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: bannerClass === 'critical' ? '1px solid #fecaca' : bannerClass === 'warning' ? '1px solid #fde68a' : '1px solid #bbf7d0' }}>
+            <div className="deadline-icon">{bannerIcon}</div>
+            <div className="deadline-info">
+              <div className="deadline-title" style={{ color: bannerClass === 'critical' ? '#991b1b' : bannerClass === 'warning' ? '#92400e' : '#166534' }}>
+                Plazo Legal: Art. Primero Transitorio del Estatuto
+              </div>
+              <div className="deadline-text" style={{ color: bannerClass === 'critical' ? '#b91c1c' : bannerClass === 'warning' ? '#a16207' : '#15803d' }}>
+                Los reglamentos deben concluirse dentro de <strong>12 meses</strong> desde la plena constitución del Consejo Superior (plazo máximo: 12 de mayo de 2026).
+                {diasRestantes > 0 ? ` Quedan ${faltantes} reglamentos por aprobar. Ritmo necesario: ~${regsPerMonth} reglamentos/mes.` : ' ¡El plazo ha vencido!'}
+              </div>
+            </div>
+            <div className="deadline-days" style={{ background: bannerClass === 'critical' ? '#fee2e2' : bannerClass === 'warning' ? '#fef3c7' : '#dcfce7' }}>
+              <div className="deadline-days-value" style={{ color: bannerClass === 'critical' ? '#dc2626' : bannerClass === 'warning' ? '#d97706' : '#16a34a' }}>{Math.abs(diasRestantes)}</div>
+              <div className="deadline-days-label">{diasRestantes >= 0 ? 'días restantes' : 'días vencido'}</div>
+            </div>
+          </div>
+
+          {diasUnidades < 0 && (
+            <div className="deadline-banner critical" style={{ background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', border: '1px solid #fecaca' }}>
+              <div className="deadline-icon">🚨</div>
+              <div className="deadline-info">
+                <div className="deadline-title" style={{ color: '#991b1b' }}>Plazo Vencido: Art. Quinto Transitorio</div>
+                <div className="deadline-text" style={{ color: '#b91c1c' }}>
+                  Las normas internas que regulen unidades académicas y/o administrativas debían dictarse dentro de 12 meses desde la entrada en vigencia del estatuto (12 de agosto de 2025). <strong>Plazo vencido hace {Math.abs(diasUnidades)} días.</strong> Afecta a: Reglamento de Estructuras Académicas, Reglamento General de Facultades.
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="deadline-banner" style={{ background: 'linear-gradient(135deg, #f0f9ff, #eff6ff)', border: '1px solid #bfdbfe' }}>
+            <div className="deadline-icon">📋</div>
+            <div className="deadline-info">
+              <div className="deadline-title" style={{ color: '#1e40af' }}>Ley 21.790 — Estudiantes Cuidadores</div>
+              <div className="deadline-text" style={{ color: '#1d4ed8' }}>
+                Publicada el 19 de enero de 2026. Art. 11: las instituciones deben dictar normas internas que regulen detalladamente su aplicación. La Superintendencia fiscalizará el cumplimiento. Afecta al reglamento N°29: "Compatibilidad Estudios con Vida Familiar".
+              </div>
+            </div>
+          </div>
+
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="chart-card-title">Desglose por Estado</div>
+              <div style={{ marginBottom: '1rem' }}>
+                <div className="bar-row" style={{ marginBottom: '0.75rem' }}>
+                  <div className="bar-label">Aprobados</div>
+                  <div className="bar-track">
+                    <div className="bar-fill aprobado" style={{ width: `${Math.max((aprobados / total) * 100, 8)}%` }}><span>{aprobados}</span></div>
+                  </div>
+                </div>
+                <div className="bar-row" style={{ marginBottom: '0.75rem' }}>
+                  <div className="bar-label">En Revisión</div>
+                  <div className="bar-track">
+                    <div className="bar-fill en-revision" style={{ width: `${Math.max((enRevision / total) * 100, 8)}%` }}><span>{enRevision}</span></div>
+                  </div>
+                </div>
+                <div className="bar-row" style={{ marginBottom: '0.75rem' }}>
+                  <div className="bar-label">En Proceso</div>
+                  <div className="bar-track">
+                    <div className="bar-fill en-proceso" style={{ width: `${Math.max((enProceso / total) * 100, 8)}%` }}><span>{enProceso}</span></div>
+                  </div>
+                </div>
+                <div className="bar-row">
+                  <div className="bar-label">Pendientes</div>
+                  <div className="bar-track">
+                    <div className="bar-fill pendiente" style={{ width: `${Math.max((pendientes / total) * 100, 8)}%` }}><span>{pendientes}</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', lineHeight: '1.6' }}>
+                <strong>Progreso promedio general:</strong> {avgProgress}%
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Reglamentos en Riesgo ({criticos + medios} de {faltantes})</div>
+              <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', fontSize: '0.8rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}><span className="risk-indicator critical"></span> Crítico ({criticos})</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}><span className="risk-indicator warning"></span> Medio ({medios})</span>
+              </div>
+              <div className="risk-table" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {enRiesgo.map(r => (
+                  <div key={r.id} className="risk-row">
+                    <span className={`risk-indicator ${r.riskLevel}`}></span>
+                    <span className="risk-name">{r.numero}. {r.nombre}</span>
+                    <span className="risk-status">{r.progreso}% — {r.estado}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
+              <div className="chart-card-title">Fundamento Legal de los Plazos</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem', color: '#475569', lineHeight: '1.6' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Art. 1° Trans.</span>
+                  <div><strong>Plazo general de implementación:</strong> Las restantes medidas y acciones necesarias para implementar el Estatuto, y para dictar los reglamentos reseñados en éste, deberán concluirse dentro del plazo máximo de <strong>12 meses</strong> contados desde la plena constitución del Consejo Superior. Fecha límite estimada: <strong>12 de mayo de 2026</strong>.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Art. 2° Trans.</span>
+                  <div><strong>Consejo Superior:</strong> Debe quedar plenamente constituido en el plazo máximo de 9 meses desde la entrada en vigor del Estatuto. Plazo: <strong>12 de mayo de 2025</strong>.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Art. 4° Trans.</span>
+                  <div><strong>Reglamentos vigentes:</strong> Conservan su vigencia en todo aquello que no sea incompatible con el nuevo Estatuto. El CU iniciará un proceso de revisión de normativas y reglamentos internos para adecuarlas.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Art. 5° Trans.</span>
+                  <div><strong>Unidades académicas y administrativas:</strong> En el plazo máximo de 12 meses desde la entrada en vigencia, la Universidad deberá dictar las normas internas que regulen las unidades académicas y/o administrativas. Plazo: <strong>12 de agosto de 2025</strong> {diasUnidades < 0 ? '(VENCIDO)' : ''}.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Art. 6° Trans.</span>
+                  <div><strong>Nuevas estructuras:</strong> Deben entrar en vigor en el plazo máximo de 1 año una vez constituido el Consejo Superior.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <span className="legal-ref">Ley 21.790</span>
+                  <div><strong>Estudiantes cuidadores:</strong> Publicada el 19/01/2026. Art. 11 obliga a dictar normas internas pertinentes. La Superintendencia fiscalizará el cumplimiento (infracción grave según art. 55 Ley 21.091).</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -2396,7 +2792,7 @@
         const saved = localStorage.getItem("regulations");
         return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
       });
-      const [activeView, setActiveView] = useState("dashboard");
+      const [activeView, setActiveView] = useState("resumen");
       const [selectedRegulation, setSelectedRegulation] = useState(null);
       const [toast, setToast] = useState(null);
       const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
@@ -2581,6 +2977,7 @@
             <Sidebar activeView={activeView} onViewChange={setActiveView} />
             <div className="content">
               <div className="page-container">
+                {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
                 {activeView === "dashboard" && <Dashboard regulations={regulations} />}
                 {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
                 {activeView === "detail" && selectedRegulation && (
