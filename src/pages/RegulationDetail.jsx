@@ -1,15 +1,9 @@
 import React, { useState, useRef } from 'react';
 
-function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, isGoogleConnected }) {
+function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
-  const [showNotifyModal, setShowNotifyModal] = useState(false);
-  const [notifyEmails, setNotifyEmails] = useState("");
-  const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [meetingData, setMeetingData] = useState({ startTime: "", endTime: "", duration: "60", emails: "" });
-  const [showDriveModal, setShowDriveModal] = useState(false);
   const fileInputRef = useRef(null);
   const pdfInputRef = useRef(null);
-  const driveInputRef = useRef(null);
   const [pdfExtracting, setPdfExtracting] = useState(false);
   const [pdfProgress, setPdfProgress] = useState('');
   const [pdfExtractedData, setPdfExtractedData] = useState(null);
@@ -206,151 +200,6 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, i
     setFormData(prev => ({ ...prev, adjuntos: prev.adjuntos.filter((_, i) => i !== index) }));
   };
 
-  const sendStatusNotification = async () => {
-    if (!googleToken || !notifyEmails) {
-      alert("Conecta Google y proporciona emails");
-      return;
-    }
-
-    const subject = `UMAG Reglamentos - Cambio de estado: ${formData.nombre}`;
-    const body = `Estimado/a,\n\nLe informamos que el reglamento "${formData.nombre}" ha cambiado su estado.\n\nReglamento: ${formData.nombre}\nArtículo: ${formData.articulo}\nNuevo Estado: ${formData.estado}\nResponsable: ${formData.responsable || 'No asignado'}\nProgreso: ${formData.progreso}%\n\nSaludos cordiales,\nSistema de Seguimiento UMAG`;
-
-    const email = [
-      `To: ${notifyEmails}`,
-      `Subject: ${subject}`,
-      'Content-Type: text/plain; charset=utf-8',
-      '',
-      body
-    ].join('\r\n');
-
-    const encodedEmail = btoa(unescape(encodeURIComponent(email))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-    try {
-      const resp = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raw: encodedEmail })
-      });
-      if (resp.ok) {
-        alert("Notificación enviada");
-        setShowNotifyModal(false);
-        setNotifyEmails("");
-      } else {
-        const errData = await resp.json().catch(() => ({}));
-        alert("Error al enviar notificación: " + (errData.error?.message || `código ${resp.status}`));
-      }
-    } catch (e) {
-      alert("Error de conexión: " + e.message);
-    }
-  };
-
-  const scheduleReviewMeeting = async () => {
-    if (!googleToken || !meetingData.startTime) {
-      alert("Conecta Google y proporciona fecha");
-      return;
-    }
-
-    const start = new Date(meetingData.startTime);
-    const duration = parseInt(meetingData.duration) || 60;
-    const end = new Date(start.getTime() + duration * 60000);
-
-    // Validar emails
-    const emailList = meetingData.emails.split(',').map(e => e.trim()).filter(Boolean);
-    const invalidEmails = emailList.filter(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    if (invalidEmails.length > 0) {
-      alert("Correos inválidos: " + invalidEmails.join(', '));
-      return;
-    }
-
-    const event = {
-      summary: `Revisión: ${formData.nombre}`,
-      description: `Reglamento N°${formData.numero}: ${formData.nombre}\nEstado: ${formData.estado}\nArtículo: ${formData.articulo}`,
-      start: { dateTime: start.toISOString(), timeZone: 'America/Santiago' },
-      end: { dateTime: end.toISOString(), timeZone: 'America/Santiago' },
-      attendees: emailList.map(e => ({ email: e })),
-      reminders: { useDefault: true }
-    };
-
-    try {
-      const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify(event)
-      });
-      if (resp.ok) {
-        alert("Reunión programada correctamente");
-        setShowMeetingModal(false);
-        setMeetingData({ startTime: "", endTime: "", duration: "60", emails: "" });
-      } else {
-        const errData = await resp.json().catch(() => ({}));
-        alert("Error al programar reunión: " + (errData.error?.message || `código ${resp.status}`));
-      }
-    } catch (e) {
-      alert("Error de conexión: " + e.message);
-    }
-  };
-
-  const uploadToDrive = async (file) => {
-    if (!googleToken) {
-      alert("Conecta Google primero");
-      return;
-    }
-
-    const folderName = `UMAG Reglamentos - ${formData.nombre}`;
-
-    try {
-      let folderId;
-      const searchResp = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folderName)}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false`,
-        { headers: { 'Authorization': 'Bearer ' + googleToken } }
-      );
-      if (!searchResp.ok) throw new Error('Error al buscar carpeta en Drive');
-      const searchData = await searchResp.json();
-
-      if (searchData.files && searchData.files.length > 0) {
-        folderId = searchData.files[0].id;
-      } else {
-        const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' })
-        });
-        if (!createResp.ok) throw new Error('Error al crear carpeta en Drive');
-        const folderData = await createResp.json();
-        folderId = folderData.id;
-      }
-
-      const metadata = { name: file.name, parents: [folderId] };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', file);
-
-      const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + googleToken },
-        body: form
-      });
-      if (!uploadResp.ok) throw new Error('Error al subir archivo a Drive');
-      const uploadData = await uploadResp.json();
-
-      if (uploadData.id) {
-        const newAttachment = {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          date: new Date().toLocaleDateString(),
-          driveId: uploadData.id,
-          driveUrl: uploadData.webViewLink,
-          source: 'drive'
-        };
-        setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
-        alert("Archivo subido a Google Drive");
-      }
-    } catch (e) {
-      alert("Error al subir a Drive: " + e.message);
-    }
-  };
-
   return (
     <div className="page-content">
       <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: "1.5rem" }}>← Volver</button>
@@ -400,10 +249,6 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, i
             <input type="text" value={formData.articulo_estatuto || ''} onChange={(e) => setFormData(prev => ({ ...prev, articulo_estatuto: e.target.value }))} placeholder="ej: Art. 67" />
           </div>
           <div className="form-group">
-            <label>Observaciones</label>
-            <textarea value={formData.observaciones || ''} onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))} placeholder="Notas, pendientes, acuerdos..." style={{ minHeight: '80px' }}></textarea>
-          </div>
-          <div className="form-group">
             <label>Enlace al documento</label>
             <input type="text" value={formData.enlace || ''} onChange={(e) => setFormData(prev => ({ ...prev, enlace: e.target.value }))} placeholder="https://..." />
             {formData.enlace && (
@@ -417,19 +262,16 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, i
         </div>
 
         <div className="section">
-          <h3 className="section-title">Integraciones Google</h3>
-          {isGoogleConnected ? (
-            <>
-              <button className="btn btn-primary" onClick={() => setShowMeetingModal(true)} style={{ marginBottom: "0.75rem", width: "100%" }}>
-                📅 Agendar Reunión
-              </button>
-              <button className="btn btn-primary" onClick={() => setShowNotifyModal(true)} style={{ width: "100%" }}>
-                📧 Notificar Cambio
-              </button>
-            </>
-          ) : (
-            <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Conecta tu cuenta Google para usar estas funciones</div>
-          )}
+          <h3 className="section-title">Observaciones y Requisitos Normativos</h3>
+          <textarea
+            value={formData.observaciones || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+            placeholder="Notas, pendientes, acuerdos, requisitos normativos..."
+            style={{ minHeight: '300px', width: '100%', fontSize: '0.9rem', lineHeight: '1.6', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', resize: 'vertical' }}
+          ></textarea>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+            Los requisitos normativos de documentos cargados en la sección Normativa aparecerán aquí automáticamente.
+          </div>
         </div>
       </div>
 
@@ -498,13 +340,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, i
           <input type="file" className="upload-input" ref={fileInputRef} onChange={handleFileUpload} />
         </div>
 
-        {isGoogleConnected && (
-          <button className="btn btn-secondary" onClick={() => setShowDriveModal(true)} style={{ marginTop: "1rem", width: "100%" }}>
-            ☁️ Subir a Google Drive
-          </button>
-        )}
-
-        {formData.adjuntos.length > 0 && (
+        {formData.adjuntos && formData.adjuntos.length > 0 && (
           <div className="file-list">
             {formData.adjuntos.map((file, idx) => (
               <div key={idx} className="file-item">
@@ -535,66 +371,6 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, i
         )}
       </div>
 
-      {showNotifyModal && (
-        <div className="modal-overlay" onClick={() => setShowNotifyModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Notificar Cambio de Estado</h3>
-            <div className="form-group">
-              <label>Correos a Notificar (separados por comas)</label>
-              <textarea value={notifyEmails} onChange={(e) => setNotifyEmails(e.target.value)} placeholder="usuario1@example.com, usuario2@example.com"></textarea>
-            </div>
-            <div className="btn-group">
-              <button className="btn btn-primary" onClick={sendStatusNotification}>Enviar Notificación</button>
-              <button className="btn btn-secondary" onClick={() => setShowNotifyModal(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showMeetingModal && (
-        <div className="modal-overlay" onClick={() => setShowMeetingModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Agendar Reunión de Revisión</h3>
-            <div className="form-group">
-              <label>Fecha y Hora</label>
-              <input type="datetime-local" value={meetingData.startTime} onChange={(e) => setMeetingData(prev => ({ ...prev, startTime: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label>Duración</label>
-              <select value={meetingData.duration} onChange={(e) => setMeetingData(prev => ({ ...prev, duration: e.target.value }))}>
-                <option value="30">30 minutos</option>
-                <option value="60">1 hora</option>
-                <option value="120">2 horas</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Participantes (correos separados por comas)</label>
-              <textarea value={meetingData.emails} onChange={(e) => setMeetingData(prev => ({ ...prev, emails: e.target.value }))} placeholder="usuario1@example.com, usuario2@example.com"></textarea>
-            </div>
-            <div className="btn-group">
-              <button className="btn btn-primary" onClick={scheduleReviewMeeting}>Programar Reunión</button>
-              <button className="btn btn-secondary" onClick={() => setShowMeetingModal(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDriveModal && (
-        <div className="modal-overlay" onClick={() => setShowDriveModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Subir a Google Drive</h3>
-            <p className="modal-content">Selecciona un archivo para subir a Google Drive</p>
-            <div className="upload-area" onClick={() => driveInputRef.current?.click()}>
-              <div className="upload-area-icon">☁️</div>
-              <div className="upload-area-text">Haz clic para seleccionar archivo</div>
-              <input type="file" style={{ display: 'none' }} ref={driveInputRef} onChange={(e) => { if (e.target.files[0]) { uploadToDrive(e.target.files[0]); setShowDriveModal(false); } }} />
-            </div>
-            <div className="btn-group" style={{ marginTop: "1.5rem" }}>
-              <button className="btn btn-secondary" onClick={() => setShowDriveModal(false)}>Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
