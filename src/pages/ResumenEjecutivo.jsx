@@ -77,7 +77,7 @@ export default function ResumenEjecutivo({ regulations }) {
             </div>
             <div style={{ background: 'rgba(251,191,36,0.12)', borderRadius: 12, padding: '0.85rem 1rem', border: '1px solid rgba(251,191,36,0.15)' }}>
               <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.03em', lineHeight: 1 }}>{faltantes}</div>
-              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginTop: '0.2rem' }}>Pendientes</div>
+              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginTop: '0.2rem' }}>Por Aprobar</div>
             </div>
           </div>
         </div>
