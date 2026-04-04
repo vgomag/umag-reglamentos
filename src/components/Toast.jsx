@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 
 function Toast({ message, type, onClose }) {
   const onCloseRef = useRef(onClose);
@@ -17,5 +18,11 @@ function Toast({ message, type, onClose }) {
     </div>
   );
 }
+
+Toast.propTypes = {
+  message: PropTypes.string.isRequired,
+  type: PropTypes.oneOf(['success', 'error']).isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 export default Toast;

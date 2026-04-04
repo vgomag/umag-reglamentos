@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 
 function NewRegulation({ onCreate, onCancel }) {
   const [formData, setFormData] = useState({
@@ -101,5 +102,10 @@ function NewRegulation({ onCreate, onCancel }) {
     </div>
   );
 }
+
+NewRegulation.propTypes = {
+  onCreate: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+};
 
 export default NewRegulation;

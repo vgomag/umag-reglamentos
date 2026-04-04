@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 
 function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }) {
   const [search, setSearch] = useState("");
@@ -157,5 +158,18 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
     </div>
   );
 }
+
+RegulationsList.propTypes = {
+  regulations: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    nombre: PropTypes.string.isRequired,
+    estado: PropTypes.string,
+    progreso: PropTypes.number,
+    prioridad: PropTypes.string,
+    responsable: PropTypes.string,
+  })).isRequired,
+  onSelectRegulation: PropTypes.func.isRequired,
+  onUpdateRegulation: PropTypes.func.isRequired,
+};
 
 export default RegulationsList;

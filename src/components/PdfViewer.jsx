@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 
 /**
  * Convierte URLs de Google Drive al formato embebible.
@@ -144,5 +145,25 @@ function PdfViewer({ pdfUrl, regulation, compact = false }) {
     </div>
   );
 }
+
+PdfViewer.propTypes = {
+  pdfUrl: PropTypes.string,
+  regulation: PropTypes.shape({
+    nombre: PropTypes.string,
+    numero: PropTypes.string,
+    estado: PropTypes.string,
+    progreso: PropTypes.number,
+    responsable: PropTypes.string,
+    prioridad: PropTypes.string,
+    decreto: PropTypes.string,
+    articulo: PropTypes.string,
+    articulo_estatuto: PropTypes.string,
+    fecha_documento: PropTypes.string,
+    resumenPdf: PropTypes.string,
+    observaciones: PropTypes.string,
+    adjuntos: PropTypes.array,
+  }).isRequired,
+  compact: PropTypes.bool,
+};
 
 export default PdfViewer;

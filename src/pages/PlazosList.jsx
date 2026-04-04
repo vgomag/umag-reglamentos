@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { PLAZOS_DATA } from '../config/data';
 
 function PlazosList({ regulations = [] }) {
@@ -57,5 +58,9 @@ function PlazosList({ regulations = [] }) {
     </div>
   );
 }
+
+PlazosList.propTypes = {
+  regulations: PropTypes.array,
+};
 
 export default PlazosList;

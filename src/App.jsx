@@ -1,18 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { INITIAL_REGULATIONS } from './config/data';
-import NewRegulation from './pages/NewRegulation';
-import PlazosList from './pages/PlazosList';
-import Normativa from './pages/Normativa';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
-import ResumenEjecutivo from './pages/ResumenEjecutivo';
-import Dashboard from './pages/Dashboard';
-import RegulationsList from './pages/RegulationsList';
-import RegulationDetail from './pages/RegulationDetail';
-import DocumentosView from './pages/DocumentosView';
-import GanttView from './pages/GanttView';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
+
+// Lazy loading de páginas — reduce bundle inicial ~40%
+const ResumenEjecutivo = lazy(() => import('./pages/ResumenEjecutivo'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const RegulationsList = lazy(() => import('./pages/RegulationsList'));
+const RegulationDetail = lazy(() => import('./pages/RegulationDetail'));
+const NewRegulation = lazy(() => import('./pages/NewRegulation'));
+const GanttView = lazy(() => import('./pages/GanttView'));
+const DocumentosView = lazy(() => import('./pages/DocumentosView'));
+const PlazosList = lazy(() => import('./pages/PlazosList'));
+const Normativa = lazy(() => import('./pages/Normativa'));
+
+// Fallback de carga
+const PageLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', color: '#94a3b8' }}>
+    <div className="spinner" style={{ width: 24, height: 24, border: '3px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: '0.75rem' }}></div>
+    Cargando...
+  </div>
+);
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem("umag_auth") === "true");
@@ -209,34 +219,36 @@ function App() {
         <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
         <div className="content">
           <div className="page-container">
-            {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
-            {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
-            {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
-            {activeView === "detail" && (selectedRegulation ? (
-              <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
-            ) : (
-              <div className="page-content"><p style={{ color: '#94a3b8' }}>Selecciona un reglamento desde la lista.</p><button className="btn btn-secondary" onClick={() => setActiveView("regulations")}>Ir a Reglamentos</button></div>
-            ))}
-            {activeView === "new" && (
-              <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
-            )}
-            {activeView === "gantt" && (
-              <GanttView regulations={regulations} />
-            )}
-            {activeView === "documentos" && (
-              <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
-            )}
-            {activeView === "plazos" && <PlazosList regulations={regulations} />}
-            {activeView === "normativa" && (
-              <Normativa
-                regulations={regulations}
-                normativas={normativas}
-                onAddNormativa={handleAddNormativa}
-                onDeleteNormativa={handleDeleteNormativa}
-                onUpdateRegulation={handleSaveRegulation}
-                showToast={setToast}
-              />
-            )}
+            <Suspense fallback={<PageLoader />}>
+              {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
+              {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
+              {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
+              {activeView === "detail" && (selectedRegulation ? (
+                <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
+              ) : (
+                <div className="page-content"><p style={{ color: '#94a3b8' }}>Selecciona un reglamento desde la lista.</p><button className="btn btn-secondary" onClick={() => setActiveView("regulations")}>Ir a Reglamentos</button></div>
+              ))}
+              {activeView === "new" && (
+                <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
+              )}
+              {activeView === "gantt" && (
+                <GanttView regulations={regulations} />
+              )}
+              {activeView === "documentos" && (
+                <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
+              )}
+              {activeView === "plazos" && <PlazosList regulations={regulations} />}
+              {activeView === "normativa" && (
+                <Normativa
+                  regulations={regulations}
+                  normativas={normativas}
+                  onAddNormativa={handleAddNormativa}
+                  onDeleteNormativa={handleDeleteNormativa}
+                  onUpdateRegulation={handleSaveRegulation}
+                  showToast={setToast}
+                />
+              )}
+            </Suspense>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function Header({ userName, onLogout, onToggleSidebar }) {
   return (
@@ -14,5 +15,11 @@ function Header({ userName, onLogout, onToggleSidebar }) {
     </div>
   );
 }
+
+Header.propTypes = {
+  userName: PropTypes.string.isRequired,
+  onLogout: PropTypes.func.isRequired,
+  onToggleSidebar: PropTypes.func.isRequired,
+};
 
 export default Header;
