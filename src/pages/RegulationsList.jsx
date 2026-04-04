@@ -10,7 +10,7 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
   const responsables = [...new Set(regulations.map(r => r.responsable).filter(Boolean))].sort();
 
   const filtered = regulations.filter(r => {
-    const matchSearch = !search || r.nombre.toLowerCase().includes(search.toLowerCase()) || r.numero.includes(search) || (r.responsable && r.responsable.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = !search || (r.nombre && r.nombre.toLowerCase().includes(search.toLowerCase())) || (r.numero && String(r.numero).includes(search)) || (r.responsable && r.responsable.toLowerCase().includes(search.toLowerCase()));
     const matchEstado = !filterEstado || r.estado === filterEstado;
     const matchPrioridad = !filterPrioridad || r.prioridad === filterPrioridad;
     const matchResponsable = !filterResponsable || r.responsable === filterResponsable;
