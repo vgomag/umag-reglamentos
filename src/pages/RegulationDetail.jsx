@@ -125,7 +125,13 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
         extracted._storagePath = storageResult.path;
       }
 
-      // Step 4: Add as attachment
+      // Step 4: Crear blob URL si no hay Supabase (para visor local)
+      let viewableUrl = storageResult?.url || null;
+      if (!viewableUrl) {
+        viewableUrl = URL.createObjectURL(file);
+      }
+
+      // Step 5: Add as attachment
       const newAttachment = {
         name: file.name,
         type: file.type,
@@ -133,6 +139,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
         date: new Date().toLocaleDateString(),
         source: storageResult ? 'supabase' : 'local',
         url: storageResult?.url || null,
+        blobUrl: !storageResult ? viewableUrl : null,
         storagePath: storageResult?.path || null
       };
       setFormData(prev => ({ ...prev, adjuntos: [...(prev.adjuntos || []), newAttachment] }));
@@ -143,7 +150,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
       // Auto-guardar resumen y URL del PDF en el reglamento
       const autoUpdates = {};
       if (extracted.resumen) autoUpdates.resumenPdf = extracted.resumen;
-      if (storageResult?.url) autoUpdates.pdfUrl = storageResult.url;
+      autoUpdates.pdfUrl = viewableUrl;
       if (extracted.fecha_documento) autoUpdates.fecha_documento = extracted.fecha_documento;
       if (Object.keys(autoUpdates).length > 0) {
         setFormData(prev => ({ ...prev, ...autoUpdates }));
@@ -228,7 +235,8 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
 
       {/* Visor PDF embebido si hay documento */}
       {(() => {
-        const pdfUrl = formData.pdfUrl || formData.enlace || (formData.adjuntos || []).find(a => a.type === 'application/pdf' && a.url)?.url;
+        const pdfAdj = (formData.adjuntos || []).find(a => a.type === 'application/pdf' && (a.url || a.blobUrl));
+        const pdfUrl = formData.pdfUrl || (pdfAdj && (pdfAdj.url || pdfAdj.blobUrl)) || formData.enlace;
         return pdfUrl ? (
           <div className="section" style={{ marginBottom: '1.5rem' }}>
             <h3 className="section-title">Documento Publicado</h3>

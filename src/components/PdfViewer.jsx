@@ -1,9 +1,40 @@
 import React, { useState } from 'react';
 
 /**
+ * Convierte URLs de Google Drive al formato embebible.
+ * - /file/d/ID/view  → /file/d/ID/preview
+ * - /open?id=ID      → /file/d/ID/preview
+ * - drive.google.com/... cualquier otra forma
+ */
+function getEmbedUrl(url) {
+  if (!url) return null;
+
+  // Google Drive: /file/d/FILE_ID/... → /file/d/FILE_ID/preview
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch) {
+    return `https://drive.google.com/file/d/${driveFileMatch[1]}/preview`;
+  }
+
+  // Google Drive: /open?id=FILE_ID
+  const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (driveOpenMatch) {
+    return `https://drive.google.com/file/d/${driveOpenMatch[1]}/preview`;
+  }
+
+  // Google Docs viewer for any external PDF that isn't Supabase/blob
+  if (url.startsWith('http') && !url.startsWith('blob:') && !url.includes('supabase')) {
+    // Use Google Docs viewer as fallback for external PDFs
+    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+  }
+
+  // Supabase or blob URLs work directly
+  return url;
+}
+
+/**
  * PdfViewer — muestra un PDF embebido + panel de resumen con datos clave.
  * Props:
- *   pdfUrl        – URL del PDF (Supabase o enlace externo)
+ *   pdfUrl        – URL del PDF (Supabase, blob, Google Drive, o enlace externo)
  *   regulation    – objeto del reglamento con sus campos
  *   compact       – si true, usa layout más pequeño (para vista DocumentosView)
  */
@@ -12,6 +43,8 @@ function PdfViewer({ pdfUrl, regulation, compact = false }) {
 
   if (!pdfUrl) return null;
 
+  const embedUrl = getEmbedUrl(pdfUrl);
+  const originalUrl = pdfUrl;
   const estado = regulation.estado || 'Pendiente';
   const estadoCls = estado.toLowerCase().replace(/\s+/g, '-');
   const progreso = regulation.progreso ?? 0;
@@ -33,16 +66,17 @@ function PdfViewer({ pdfUrl, regulation, compact = false }) {
       <div className="pdf-viewer-frame">
         {!iframeError ? (
           <iframe
-            src={`${pdfUrl}#toolbar=1&navpanes=0`}
+            src={embedUrl}
             title={`PDF - ${regulation.nombre}`}
             className="pdf-iframe"
+            allow="autoplay"
             onError={() => setIframeError(true)}
           />
         ) : (
           <div className="pdf-viewer-fallback">
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📄</div>
             <p>No se pudo cargar la vista previa del PDF.</p>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+            <a href={originalUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
               Abrir PDF en nueva pestaña
             </a>
           </div>
@@ -95,15 +129,15 @@ function PdfViewer({ pdfUrl, regulation, compact = false }) {
         {(regulation.adjuntos || []).filter(a => a.type === 'application/pdf').length > 1 && (
           <div className="pdf-summary-attachments">
             <span className="pdf-summary-field-label">Otros PDFs adjuntos</span>
-            {regulation.adjuntos.filter(a => a.type === 'application/pdf' && a.url !== pdfUrl).map(a => (
-              <a key={a.url || a.name} href={a.url} target="_blank" rel="noopener noreferrer" className="pdf-summary-link">
+            {regulation.adjuntos.filter(a => a.type === 'application/pdf' && (a.url || a.blobUrl) && (a.url || a.blobUrl) !== pdfUrl).map(a => (
+              <a key={a.url || a.blobUrl || a.name} href={a.url || a.blobUrl} target="_blank" rel="noopener noreferrer" className="pdf-summary-link">
                 📄 {a.name}
               </a>
             ))}
           </div>
         )}
 
-        <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="pdf-open-external">
+        <a href={originalUrl} target="_blank" rel="noopener noreferrer" className="pdf-open-external">
           Abrir en nueva pestaña ↗
         </a>
       </div>
