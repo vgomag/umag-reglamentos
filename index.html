@@ -1,0 +1,3626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMAG - Sistema de Seguimiento de Reglamentos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body, #root {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+    }
+
+    .app-body {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 0 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      flex-shrink: 0;
+      height: 56px;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #e2e8f0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .user-info {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+
+    .logout-btn, .google-btn {
+      background-color: #1a56db;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logout-btn:hover, .google-btn:hover {
+      background-color: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active, .google-btn:active {
+      transform: scale(0.98);
+    }
+
+    .google-btn {
+      background: linear-gradient(135deg, #4285F4 0%, #2d5cd8 100%);
+    }
+
+    .google-btn:hover {
+      background: linear-gradient(135deg, #357ae8 0%, #1e5ac3 100%);
+    }
+
+    .google-btn.connected {
+      background: linear-gradient(135deg, #34a853 0%, #198754 100%);
+    }
+
+    .google-user-menu {
+      position: relative;
+    }
+
+    .google-user-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      transition: all 0.15s ease;
+    }
+
+    .google-user-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .google-user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4285F4 0%, #34a853 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    .google-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-top: 0.5rem;
+      min-width: 200px;
+      z-index: 1000;
+    }
+
+    .google-dropdown-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.875rem;
+      color: #1e293b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .google-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .google-dropdown-item:hover {
+      background-color: #f1f5f9;
+    }
+
+    .google-dropdown-item.danger {
+      color: #ef4444;
+    }
+
+    .google-dropdown-item.danger:hover {
+      background-color: #fee2e2;
+    }
+
+    .sidebar {
+      width: 250px;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-shrink: 0;
+      height: calc(100vh - 56px);
+    }
+
+    .sidebar-header {
+      padding: 1.5rem 1.25rem 0.75rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 1.25rem;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 450;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      position: relative;
+      margin: 1px 0;
+    }
+
+    .nav-item:hover {
+      color: #e2e8f0;
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-item.active {
+      color: white;
+      background: linear-gradient(90deg, rgba(26, 86, 219, 0.15) 0%, transparent 100%);
+      border-left-color: #3b82f6;
+      font-weight: 500;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+    }
+
+    .nav-item.active .nav-icon {
+      opacity: 1;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.03em;
+    }
+
+    .page-header p {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: white;
+      border-radius: 14px;
+      padding: 1.5rem;
+      border: 1px solid #e2e8f0;
+      border-top: none;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: all 0.25s ease;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #1a56db, #3b82f6);
+    }
+
+    .metric-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .metric-card.success::before { background: linear-gradient(90deg, #059669, #10b981); }
+    .metric-card.warning::before { background: linear-gradient(90deg, #d97706, #f59e0b); }
+    .metric-card.danger::before { background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+    .metric-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e2e8f0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      padding: 0.85rem 1rem;
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+
+    tbody tr { transition: background-color 0.15s ease; }
+    tbody tr:hover { background-color: #f8fafc; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .badge.pendiente { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    .badge.en-proceso { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge.en-revision { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .badge.aprobado { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge.alta { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge.media { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .badge.baja { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+    button { font-family: inherit; }
+
+    .btn {
+      padding: 0.625rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary { background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%); color: white; box-shadow: 0 2px 8px rgba(26, 86, 219, 0.2); }
+    .btn-primary:hover { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26, 86, 219, 0.3); }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-secondary { background-color: white; color: #1e293b; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background-color: #f8fafc; }
+
+    .btn-danger { background-color: #ef4444; color: white; }
+    .btn-danger:hover { background-color: #dc2626; }
+
+    .btn-small {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .btn-disabled {
+      opacity: 0.5;
+      cursor: not-allowed !important;
+    }
+
+    .btn-disabled:hover {
+      background-color: inherit;
+      transform: none !important;
+    }
+
+    .btn-group { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+
+    .form-group { margin-bottom: 1.5rem; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.375rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: #1e293b;
+      transition: all 0.2s ease;
+      background: #f8fafc;
+    }
+
+    input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="datetime-local"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: white;
+    }
+
+    textarea { resize: vertical; min-height: 100px; }
+
+    .detail-header {
+      background: white;
+      border-radius: 14px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e2e8f0;
+    }
+
+    .detail-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 1rem;
+      letter-spacing: -0.03em;
+    }
+
+    .detail-meta { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+
+    .detail-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background-color: #f0f9ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #1d4ed8;
+    }
+
+    .detail-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .section {
+      background: white;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e2e8f0;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .checklist { list-style: none; padding: 0; }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #1a56db;
+    }
+
+    .checklist-item label {
+      margin: 0;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #475569;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: #f8fafc;
+    }
+
+    .upload-area:hover {
+      border-color: #1a56db;
+      background-color: #f0f9ff;
+    }
+
+    .upload-area-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .upload-area-text { font-size: 0.875rem; color: #475569; margin-bottom: 0.25rem; }
+    .upload-area-hint { font-size: 0.75rem; color: #94a3b8; }
+    .upload-input { display: none; }
+
+    .file-list { margin-top: 1.5rem; }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .file-item:hover { background-color: #f8fafc; border-color: #cbd5e1; }
+
+    .file-item-info { display: flex; align-items: center; gap: 1rem; flex: 1; }
+
+    .file-item-icon {
+      font-size: 1.5rem;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f1f5f9;
+      border-radius: 8px;
+    }
+
+    .file-item-details { flex: 1; }
+    .file-item-name { font-size: 0.875rem; font-weight: 500; color: #1e293b; margin-bottom: 0.25rem; }
+    .file-item-meta { font-size: 0.75rem; color: #94a3b8; }
+
+    .file-item-actions { display: flex; gap: 0.5rem; }
+
+    .file-action-btn {
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      color: #475569;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      border-radius: 6px;
+    }
+
+    .file-action-btn:hover { color: #1e293b; background-color: #f1f5f9; }
+    .file-action-btn.danger:hover { color: #ef4444; background-color: #fee2e2; }
+
+    .login-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%);
+      padding: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-page::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(26, 86, 219, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .login-page::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .login-card {
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 3rem;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.25rem;
+      background: linear-gradient(135deg, #1a56db 0%, #0ea5e9 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      box-shadow: 0 8px 24px rgba(26, 86, 219, 0.3);
+    }
+
+    .login-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.03em;
+    }
+
+    .login-subtitle {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+      font-weight: 400;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      margin-bottom: 0.75rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      background: #f8fafc;
+    }
+
+    .login-input:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.08);
+      background: white;
+    }
+
+    .login-button {
+      width: 100%;
+      padding: 0.85rem;
+      background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+      box-shadow: 0 4px 14px rgba(26, 86, 219, 0.3);
+    }
+
+    .login-button:hover {
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      box-shadow: 0 6px 20px rgba(26, 86, 219, 0.4);
+      transform: translateY(-1px);
+    }
+    .login-button:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(26, 86, 219, 0.3); }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 18px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1rem;
+    }
+
+    .modal-content { color: #475569; margin-bottom: 1.5rem; line-height: 1.6; }
+
+    .progress-bar {
+      height: 5px;
+      background-color: #e2e8f0;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+      border-radius: 9999px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .progress-text { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+
+    .google-integration-section {
+      background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .google-integration-section h3 {
+      color: #1d4ed8;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .google-integration-status {
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border-left: 4px solid #4285F4;
+    }
+
+    .google-integration-status.connected {
+      border-left-color: #34a853;
+    }
+
+    .google-integration-status.disconnected {
+      border-left-color: #ea4335;
+    }
+
+    .google-integration-buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* Search and Filters */
+    .filters-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.625rem 0.75rem 0.625rem 2.25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #1e293b;
+      transition: all 0.15s ease;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 0.75rem center;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .filter-select {
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #1e293b;
+      background: white;
+      cursor: pointer;
+      min-width: 140px;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: #1a56db;
+    }
+
+    .active-filters {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #1d4ed8;
+      cursor: pointer;
+    }
+
+    .filter-tag:hover {
+      background: #dbeafe;
+    }
+
+    .results-count {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 1rem;
+    }
+
+    /* Kanban Board */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      min-height: 400px;
+    }
+
+    .kanban-column {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 1rem;
+      min-height: 300px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .kanban-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid;
+    }
+
+    .kanban-column-header.pendiente { border-bottom-color: #94a3b8; }
+    .kanban-column-header.en-proceso { border-bottom-color: #3b82f6; }
+    .kanban-column-header.en-revision { border-bottom-color: #f59e0b; }
+    .kanban-column-header.aprobado { border-bottom-color: #10b981; }
+
+    .kanban-column-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+    }
+
+    .kanban-column-count {
+      background: white;
+      border-radius: 9999px;
+      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .kanban-card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      border: 1px solid #e2e8f0;
+      border-left: 3px solid transparent;
+    }
+
+    .kanban-card:hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .kanban-card.alta { border-left-color: #ef4444; }
+    .kanban-card.media { border-left-color: #f59e0b; }
+    .kanban-card.baja { border-left-color: #10b981; }
+
+    .kanban-card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+
+    .kanban-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .kanban-card-progress {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .kanban-card-progress .progress-bar {
+      width: 50px;
+      height: 4px;
+    }
+
+    .kanban-move-btns {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+    }
+
+    .kanban-move-btn {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.15s ease;
+    }
+
+    .kanban-move-btn:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    /* View toggle */
+    .view-toggle {
+      display: flex;
+      gap: 0.25rem;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 0.25rem;
+    }
+
+    .view-toggle-btn {
+      padding: 0.5rem 0.75rem;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #64748b;
+      transition: all 0.15s ease;
+    }
+
+    .view-toggle-btn.active {
+      background: white;
+      color: #1e293b;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e2e8f0;
+    }
+
+    .chart-card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1rem;
+    }
+
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .bar-label {
+      font-size: 0.8rem;
+      color: #475569;
+      width: 90px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      padding-left: 0.5rem;
+    }
+
+    .bar-fill span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .bar-fill.pendiente { background: linear-gradient(90deg, #94a3b8, #64748b); }
+    .bar-fill.en-proceso { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+    .bar-fill.en-revision { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .bar-fill.aprobado { background: linear-gradient(90deg, #34d399, #10b981); }
+
+    /* Donut chart */
+    .donut-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    .donut-svg {
+      transform: rotate(-90deg);
+    }
+
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    .donut-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Priority bar chart */
+    .priority-chart { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .bar-fill.alta { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .bar-fill.media { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .bar-fill.baja { background: linear-gradient(90deg, #34d399, #10b981); }
+
+    /* Resumen Ejecutivo */
+    .resumen-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0c4a6e 100%);
+      border-radius: 18px;
+      padding: 2.5rem;
+      color: white;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .resumen-hero::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      right: -15%;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .resumen-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: 10%;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .resumen-hero-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .resumen-hero-subtitle {
+      font-size: 0.8rem;
+      opacity: 0.5;
+      margin-bottom: 1.75rem;
+      font-weight: 400;
+    }
+
+    .resumen-hero-stats {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .resumen-hero-stat {
+      text-align: center;
+    }
+
+    .resumen-hero-stat-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .resumen-hero-stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+
+    .deadline-banner {
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .deadline-banner.critical {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border: 1px solid #fecaca;
+    }
+
+    .deadline-banner.warning {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid #fde68a;
+    }
+
+    .deadline-banner.ok {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1px solid #bbf7d0;
+    }
+
+    .deadline-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .deadline-info { flex: 1; }
+
+    .deadline-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .deadline-banner.critical .deadline-title { color: #991b1b; }
+    .deadline-banner.warning .deadline-title { color: #92400e; }
+    .deadline-banner.ok .deadline-title { color: #166534; }
+
+    .deadline-text {
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .deadline-banner.critical .deadline-text { color: #b91c1c; }
+    .deadline-banner.warning .deadline-text { color: #a16207; }
+    .deadline-banner.ok .deadline-text { color: #15803d; }
+
+    .deadline-days {
+      text-align: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .deadline-banner.critical .deadline-days { background: #fee2e2; }
+    .deadline-banner.warning .deadline-days { background: #fef3c7; }
+    .deadline-banner.ok .deadline-days { background: #dcfce7; }
+
+    .deadline-days-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .deadline-banner.critical .deadline-days-value { color: #dc2626; }
+    .deadline-banner.warning .deadline-days-value { color: #d97706; }
+    .deadline-banner.ok .deadline-days-value { color: #16a34a; }
+
+    .deadline-days-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .risk-table { width: 100%; }
+
+    .risk-row {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      gap: 0.75rem;
+    }
+
+    .risk-row:last-child { border-bottom: none; }
+
+    .risk-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .risk-indicator.critical { background: #ef4444; }
+    .risk-indicator.warning { background: #f59e0b; }
+    .risk-indicator.ok { background: #10b981; }
+
+    .risk-name {
+      flex: 1;
+      font-size: 0.85rem;
+      color: #1e293b;
+    }
+
+    .risk-status {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .legal-ref {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: #f0f9ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 19;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-btn {
+        display: block;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: -260px;
+        z-index: 20;
+        transition: left 0.3s ease;
+        height: calc(100vh - 56px);
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .sidebar-overlay.visible {
+        display: block;
+      }
+
+      .header h1 {
+        font-size: 0.85rem;
+      }
+
+      .header-actions {
+        gap: 0.5rem;
+      }
+
+      .user-info {
+        display: none;
+      }
+
+      .content {
+        padding: 1rem;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .detail-sections {
+        grid-template-columns: 1fr;
+      }
+
+      .filters-bar {
+        flex-direction: column;
+      }
+
+      .search-input {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .kanban-board {
+        grid-template-columns: 1fr;
+      }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: white;
+      border-radius: 12px;
+      padding: 0.85rem 1.25rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      max-width: 320px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .toast.success { border-left: 4px solid #10b981; }
+    .toast.error { border-left: 4px solid #ef4444; }
+    .toast.info { border-left: 4px solid #3b82f6; }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-content { animation: fadeIn 0.3s ease; }
+
+    /* PDF Upload & Extraction */
+    .pdf-upload-zone {
+      border: 2px dashed #3b82f6;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      margin-bottom: 1rem;
+    }
+    .pdf-upload-zone:hover { border-color: #1d4ed8; background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%); }
+    .pdf-upload-zone.uploading { border-color: #f59e0b; background: #fffbeb; pointer-events: none; }
+    .pdf-upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .pdf-upload-title { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 0.25rem; }
+    .pdf-upload-hint { font-size: 0.8rem; color: #64748b; }
+
+    .pdf-extraction-result {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .pdf-extraction-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .pdf-extraction-title { font-size: 0.85rem; font-weight: 700; color: #059669; display: flex; align-items: center; gap: 0.5rem; }
+    .pdf-field-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .pdf-field-row:last-child { border-bottom: none; }
+    .pdf-field-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; min-width: 120px; }
+    .pdf-field-value { font-size: 0.85rem; color: #1e293b; flex: 1; }
+    .pdf-field-action { flex-shrink: 0; }
+    .pdf-apply-btn {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #10b981;
+      background: #ecfdf5;
+      color: #059669;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pdf-apply-btn:hover { background: #d1fae5; }
+    .pdf-apply-all-btn {
+      padding: 0.5rem 1rem;
+      background: #059669;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-top: 1rem;
+      width: 100%;
+    }
+    .pdf-apply-all-btn:hover { background: #047857; }
+    .pdf-progress { margin-top: 0.75rem; }
+    .pdf-progress-bar { height: 4px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .pdf-progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #1d4ed8); border-radius: 99px; transition: width 0.3s; }
+    .pdf-progress-text { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .pdf-stored-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.5rem; background: #dbeafe; color: #1d4ed8; border-radius: 6px; font-size: 0.7rem; font-weight: 500; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Supabase Client -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- PDF.js for PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }</script>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ============================================================
+    // SUPABASE CONFIGURATION
+    // Para activar Supabase, reemplaza estos valores con los de tu proyecto:
+    // 1. Ve a https://supabase.com/dashboard y crea un nuevo proyecto
+    // 2. En Settings > API, copia la URL y la anon key
+    // 3. Ejecuta el SQL que está más abajo para crear la tabla
+    // ============================================================
+    const SUPABASE_URL = 'https://pzqzupcjalggdlibplcw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6cXp1cGNqYWxnZ2RsaWJwbGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTI4MzAsImV4cCI6MjA5MDgyODgzMH0.3mP_NgsS5awP4k4_5J2x4YQwc-OaoMLsSFMFKBV2WJw';
+
+    // Inicializar cliente Supabase (solo si está configurado y la librería cargó)
+    let supabase = null;
+    try {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      console.warn('Supabase no disponible, usando localStorage:', e.message);
+    }
+
+    /*
+    -- SQL para crear la tabla en Supabase (ejecutar en SQL Editor):
+
+    CREATE TABLE regulations (
+      id SERIAL PRIMARY KEY,
+      numero TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      articulo TEXT DEFAULT '',
+      estado TEXT DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'En Proceso', 'En Revisión', 'Aprobado')),
+      progreso INTEGER DEFAULT 0 CHECK (progreso >= 0 AND progreso <= 100),
+      prioridad TEXT DEFAULT 'media' CHECK (prioridad IN ('alta', 'media', 'baja')),
+      responsable TEXT DEFAULT '',
+      observaciones TEXT DEFAULT '',
+      enlace TEXT DEFAULT '',
+      decreto TEXT DEFAULT '',
+      articulo_estatuto TEXT DEFAULT '',
+      historial JSONB DEFAULT '[]',
+      adjuntos JSONB DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Si ya tienes la tabla creada, puedes agregar las columnas faltantes así:
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS observaciones TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS enlace TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS decreto TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS articulo_estatuto TEXT DEFAULT '';
+
+    -- Habilitar RLS (Row Level Security)
+    ALTER TABLE regulations ENABLE ROW LEVEL SECURITY;
+
+    -- Política para permitir acceso público (ajustar según necesidad)
+    CREATE POLICY "Allow all access" ON regulations FOR ALL USING (true) WITH CHECK (true);
+
+    -- Función para actualizar updated_at automáticamente
+    CREATE OR REPLACE FUNCTION update_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      NEW.updated_at = NOW();
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trigger_update_timestamp
+      BEFORE UPDATE ON regulations
+      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    */
+
+    // Helper functions para Supabase
+    async function supabaseFetchAll() {
+      if (!supabase) return null;
+      try {
+        const { data, error } = await supabase.from('regulations').select('*').order('id');
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Supabase fetch error:', e);
+        return null;
+      }
+    }
+
+    async function supabaseUpsert(regulation) {
+      if (!supabase) return false;
+      try {
+        const { error } = await supabase.from('regulations').upsert({
+          id: regulation.id,
+          numero: regulation.numero,
+          nombre: regulation.nombre,
+          articulo: regulation.articulo || '',
+          estado: regulation.estado,
+          progreso: regulation.progreso,
+          prioridad: regulation.prioridad,
+          responsable: regulation.responsable || '',
+          observaciones: regulation.observaciones || '',
+          enlace: regulation.enlace || '',
+          decreto: regulation.decreto || '',
+          articulo_estatuto: regulation.articulo_estatuto || '',
+          historial: regulation.historial || [],
+          adjuntos: regulation.adjuntos || []
+        });
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error('Supabase upsert error:', e);
+        return false;
+      }
+    }
+
+    async function supabaseDelete(id) {
+      if (!supabase) return false;
+      try {
+        const { error } = await supabase.from('regulations').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error('Supabase delete error:', e);
+        return false;
+      }
+    }
+
+    async function supabaseInsert(regulation) {
+      if (!supabase) return null;
+      try {
+        const { data, error } = await supabase.from('regulations').insert({
+          numero: regulation.numero,
+          nombre: regulation.nombre,
+          articulo: regulation.articulo || '',
+          estado: regulation.estado,
+          progreso: regulation.progreso,
+          prioridad: regulation.prioridad,
+          responsable: regulation.responsable || '',
+          observaciones: regulation.observaciones || '',
+          enlace: regulation.enlace || '',
+          decreto: regulation.decreto || '',
+          articulo_estatuto: regulation.articulo_estatuto || '',
+          historial: regulation.historial || [],
+          adjuntos: regulation.adjuntos || []
+        }).select().single();
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Supabase insert error:', e);
+        return null;
+      }
+    }
+
+    async function supabaseSeedIfEmpty() {
+      if (!supabase) return;
+      try {
+        const { count, error: countError } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
+        if (countError) { console.warn('Supabase count error:', countError.message); return; }
+        if (count === 0) {
+          const { error } = await supabase.from('regulations').insert(INITIAL_REGULATIONS.map(r => ({
+            numero: r.numero, nombre: r.nombre, articulo: r.articulo,
+            estado: r.estado, progreso: r.progreso, prioridad: r.prioridad,
+            responsable: r.responsable, observaciones: r.observaciones || '',
+            enlace: r.enlace || '', decreto: r.decreto || '',
+            articulo_estatuto: r.articulo_estatuto || '',
+            historial: r.historial, adjuntos: r.adjuntos
+          })));
+          if (error) console.warn('Seed error:', error.message);
+        }
+      } catch (e) {
+        console.warn('Seed check error:', e.message);
+      }
+    }
+
+    // Google Configuration
+    const GOOGLE_CLIENT_ID = '1043885369261-imrf6apaog9gbprdtkkp8em3sau03ua3.apps.googleusercontent.com';
+    const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
+
+    // Toast notification component
+    function Toast({ message, type, onClose }) {
+      useEffect(() => {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+      }, [onClose]);
+
+      return (
+        <div className={`toast ${type}`}>
+          {type === 'success' && '✓ '}
+          {type === 'error' && '✕ '}
+          {message}
+        </div>
+      );
+    }
+
+    // Initial data - 31 reglamentos reales del nuevo estatuto UMAG
+    const INITIAL_REGULATIONS = [
+      { id: 1, numero: "1", nombre: "Reglamento de Funcionamiento del Consejo Superior", articulo: "Título IV, Art. 11-15", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "", decreto: "", articulo_estatuto: "Art. 11-15", historial: [], adjuntos: [] },
+      { id: 2, numero: "2", nombre: "Declaración de Bienes de Especial Interés Institucional", articulo: "", estado: "En Revisión", progreso: 40, prioridad: "media", responsable: "VRAF", observaciones: "Se remitió a VRAF para observaciones", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 3, numero: "3", nombre: "Reglamento de Elección del Rector o Rectora", articulo: "", estado: "En Revisión", progreso: 35, prioridad: "alta", responsable: "Secretaría General", observaciones: "Revisar el actual reglamento (Dec. Ex. 20/2022)", enlace: "https://drive.google.com/file/d/1_aUgV1I19T2AwTcB12pfBxtWbvrZ5SJr/view?usp=sharing", decreto: "DEC EX. 20/2022", articulo_estatuto: "Art. 16-19", historial: [], adjuntos: [] },
+      { id: 4, numero: "4", nombre: "Reglamento para Nombramiento de Miembros de la Comunidad Universitaria en el Consejo Superior", articulo: "Art. 12-13", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "https://gestor.umag.cl/storage/2025/326/versiones/13/firmas/DEC-N2SU2025PDF-firmado-1.pdf", decreto: "DEC N°2/SU/2025", articulo_estatuto: "Art. 12-13", historial: [], adjuntos: [] },
+      { id: 5, numero: "5", nombre: "Reglamento de Funcionamiento Interno del Consejo Universitario", articulo: "Art. 23-28", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "", enlace: "https://gestor.umag.cl/storage/2025/324/versiones/4/firmas/DEC-N001SU2025PDF-firmado-1.pdf", decreto: "DEC N°001/SU/2025", articulo_estatuto: "Art. 23-28", historial: [], adjuntos: [] },
+      { id: 6, numero: "6", nombre: "Reglamento General de Elecciones", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "Propuestas de mejora: incorporar al art. 20 alternativas cuando no se presenten candidatos; eliminar art. 47 sobre consejeros de centro", enlace: "https://gestor.umag.cl/verificar/IenybNt1", decreto: "DEC N°007/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 7, numero: "7", nombre: "Reglamento de Secretaría General", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "Se debe presentar al CU del 28/08/2025", enlace: "https://gestor.umag.cl/storage/2025/2347/versiones/4/firmas/DEC-N28SU2025PDF-firmado-1.pdf", decreto: "DEC N°28/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 8, numero: "8", nombre: "Reglamento General de Facultades", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "VRAC", observaciones: "Revisar si se puede fusionar con el reglamento de estructuras", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 9, numero: "9", nombre: "Reglamento de Gestión, Evaluación y Aseguramiento de la Calidad", articulo: "Art. 53 letra a y b", estado: "En Revisión", progreso: 35, prioridad: "alta", responsable: "Dir. Aseguramiento de la Calidad", observaciones: "Art. 53 Estatutos letra a y b", enlace: "", decreto: "", articulo_estatuto: "Art. 53", historial: [], adjuntos: [] },
+      { id: 10, numero: "10", nombre: "Reglamento de Estudios", articulo: "Art. 55", estado: "Pendiente", progreso: 10, prioridad: "alta", responsable: "VRAC", observaciones: "Art. 55 del estatuto. Revisar con Mario.", enlace: "", decreto: "", articulo_estatuto: "Art. 55", historial: [], adjuntos: [] },
+      { id: 11, numero: "11", nombre: "Reglamento de Estructuras Académicas", articulo: "", estado: "En Revisión", progreso: 35, prioridad: "media", responsable: "VRAC / Dir. Docencia", observaciones: "Se presentó propuesta a VRAC, VRAF, SG y D. de Docencia. Coordinar reunión con decanos para revisión y posible unificación con reglamento general de facultades.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 12, numero: "12", nombre: "Reglamento del Comité de Aseguramiento de la Calidad", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "Dir. Aseguramiento de la Calidad", observaciones: "Fue remitido con observaciones a la Dirección de Aseguramiento de la Calidad", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 13, numero: "13", nombre: "Reglamento de Carrera Académica", articulo: "Art. 67", estado: "En Revisión", progreso: 25, prioridad: "alta", responsable: "Dir. Docencia", observaciones: "Art. 67. Se podría fusionar con jerarquía y carga. Reunión pendiente entre DJ, DD y Unidad de Gestión Docente.", enlace: "", decreto: "", articulo_estatuto: "Art. 67", historial: [], adjuntos: [] },
+      { id: 14, numero: "14", nombre: "Reglamento de Asignación de Carga Académica", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Dir. Docencia", observaciones: "Propuesta de mejora: considerar en la carga administrativa a los coordinadores de campus", enlace: "https://gestor.umag.cl/verificar/hBeJOFkT", decreto: "DEC N°15/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 15, numero: "15", nombre: "Reglamento de Jerarquía Académica", articulo: "", estado: "En Revisión", progreso: 25, prioridad: "media", responsable: "Dir. Docencia", observaciones: "Dirección de Docencia propuso generar reunión entre DJ, DD y la Unidad de Gestión docente.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 16, numero: "16", nombre: "Reglamento de Promoción de un Académico", articulo: "Art. 68", estado: "En Proceso", progreso: 15, prioridad: "media", responsable: "Dir. Docencia", observaciones: "Art. 68. En redacción.", enlace: "", decreto: "", articulo_estatuto: "Art. 68", historial: [], adjuntos: [] },
+      { id: 17, numero: "17", nombre: "Reglamento de Estímulos e Incentivos a Funcionarios de Apoyo", articulo: "Art. 71", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "VRAF", observaciones: "Art. 71. En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 71", historial: [], adjuntos: [] },
+      { id: 18, numero: "18", nombre: "Reglamento General de Estudiantes", articulo: "", estado: "En Proceso", progreso: 45, prioridad: "alta", responsable: "VRAE", observaciones: "Propuesta presentada al Consejo Universitario", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 19, numero: "19", nombre: "Reglamento para Uso de Bienes y Servicios de la Universidad", articulo: "Art. 78 letra f)", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "VRAF", observaciones: "Art. 78 letra f). En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 78", historial: [], adjuntos: [] },
+      { id: 20, numero: "20", nombre: "Reglamento de Procedimientos Disciplinarios de Estudiantes", articulo: "", estado: "Aprobado", progreso: 100, prioridad: "alta", responsable: "Secretaría General", observaciones: "El día 27 de agosto de 2025 se responden observaciones del Sr. Contralor", enlace: "https://gestor.umag.cl/storage/2025/538/versiones/3/firmas/DEC-N21SU2025PDF-firmado-1.pdf", decreto: "DEC N°21/SU/2025", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 21, numero: "21", nombre: "Reglamento del Consejo de Convivencia Universitaria", articulo: "Art. 81", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "Secretaría General", observaciones: "Art. 81. En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 81", historial: [], adjuntos: [] },
+      { id: 22, numero: "22", nombre: "Reglamento sobre Administración Financiera y Patrimonial", articulo: "Art. 86 letra g)", estado: "Pendiente", progreso: 5, prioridad: "alta", responsable: "VRAF", observaciones: "Art. 86 letra g). En estudio.", enlace: "", decreto: "", articulo_estatuto: "Art. 86", historial: [], adjuntos: [] },
+      { id: 23, numero: "23", nombre: "Reglamento sobre Propiedad Intelectual", articulo: "Art. 90", estado: "Pendiente", progreso: 15, prioridad: "media", responsable: "VRI / Pedro Herrera", observaciones: "Pedro Herrera realizará ajuste normativo. Solicitud de presentación para CU de octubre 2025.", enlace: "https://drive.google.com/file/d/1C32f_54Amsw6CY9YGTIm3yYnvKftIEKy/view?usp=sharing", decreto: "DEC N°004/SU/2023", articulo_estatuto: "Art. 90", historial: [], adjuntos: [] },
+      { id: 24, numero: "24", nombre: "Protocolo de Protección de Datos", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "media", responsable: "Secretaría General", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 25, numero: "25", nombre: "Reglamento de Orden, Higiene y Seguridad", articulo: "", estado: "En Revisión", progreso: 30, prioridad: "media", responsable: "VRAF", observaciones: "", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 26, numero: "26", nombre: "Normativa del Mediador Universitario", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "Secretaría General", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 27, numero: "27", nombre: "Normativa Relativa para la Emisión de Normas", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "media", responsable: "Secretaría General", observaciones: "Se debe crear normativa que regule en qué caso debe emitirse una política, reglamento, instructivo, circular. Además podría incluirse materias relativas a decretos y resoluciones.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 28, numero: "28", nombre: "Reglamento de Tramitación de Convenios y Contratos", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "media", responsable: "Secretaría General", observaciones: "Pasos: Crear Drive con material, reunir normativa similar, recabar opinión de Contraloría, reunión equipo jurídico, redacción de documento.", enlace: "", decreto: "Res. N°216/2019", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 29, numero: "29", nombre: "Normativa de Compatibilidad Estudios con Vida Familiar", articulo: "", estado: "Pendiente", progreso: 10, prioridad: "alta", responsable: "VRAE", observaciones: "Se debe redactar normativa de acuerdo al tenor de la Ley 21.790 sobre derechos de estudiantes cuidadores.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 30, numero: "30", nombre: "Reglamento de Incentivo al Retiro", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "VRAF", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] },
+      { id: 31, numero: "31", nombre: "Reglamento de Votaciones Bienestar", articulo: "", estado: "Pendiente", progreso: 5, prioridad: "baja", responsable: "VRAE / Bienestar", observaciones: "En estudio.", enlace: "", decreto: "", articulo_estatuto: "", historial: [], adjuntos: [] }
+    ];
+
+    const PLAZOS_DATA = [
+      { id: 1, gestion: "Revisión de redacción", plazo: "90 días desde la propuesta", objeto: "Validar contenido normativo", formalidad: "Comisión de Redacción", requisito: "Propuesta inicial" },
+      { id: 2, gestion: "Consulta a académicos", plazo: "60 días", objeto: "Incorporar feedback", formalidad: "Consulta pública", requisito: "Borrador disponible" },
+      { id: 3, gestion: "Aprobación de Consejo", plazo: "45 días", objeto: "Aprobación final", formalidad: "Sesión del Consejo", requisito: "Informe favorable" },
+      { id: 4, gestion: "Publicación oficial", plazo: "15 días", objeto: "Difusión general", formalidad: "Publicación web y gaceta", requisito: "Aprobación del Consejo" },
+      { id: 5, gestion: "Implementación", plazo: "30 días", objeto: "Capacitación e inicio", formalidad: "Plan de implementación", requisito: "Publicación oficial" },
+      { id: 6, gestion: "Seguimiento", plazo: "Permanente", objeto: "Monitoreo de cumplimiento", formalidad: "Reportes trimestrales", requisito: "Implementación activa" }
+    ];
+
+    function Header({ userName, onLogout, isGoogleConnected, googleUser, onGoogleDisconnect, onToggleSidebar }) {
+      const [showGoogleDropdown, setShowGoogleDropdown] = useState(false);
+
+      return (
+        <div className="header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button className="mobile-menu-btn" onClick={onToggleSidebar}>☰</button>
+            <h1>UMAG - Sistema de Seguimiento de Reglamentos</h1>
+          </div>
+          <div className="header-actions">
+            <div className="user-info">{userName}</div>
+            {isGoogleConnected && googleUser && (
+              <div className="google-user-menu">
+                <button className="google-user-btn" onClick={() => setShowGoogleDropdown(!showGoogleDropdown)}>
+                  <div className="google-user-avatar">{googleUser.name?.charAt(0).toUpperCase() || 'G'}</div>
+                  <span>{googleUser.email?.split('@')[0]}</span>
+                </button>
+                {showGoogleDropdown && (
+                  <div className="google-dropdown">
+                    <div className="google-dropdown-item">{googleUser.email}</div>
+                    <div className="google-dropdown-item danger" onClick={() => { onGoogleDisconnect(); setShowGoogleDropdown(false); }}>Desconectar Google</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!isGoogleConnected && (
+              <button className="google-btn" onClick={() => window.triggerGoogleConnect?.()}>
+                🔗 Conectar Google
+              </button>
+            )}
+            <button className="logout-btn" onClick={onLogout}>Cerrar Sesión</button>
+          </div>
+        </div>
+      );
+    }
+
+    const SvgIcon = ({ d, size = 18 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{typeof d === 'string' ? <path d={d}/> : d}</svg>
+    );
+
+    const NAV_ITEMS = [
+      { id: "resumen", label: "Resumen Ejecutivo", icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></> },
+      { id: "dashboard", label: "Dashboard", icon: <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></> },
+      { id: "regulations", label: "Reglamentos", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></> },
+      { id: "plazos", label: "Plazos", icon: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></> },
+      { id: "new", label: "Nuevo Reglamento", icon: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></> },
+      { id: "settings", label: "Configuración", icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> }
+    ];
+
+    function Sidebar({ activeView, onViewChange, sidebarOpen }) {
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">Navegación</div>
+          {NAV_ITEMS.map(item => (
+            <div key={item.id} className={`nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => onViewChange(item.id)}>
+              <span className="nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{item.icon}</svg>
+              </span>
+              {item.label}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // PLAZOS LEGALES - Disposiciones Transitorias del Estatuto UMAG
+    // Estatuto publicado en Diario Oficial: 12 de agosto de 2024
+    // ============================================================
+    const FECHA_ESTATUTO = new Date('2024-08-12');
+    // Consejo Superior: plazo máximo 9 meses desde entrada en vigencia
+    const FECHA_CS_MAX = new Date('2025-05-12');
+    // Plazo máximo para dictar reglamentos: 12 meses desde plena constitución del CS
+    const FECHA_LIMITE_REGLAMENTOS = new Date('2026-05-12');
+    // Art. quinto transitorio: normas de unidades académicas/admin, 12 meses desde estatuto
+    const FECHA_LIMITE_UNIDADES = new Date('2025-08-12');
+    // Ley 21.790 publicada: 19 de enero de 2026
+    const FECHA_LEY_21790 = new Date('2026-01-19');
+
+    function calcDaysRemaining(targetDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(targetDate);
+      target.setHours(0, 0, 0, 0);
+      return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+    }
+
+    function ResumenEjecutivo({ regulations }) {
+      const total = regulations.length;
+      const aprobados = regulations.filter(r => r.estado === 'Aprobado').length;
+      const enRevision = regulations.filter(r => r.estado === 'En Revisión').length;
+      const enProceso = regulations.filter(r => r.estado === 'En Proceso').length;
+      const pendientes = regulations.filter(r => r.estado === 'Pendiente').length;
+      const faltantes = total - aprobados;
+      const pctAprobado = Math.round((aprobados / total) * 100);
+      const avgProgress = Math.round(regulations.reduce((s, r) => s + r.progreso, 0) / total);
+
+      const diasRestantes = calcDaysRemaining(FECHA_LIMITE_REGLAMENTOS);
+      const diasUnidades = calcDaysRemaining(FECHA_LIMITE_UNIDADES);
+
+      const bannerClass = diasRestantes <= 30 ? 'critical' : diasRestantes <= 90 ? 'warning' : 'ok';
+      const bannerIcon = diasRestantes <= 30 ? '🚨' : diasRestantes <= 90 ? '⚠️' : '✅';
+
+      // Reglamentos en riesgo (no aprobados y con poco progreso)
+      const enRiesgo = regulations
+        .filter(r => r.estado !== 'Aprobado')
+        .map(r => {
+          const riskLevel = r.progreso < 15 ? 'critical' : r.progreso < 40 ? 'warning' : 'ok';
+          return { ...r, riskLevel };
+        })
+        .sort((a, b) => a.progreso - b.progreso);
+
+      const criticos = enRiesgo.filter(r => r.riskLevel === 'critical').length;
+      const medios = enRiesgo.filter(r => r.riskLevel === 'warning').length;
+
+      // Velocidad requerida
+      const regsPerMonth = diasRestantes > 0 ? (faltantes / (diasRestantes / 30)).toFixed(1) : 'N/A';
+
+      // Progress ring SVG
+      const ringSize = 160;
+      const ringStroke = 12;
+      const ringRadius = (ringSize - ringStroke) / 2;
+      const ringCircum = 2 * Math.PI * ringRadius;
+      const ringOffset = ringCircum - (pctAprobado / 100) * ringCircum;
+
+      // Por responsable - top 5 con más carga pendiente
+      const byResp = {};
+      regulations.filter(r => r.estado !== 'Aprobado').forEach(r => {
+        if (!byResp[r.responsable]) byResp[r.responsable] = 0;
+        byResp[r.responsable]++;
+      });
+      const topResponsables = Object.entries(byResp).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+      return (
+        <div className="page-content">
+          {/* Hero con anillo de progreso */}
+          <div className="resumen-hero" style={{ display: 'flex', alignItems: 'center', gap: '3rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 280, position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem' }}>Resumen Ejecutivo</div>
+              <div className="resumen-hero-title" style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>Implementación Nuevo Estatuto</div>
+              <div className="resumen-hero-subtitle" style={{ marginBottom: '1.5rem' }}>DFL Num. 27 — Diario Oficial, 12 de agosto de 2024</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '0.85rem 1rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>{total}</div>
+                  <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginTop: '0.2rem' }}>Total</div>
+                </div>
+                <div style={{ background: 'rgba(16,185,129,0.12)', borderRadius: 12, padding: '0.85rem 1rem', border: '1px solid rgba(16,185,129,0.15)' }}>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#34d399', letterSpacing: '-0.03em', lineHeight: 1 }}>{aprobados}</div>
+                  <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginTop: '0.2rem' }}>Aprobados</div>
+                </div>
+                <div style={{ background: 'rgba(251,191,36,0.12)', borderRadius: 12, padding: '0.85rem 1rem', border: '1px solid rgba(251,191,36,0.15)' }}>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.03em', lineHeight: 1 }}>{faltantes}</div>
+                  <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginTop: '0.2rem' }}>Pendientes</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+              <svg width={ringSize} height={ringSize} style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx={ringSize/2} cy={ringSize/2} r={ringRadius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={ringStroke} />
+                <circle cx={ringSize/2} cy={ringSize/2} r={ringRadius} fill="none" stroke="url(#progressGrad)" strokeWidth={ringStroke} strokeDasharray={ringCircum} strokeDashoffset={ringOffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease' }} />
+                <defs><linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#3b82f6"/></linearGradient></defs>
+              </svg>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                <div style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>{pctAprobado}%</div>
+                <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5 }}>Avance</div>
+              </div>
+              <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', opacity: 0.6 }}>Progreso promedio: {avgProgress}%</div>
+            </div>
+          </div>
+
+          {/* Countdown + ritmo */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ background: 'white', borderRadius: 14, padding: '1.25rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: diasRestantes <= 30 ? '#dc2626' : diasRestantes <= 90 ? '#d97706' : '#059669', letterSpacing: '-0.04em', lineHeight: 1 }}>{Math.abs(diasRestantes)}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>{diasRestantes >= 0 ? 'Dias restantes' : 'Dias vencido'}</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>Plazo: 12 mayo 2026</div>
+            </div>
+            <div style={{ background: 'white', borderRadius: 14, padding: '1.25rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#1d4ed8', letterSpacing: '-0.04em', lineHeight: 1 }}>{regsPerMonth}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>Reglamentos / mes</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>Ritmo necesario</div>
+            </div>
+            <div style={{ background: 'white', borderRadius: 14, padding: '1.25rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#dc2626', letterSpacing: '-0.04em', lineHeight: 1 }}>{criticos}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>En riesgo critico</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>Menos de 15% avance</div>
+            </div>
+            <div style={{ background: 'white', borderRadius: 14, padding: '1.25rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#7c3aed', letterSpacing: '-0.04em', lineHeight: 1 }}>{enRevision + enProceso}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>En tramitacion</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>{enRevision} revision + {enProceso} proceso</div>
+            </div>
+          </div>
+
+          {/* Alertas legales */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <div style={{ background: bannerClass === 'critical' ? 'linear-gradient(135deg, #fef2f2, #fff1f2)' : bannerClass === 'warning' ? 'linear-gradient(135deg, #fffbeb, #fef9c3)' : 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', borderRadius: 14, padding: '1.25rem 1.5rem', border: bannerClass === 'critical' ? '1px solid #fecaca' : bannerClass === 'warning' ? '1px solid #fde68a' : '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: bannerClass === 'critical' ? '#fee2e2' : bannerClass === 'warning' ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={bannerClass === 'critical' ? '#dc2626' : bannerClass === 'warning' ? '#d97706' : '#16a34a'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: bannerClass === 'critical' ? '#991b1b' : bannerClass === 'warning' ? '#92400e' : '#166534', marginBottom: '0.2rem' }}>Art. Primero Transitorio — Plazo General</div>
+                <div style={{ fontSize: '0.82rem', color: bannerClass === 'critical' ? '#b91c1c' : bannerClass === 'warning' ? '#a16207' : '#15803d', lineHeight: 1.5 }}>
+                  Plazo maximo de <strong>12 meses</strong> desde constitucion del Consejo Superior. {diasRestantes > 0 ? `Quedan ${faltantes} reglamentos por aprobar.` : 'El plazo ha vencido.'}
+                </div>
+              </div>
+            </div>
+
+            {diasUnidades < 0 && (
+              <div style={{ background: 'linear-gradient(135deg, #fef2f2, #fff1f2)', borderRadius: 14, padding: '1.25rem 1.5rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#991b1b', marginBottom: '0.2rem' }}>Art. Quinto Transitorio — Plazo Vencido</div>
+                  <div style={{ fontSize: '0.82rem', color: '#b91c1c', lineHeight: 1.5 }}>
+                    Normas de unidades academicas/administrativas. <strong>Vencido hace {Math.abs(diasUnidades)} dias.</strong> Afecta: Reglamento de Estructuras Academicas, Reglamento General de Facultades.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ background: 'linear-gradient(135deg, #f0f9ff, #eff6ff)', borderRadius: 14, padding: '1.25rem 1.5rem', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e40af', marginBottom: '0.2rem' }}>Ley 21.790 — Estudiantes Cuidadores</div>
+                <div style={{ fontSize: '0.82rem', color: '#1d4ed8', lineHeight: 1.5 }}>
+                  Publicada 19/01/2026. Art. 11: dictar normas internas. Superintendencia fiscalizara cumplimiento. Afecta reglamento N°29.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de contenido */}
+          <div className="charts-grid">
+            {/* Desglose por estado */}
+            <div className="chart-card">
+              <div className="chart-card-title">Avance por Estado</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {[
+                  { label: 'Aprobados', count: aprobados, cls: 'aprobado', color: '#10b981' },
+                  { label: 'En Revision', count: enRevision, cls: 'en-revision', color: '#f59e0b' },
+                  { label: 'En Proceso', count: enProceso, cls: 'en-proceso', color: '#3b82f6' },
+                  { label: 'Pendientes', count: pendientes, cls: 'pendiente', color: '#94a3b8' }
+                ].map((s, i) => (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#475569' }}>{s.label}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: s.color }}>{s.count}</span>
+                    </div>
+                    <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.max((s.count / total) * 100, 3)}%`, background: `linear-gradient(90deg, ${s.color}cc, ${s.color})`, borderRadius: 99, transition: 'width 0.6s ease' }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <span>Promedio general</span>
+                <span style={{ fontWeight: 700, color: '#475569' }}>{avgProgress}%</span>
+              </div>
+            </div>
+
+            {/* Reglamentos en riesgo */}
+            <div className="chart-card">
+              <div className="chart-card-title">Reglamentos en Riesgo</div>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ flex: 1, background: '#fef2f2', borderRadius: 10, padding: '0.6rem 0.75rem', textAlign: 'center', border: '1px solid #fecaca' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626' }}>{criticos}</div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Criticos</div>
+                </div>
+                <div style={{ flex: 1, background: '#fffbeb', borderRadius: 10, padding: '0.6rem 0.75rem', textAlign: 'center', border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#d97706' }}>{medios}</div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Moderados</div>
+                </div>
+              </div>
+              <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                {enRiesgo.slice(0, 10).map(r => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0', borderBottom: '1px solid #f8fafc' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: r.riskLevel === 'critical' ? '#ef4444' : r.riskLevel === 'warning' ? '#f59e0b' : '#10b981', flexShrink: 0 }}></div>
+                    <span style={{ fontSize: '0.78rem', color: '#1e293b', flex: 1, lineHeight: 1.3 }}>{r.numero}. {r.nombre}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', flexShrink: 0, fontWeight: 600 }}>{r.progreso}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Carga por responsable */}
+            <div className="chart-card">
+              <div className="chart-card-title">Carga Pendiente por Responsable</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {topResponsables.map(([name, count], i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `hsl(${220 + i * 30}, 60%, 95%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: `hsl(${220 + i * 30}, 60%, 45%)`, flexShrink: 0 }}>{name.charAt(0)}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 500, color: '#1e293b', marginBottom: '0.2rem' }}>{name}</div>
+                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${(count / faltantes) * 100}%`, background: `hsl(${220 + i * 30}, 60%, 55%)`, borderRadius: 99 }}></div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', minWidth: 20, textAlign: 'right' }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Fundamento legal - Timeline */}
+            <div className="chart-card">
+              <div className="chart-card-title">Fundamento Legal</div>
+              <div style={{ position: 'relative', paddingLeft: '1.5rem' }}>
+                <div style={{ position: 'absolute', left: '0.45rem', top: 6, bottom: 6, width: 2, background: '#e2e8f0', borderRadius: 99 }}></div>
+                {[
+                  { ref: '1° Trans.', title: 'Plazo general', text: '12 meses desde constitucion CS', date: '12 may 2026', color: diasRestantes <= 90 ? '#f59e0b' : '#3b82f6' },
+                  { ref: '2° Trans.', title: 'Consejo Superior', text: 'Constitucion en 9 meses', date: '12 may 2025', color: '#10b981' },
+                  { ref: '4° Trans.', title: 'Reglamentos vigentes', text: 'Mantienen vigencia si compatibles', date: '', color: '#94a3b8' },
+                  { ref: '5° Trans.', title: 'Unidades academicas', text: 'Normas internas en 12 meses', date: '12 ago 2025', color: diasUnidades < 0 ? '#ef4444' : '#3b82f6' },
+                  { ref: '6° Trans.', title: 'Nuevas estructuras', text: '1 ano desde CS constituido', date: '', color: '#8b5cf6' },
+                  { ref: 'Ley 21.790', title: 'Estudiantes cuidadores', text: 'Art. 11, normas internas', date: '19 ene 2026', color: '#0ea5e9' }
+                ].map((item, i) => (
+                  <div key={i} style={{ position: 'relative', paddingBottom: i < 5 ? '1rem' : 0, display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ position: 'absolute', left: '-1.15rem', top: 4, width: 10, height: 10, borderRadius: '50%', background: item.color, border: '2px solid white', zIndex: 1 }}></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.15rem 0.4rem', background: `${item.color}15`, color: item.color, borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{item.ref}</span>
+                        {item.date && <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.date}</span>}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>{item.text}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function DonutChart({ data, size = 140, strokeWidth = 20 }) {
+      const radius = (size - strokeWidth) / 2;
+      const circumference = 2 * Math.PI * radius;
+      const center = size / 2;
+      let accumulated = 0;
+
+      return (
+        <svg className="donut-svg" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={strokeWidth} />
+          {data.map((item, i) => {
+            const dashLength = (item.value / 100) * circumference;
+            const dashOffset = -(accumulated / 100) * circumference;
+            accumulated += item.value;
+            return (
+              <circle key={i} cx={center} cy={center} r={radius} fill="none" stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${dashLength} ${circumference - dashLength}`} strokeDashoffset={dashOffset} style={{ transition: 'all 0.5s ease' }} />
+            );
+          })}
+          <text x={center} y={center - 6} textAnchor="middle" fontSize="1.5rem" fontWeight="700" fill="#0f172a" transform={`rotate(90, ${center}, ${center})`}>{Math.round(data.find(d => d.label === 'Aprobado')?.value || 0)}%</text>
+          <text x={center} y={center + 12} textAnchor="middle" fontSize="0.6rem" fill="#64748b" transform={`rotate(90, ${center}, ${center})`}>aprobados</text>
+        </svg>
+      );
+    }
+
+    function Dashboard({ regulations }) {
+      const approved = regulations.filter(r => r.estado === "Aprobado").length;
+      const inProcess = regulations.filter(r => r.estado === "En Proceso").length;
+      const inReview = regulations.filter(r => r.estado === "En Revisión").length;
+      const pending = regulations.filter(r => r.estado === "Pendiente").length;
+      const progress = Math.round((approved / regulations.length) * 100);
+
+      const total = regulations.length;
+      const statusData = [
+        { label: "Pendiente", count: pending, pct: Math.round((pending / total) * 100), color: "#94a3b8", cls: "pendiente" },
+        { label: "En Proceso", count: inProcess, pct: Math.round((inProcess / total) * 100), color: "#3b82f6", cls: "en-proceso" },
+        { label: "En Revisión", count: inReview, pct: Math.round((inReview / total) * 100), color: "#f59e0b", cls: "en-revision" },
+        { label: "Aprobado", count: approved, pct: Math.round((approved / total) * 100), color: "#10b981", cls: "aprobado" }
+      ];
+
+      const donutData = statusData.map(s => ({ label: s.label, value: s.pct, color: s.color }));
+
+      const alta = regulations.filter(r => r.prioridad === "alta").length;
+      const media = regulations.filter(r => r.prioridad === "media").length;
+      const baja = regulations.filter(r => r.prioridad === "baja").length;
+      const priorityData = [
+        { label: "Alta", count: alta, pct: Math.round((alta / total) * 100), cls: "alta", color: "#ef4444" },
+        { label: "Media", count: media, pct: Math.round((media / total) * 100), cls: "media", color: "#f59e0b" },
+        { label: "Baja", count: baja, pct: Math.round((baja / total) * 100), cls: "baja", color: "#10b981" }
+      ];
+
+      const avgProgress = Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total);
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Dashboard</h2>
+            <p>Estado general del proceso de reglamentos</p>
+          </div>
+
+          <div className="dashboard-grid">
+            <div className="metric-card">
+              <div className="metric-value">{total}</div>
+              <div className="metric-label">Total de Reglamentos</div>
+            </div>
+            <div className="metric-card success">
+              <div className="metric-value">{approved}</div>
+              <div className="metric-label">Aprobados</div>
+            </div>
+            <div className="metric-card warning">
+              <div className="metric-value">{inProcess + inReview}</div>
+              <div className="metric-label">En Proceso / Revisión</div>
+            </div>
+            <div className="metric-card danger">
+              <div className="metric-value">{pending}</div>
+              <div className="metric-label">Pendientes</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{avgProgress}%</div>
+              <div className="metric-label">Progreso Promedio</div>
+            </div>
+          </div>
+
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="chart-card-title">Distribución por Estado</div>
+              <div className="donut-container">
+                <DonutChart data={donutData} />
+                <div className="donut-legend">
+                  {statusData.map((s, i) => (
+                    <div key={i} className="donut-legend-item">
+                      <div className="donut-legend-dot" style={{ backgroundColor: s.color }}></div>
+                      <span>{s.label}: {s.count} ({s.pct}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Avance por Estado</div>
+              <div className="bar-chart">
+                {statusData.map((s, i) => (
+                  <div key={i} className="bar-row">
+                    <div className="bar-label">{s.label}</div>
+                    <div className="bar-track">
+                      <div className={`bar-fill ${s.cls}`} style={{ width: `${Math.max(s.pct, 8)}%` }}>
+                        <span>{s.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Distribución por Prioridad</div>
+              <div className="bar-chart">
+                {priorityData.map((p, i) => (
+                  <div key={i} className="bar-row">
+                    <div className="bar-label">{p.label}</div>
+                    <div className="bar-track">
+                      <div className={`bar-fill ${p.cls}`} style={{ width: `${Math.max(p.pct, 8)}%` }}>
+                        <span>{p.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-title">Progreso por Responsable</div>
+              <div className="bar-chart">
+                {(() => {
+                  const byResp = {};
+                  regulations.forEach(r => {
+                    if (!byResp[r.responsable]) byResp[r.responsable] = { total: 0, sum: 0 };
+                    byResp[r.responsable].total++;
+                    byResp[r.responsable].sum += r.progreso;
+                  });
+                  return Object.entries(byResp).sort((a, b) => (b[1].sum / b[1].total) - (a[1].sum / a[1].total)).map(([name, data], i) => {
+                    const avg = Math.round(data.sum / data.total);
+                    return (
+                      <div key={i} className="bar-row">
+                        <div className="bar-label" style={{ width: 110 }}>{name}</div>
+                        <div className="bar-track">
+                          <div className="bar-fill" style={{ width: `${Math.max(avg, 8)}%`, background: `linear-gradient(90deg, ${avg >= 75 ? '#34d399' : avg >= 40 ? '#60a5fa' : '#94a3b8'}, ${avg >= 75 ? '#10b981' : avg >= 40 ? '#3b82f6' : '#64748b'})` }}>
+                            <span>{avg}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                  <th>Progreso</th>
+                  <th>Responsable</th>
+                  <th>Prioridad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regulations.map(r => (
+                  <tr key={r.id}>
+                    <td>{r.numero}</td>
+                    <td>{r.nombre}</td>
+                    <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
+                    <td>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
+                      </div>
+                      <div className="progress-text">{r.progreso}%</div>
+                    </td>
+                    <td>{r.responsable}</td>
+                    <td><span className={`badge ${r.prioridad}`}>{r.prioridad}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }) {
+      const [search, setSearch] = useState("");
+      const [filterEstado, setFilterEstado] = useState("");
+      const [filterPrioridad, setFilterPrioridad] = useState("");
+      const [filterResponsable, setFilterResponsable] = useState("");
+      const [viewMode, setViewMode] = useState("table");
+
+      const responsables = [...new Set(regulations.map(r => r.responsable).filter(Boolean))].sort();
+
+      const filtered = regulations.filter(r => {
+        const matchSearch = !search || r.nombre.toLowerCase().includes(search.toLowerCase()) || r.numero.includes(search) || (r.responsable && r.responsable.toLowerCase().includes(search.toLowerCase()));
+        const matchEstado = !filterEstado || r.estado === filterEstado;
+        const matchPrioridad = !filterPrioridad || r.prioridad === filterPrioridad;
+        const matchResponsable = !filterResponsable || r.responsable === filterResponsable;
+        return matchSearch && matchEstado && matchPrioridad && matchResponsable;
+      });
+
+      const activeFilters = [];
+      if (filterEstado) activeFilters.push({ label: filterEstado, clear: () => setFilterEstado("") });
+      if (filterPrioridad) activeFilters.push({ label: filterPrioridad, clear: () => setFilterPrioridad("") });
+      if (filterResponsable) activeFilters.push({ label: filterResponsable, clear: () => setFilterResponsable("") });
+
+      const STATES = ["Pendiente", "En Proceso", "En Revisión", "Aprobado"];
+
+      const handleKanbanMove = (reg, newEstado) => {
+        const newProgreso = newEstado === "Aprobado" ? 100 : newEstado === "Pendiente" ? 0 : reg.progreso;
+        onUpdateRegulation({ ...reg, estado: newEstado, progreso: newProgreso });
+      };
+
+      return (
+        <div className="page-content">
+          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2>Reglamentos</h2>
+              <p>Gestionar todos los reglamentos de la universidad</p>
+            </div>
+            <div className="view-toggle">
+              <button className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>📋 Tabla</button>
+              <button className={`view-toggle-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>📊 Kanban</button>
+            </div>
+          </div>
+
+          <div className="filters-bar">
+            <input type="text" className="search-input" placeholder="Buscar por nombre, número o responsable..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select className="filter-select" value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)}>
+              <option value="">Todos los estados</option>
+              {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select className="filter-select" value={filterPrioridad} onChange={(e) => setFilterPrioridad(e.target.value)}>
+              <option value="">Toda prioridad</option>
+              <option value="alta">Alta</option>
+              <option value="media">Media</option>
+              <option value="baja">Baja</option>
+            </select>
+            <select className="filter-select" value={filterResponsable} onChange={(e) => setFilterResponsable(e.target.value)}>
+              <option value="">Todos los responsables</option>
+              {responsables.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+
+          {activeFilters.length > 0 && (
+            <div className="active-filters" style={{ marginBottom: '1rem' }}>
+              {activeFilters.map((f, i) => (
+                <span key={i} className="filter-tag" onClick={f.clear}>{f.label} ✕</span>
+              ))}
+              <span className="filter-tag" onClick={() => { setFilterEstado(""); setFilterPrioridad(""); setFilterResponsable(""); }} style={{ background: '#fee2e2', borderColor: '#fecaca', color: '#dc2626' }}>Limpiar todo ✕</span>
+            </div>
+          )}
+
+          <div className="results-count">{filtered.length} de {regulations.length} reglamentos</div>
+
+          {viewMode === 'table' ? (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>N°</th>
+                    <th>Nombre</th>
+                    <th>Artículo Estatuto</th>
+                    <th>Estado</th>
+                    <th>Progreso</th>
+                    <th>Responsable</th>
+                    <th>Decreto</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(r => (
+                    <tr key={r.id}>
+                      <td>{r.numero}</td>
+                      <td>{r.nombre}</td>
+                      <td>{r.articulo_estatuto || r.articulo || '-'}</td>
+                      <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
+                      <td>
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
+                        </div>
+                      </td>
+                      <td>{r.responsable}</td>
+                      <td style={{ fontSize: '0.75rem' }}>{r.decreto ? (r.enlace ? <a href={r.enlace} target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>{r.decreto}</a> : r.decreto) : '-'}</td>
+                      <td>
+                        <button className="btn btn-primary btn-small" onClick={() => onSelectRegulation(r)}>Ver</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No se encontraron reglamentos con esos filtros</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="kanban-board">
+              {STATES.map(estado => {
+                const columnRegs = filtered.filter(r => r.estado === estado);
+                const stateIdx = STATES.indexOf(estado);
+                return (
+                  <div key={estado} className="kanban-column">
+                    <div className={`kanban-column-header ${estado.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <span className="kanban-column-title">{estado}</span>
+                      <span className="kanban-column-count">{columnRegs.length}</span>
+                    </div>
+                    {columnRegs.map(r => (
+                      <div key={r.id} className={`kanban-card ${r.prioridad}`} onClick={() => onSelectRegulation(r)} title={r.observaciones || ''}>
+                        <div className="kanban-card-title">{r.numero}. {r.nombre}</div>
+                        {r.observaciones && <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.375rem', lineHeight: '1.3', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.observaciones}</div>}
+                        <div className="kanban-card-meta">
+                          <span>{r.responsable}</span>
+                          <div className="kanban-card-progress">
+                            <div className="progress-bar" style={{ width: 50 }}>
+                              <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
+                            </div>
+                            <span>{r.progreso}%</span>
+                          </div>
+                        </div>
+                        <div className="kanban-move-btns" onClick={(e) => e.stopPropagation()}>
+                          {stateIdx > 0 && <button className="kanban-move-btn" onClick={() => handleKanbanMove(r, STATES[stateIdx - 1])}>← {STATES[stateIdx - 1]}</button>}
+                          {stateIdx < STATES.length - 1 && <button className="kanban-move-btn" onClick={() => handleKanbanMove(r, STATES[stateIdx + 1])}>{STATES[stateIdx + 1]} →</button>}
+                        </div>
+                      </div>
+                    ))}
+                    {columnRegs.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.8rem' }}>Sin reglamentos</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function RegulationDetail({ regulation, onBack, onSave, onDelete, googleToken, isGoogleConnected }) {
+      const [formData, setFormData] = useState(regulation);
+      const [showNotifyModal, setShowNotifyModal] = useState(false);
+      const [notifyEmails, setNotifyEmails] = useState("");
+      const [showMeetingModal, setShowMeetingModal] = useState(false);
+      const [meetingData, setMeetingData] = useState({ startTime: "", endTime: "", duration: "60", emails: "" });
+      const [showDriveModal, setShowDriveModal] = useState(false);
+      const fileInputRef = useRef(null);
+      const pdfInputRef = useRef(null);
+      const driveInputRef = useRef(null);
+      const [pdfExtracting, setPdfExtracting] = useState(false);
+      const [pdfProgress, setPdfProgress] = useState('');
+      const [pdfExtractedData, setPdfExtractedData] = useState(null);
+      const [pdfUploading, setPdfUploading] = useState(false);
+
+      // Extract text from PDF using pdf.js
+      const extractPdfText = async (file) => {
+        if (!window.pdfjsLib) {
+          alert('La librería PDF.js no está disponible. Recarga la página.');
+          return null;
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          fullText += content.items.map(item => item.str).join(' ') + '\n';
+        }
+        return fullText;
+      };
+
+      // Parse extracted text to find regulation metadata
+      const parseRegulationData = (text) => {
+        const data = {};
+        // Detect decree number (DEC, DECRETO, RESOLUCIÓN patterns)
+        const decretoMatch = text.match(/(?:DEC(?:RETO)?\.?\s*(?:EX(?:ENTO)?\.?)?\s*(?:N[°º]?\s*)?(\d+[\w\/\-]*(?:\/SU\/\d{4})?))/i)
+          || text.match(/(?:DECRETO\s+(?:UNIVERSITARIO\s+)?(?:EXENTO\s+)?N[°º]?\s*(\d+[\w\/\-]*))/i)
+          || text.match(/(?:RESOL(?:UCIÓN)?\.?\s*(?:EX(?:ENTA)?\.?)?\s*N[°º]?\s*(\d+[\w\/\-]*))/i);
+        if (decretoMatch) data.decreto = decretoMatch[0].trim();
+
+        // Detect statute article references
+        const artMatch = text.match(/(?:Art(?:ículo)?\.?\s*(\d+(?:\s*(?:letra\s+\w\)|y\s+\d+|al?\s+\d+|,\s*\d+)*)?))/i);
+        if (artMatch) data.articulo_estatuto = artMatch[0].trim();
+
+        // Detect responsible unit
+        const respPatterns = [
+          /Secretar[ií]a\s+General/i, /VRAF/i, /VRAC/i, /VRAE/i, /VRI/i,
+          /Dir(?:ección|\.)\s+(?:de\s+)?(?:Docencia|Aseguramiento|Investigación)/i,
+          /Rector[ía]?a?/i, /Contraloría/i
+        ];
+        for (const p of respPatterns) {
+          const m = text.match(p);
+          if (m) { data.responsable = m[0]; break; }
+        }
+
+        // Detect regulation name from title patterns
+        const nameMatch = text.match(/(?:REGLAMENTO\s+(?:DE\s+|PARA\s+|SOBRE\s+|GENERAL\s+DE\s+)?[A-ZÁÉÍÓÚÑ\s,]+)/i);
+        if (nameMatch && nameMatch[0].length > 15 && nameMatch[0].length < 200) {
+          data.nombre_sugerido = nameMatch[0].trim().replace(/\s+/g, ' ');
+        }
+
+        // Detect dates
+        const dateMatch = text.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(\d{4})/i);
+        if (dateMatch) data.fecha_documento = dateMatch[0];
+
+        // Extract first ~500 chars as summary for observaciones
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        if (cleanText.length > 50) {
+          data.resumen = cleanText.substring(0, 500) + (cleanText.length > 500 ? '...' : '');
+        }
+
+        return data;
+      };
+
+      // Upload PDF to Supabase Storage
+      const uploadPdfToStorage = async (file) => {
+        if (!supabase) return null;
+        const fileName = `reg-${formData.id || 'new'}/${Date.now()}-${file.name}`;
+        try {
+          const { data, error } = await supabase.storage
+            .from('reglamentos-pdf')
+            .upload(fileName, file, { contentType: 'application/pdf', upsert: true });
+          if (error) throw error;
+          const { data: urlData } = supabase.storage.from('reglamentos-pdf').getPublicUrl(fileName);
+          return { path: fileName, url: urlData.publicUrl };
+        } catch (e) {
+          console.error('Error uploading PDF:', e);
+          return null;
+        }
+      };
+
+      // Main PDF upload handler
+      const handlePdfUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file || file.type !== 'application/pdf') {
+          if (file) alert('Por favor selecciona un archivo PDF');
+          return;
+        }
+
+        setPdfExtracting(true);
+        setPdfProgress('Leyendo PDF...');
+        setPdfExtractedData(null);
+
+        try {
+          // Step 1: Extract text
+          setPdfProgress('Extrayendo texto del PDF...');
+          const text = await extractPdfText(file);
+
+          // Step 2: Parse metadata
+          setPdfProgress('Analizando contenido...');
+          const extracted = text ? parseRegulationData(text) : {};
+          extracted._fileName = file.name;
+          extracted._fileSize = file.size;
+
+          // Step 3: Upload to Supabase Storage
+          setPdfProgress('Subiendo PDF a almacenamiento...');
+          setPdfUploading(true);
+          const storageResult = await uploadPdfToStorage(file);
+          setPdfUploading(false);
+
+          if (storageResult) {
+            extracted._storageUrl = storageResult.url;
+            extracted._storagePath = storageResult.path;
+          }
+
+          // Step 4: Add as attachment
+          const newAttachment = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            date: new Date().toLocaleDateString(),
+            source: storageResult ? 'supabase' : 'local',
+            url: storageResult?.url || null,
+            storagePath: storageResult?.path || null
+          };
+          setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+
+          setPdfExtractedData(extracted);
+          setPdfProgress('Extracción completada');
+        } catch (e) {
+          console.error('Error processing PDF:', e);
+          setPdfProgress('Error al procesar el PDF: ' + e.message);
+        } finally {
+          setPdfExtracting(false);
+          if (pdfInputRef.current) pdfInputRef.current.value = '';
+        }
+      };
+
+      // Apply a single extracted field
+      const applyExtractedField = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        setPdfExtractedData(prev => {
+          const updated = { ...prev };
+          updated['_applied_' + field] = true;
+          return updated;
+        });
+      };
+
+      // Apply all extracted fields
+      const applyAllExtracted = () => {
+        if (!pdfExtractedData) return;
+        const updates = {};
+        if (pdfExtractedData.decreto && !pdfExtractedData._applied_decreto) updates.decreto = pdfExtractedData.decreto;
+        if (pdfExtractedData.articulo_estatuto && !pdfExtractedData._applied_articulo_estatuto) updates.articulo_estatuto = pdfExtractedData.articulo_estatuto;
+        if (pdfExtractedData.responsable && !pdfExtractedData._applied_responsable) updates.responsable = pdfExtractedData.responsable;
+        if (pdfExtractedData._storageUrl && !pdfExtractedData._applied_enlace) updates.enlace = pdfExtractedData._storageUrl;
+        setFormData(prev => ({ ...prev, ...updates }));
+        setPdfExtractedData(prev => {
+          const updated = { ...prev };
+          Object.keys(updates).forEach(k => updated['_applied_' + k] = true);
+          return updated;
+        });
+      };
+
+      const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          if (file.type === 'application/pdf') {
+            handlePdfUpload(event);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const newAttachment = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              date: new Date().toLocaleDateString(),
+              data: e.target.result,
+              source: 'local'
+            };
+            setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+          };
+          reader.onerror = () => {
+            alert('Error al leer el archivo. Intenta nuevamente.');
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const handleRemoveFile = (index) => {
+        if (!window.confirm('¿Eliminar este archivo adjunto?')) return;
+        setFormData(prev => ({ ...prev, adjuntos: prev.adjuntos.filter((_, i) => i !== index) }));
+      };
+
+      const sendStatusNotification = async () => {
+        if (!googleToken || !notifyEmails) {
+          alert("Conecta Google y proporciona emails");
+          return;
+        }
+
+        const subject = `UMAG Reglamentos - Cambio de estado: ${formData.nombre}`;
+        const body = `Estimado/a,\n\nLe informamos que el reglamento "${formData.nombre}" ha cambiado su estado.\n\nReglamento: ${formData.nombre}\nArtículo: ${formData.articulo}\nNuevo Estado: ${formData.estado}\nResponsable: ${formData.responsable || 'No asignado'}\nProgreso: ${formData.progreso}%\n\nSaludos cordiales,\nSistema de Seguimiento UMAG`;
+
+        const email = [
+          `To: ${notifyEmails}`,
+          `Subject: ${subject}`,
+          'Content-Type: text/plain; charset=utf-8',
+          '',
+          body
+        ].join('\r\n');
+
+        const encodedEmail = btoa(unescape(encodeURIComponent(email))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+        try {
+          const resp = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ raw: encodedEmail })
+          });
+          if (resp.ok) {
+            alert("Notificación enviada");
+            setShowNotifyModal(false);
+            setNotifyEmails("");
+          } else {
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al enviar notificación: " + (errData.error?.message || `código ${resp.status}`));
+          }
+        } catch (e) {
+          alert("Error de conexión: " + e.message);
+        }
+      };
+
+      const scheduleReviewMeeting = async () => {
+        if (!googleToken || !meetingData.startTime) {
+          alert("Conecta Google y proporciona fecha");
+          return;
+        }
+
+        const start = new Date(meetingData.startTime);
+        const duration = parseInt(meetingData.duration) || 60;
+        const end = new Date(start.getTime() + duration * 60000);
+
+        // Validar emails
+        const emailList = meetingData.emails.split(',').map(e => e.trim()).filter(Boolean);
+        const invalidEmails = emailList.filter(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+        if (invalidEmails.length > 0) {
+          alert("Correos inválidos: " + invalidEmails.join(', '));
+          return;
+        }
+
+        const event = {
+          summary: `Revisión: ${formData.nombre}`,
+          description: `Reglamento N°${formData.numero}: ${formData.nombre}\nEstado: ${formData.estado}\nArtículo: ${formData.articulo}`,
+          start: { dateTime: start.toISOString(), timeZone: 'America/Santiago' },
+          end: { dateTime: end.toISOString(), timeZone: 'America/Santiago' },
+          attendees: emailList.map(e => ({ email: e })),
+          reminders: { useDefault: true }
+        };
+
+        try {
+          const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify(event)
+          });
+          if (resp.ok) {
+            alert("Reunión programada correctamente");
+            setShowMeetingModal(false);
+            setMeetingData({ startTime: "", endTime: "", duration: "60", emails: "" });
+          } else {
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al programar reunión: " + (errData.error?.message || `código ${resp.status}`));
+          }
+        } catch (e) {
+          alert("Error de conexión: " + e.message);
+        }
+      };
+
+      const uploadToDrive = async (file) => {
+        if (!googleToken) {
+          alert("Conecta Google primero");
+          return;
+        }
+
+        const folderName = `UMAG Reglamentos - ${formData.nombre}`;
+
+        try {
+          let folderId;
+          const searchResp = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folderName)}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false`,
+            { headers: { 'Authorization': 'Bearer ' + googleToken } }
+          );
+          if (!searchResp.ok) throw new Error('Error al buscar carpeta en Drive');
+          const searchData = await searchResp.json();
+
+          if (searchData.files && searchData.files.length > 0) {
+            folderId = searchData.files[0].id;
+          } else {
+            const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' })
+            });
+            if (!createResp.ok) throw new Error('Error al crear carpeta en Drive');
+            const folderData = await createResp.json();
+            folderId = folderData.id;
+          }
+
+          const metadata = { name: file.name, parents: [folderId] };
+          const form = new FormData();
+          form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+          form.append('file', file);
+
+          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + googleToken },
+            body: form
+          });
+          if (!uploadResp.ok) throw new Error('Error al subir archivo a Drive');
+          const uploadData = await uploadResp.json();
+
+          if (uploadData.id) {
+            const newAttachment = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              date: new Date().toLocaleDateString(),
+              driveId: uploadData.id,
+              driveUrl: uploadData.webViewLink,
+              source: 'drive'
+            };
+            setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+            alert("Archivo subido a Google Drive");
+          }
+        } catch (e) {
+          alert("Error al subir a Drive: " + e.message);
+        }
+      };
+
+      return (
+        <div className="page-content">
+          <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: "1.5rem" }}>← Volver</button>
+          <div className="detail-header">
+            <h2 className="detail-title">{formData.nombre}</h2>
+            <div className="detail-meta">
+              <div className="detail-badge">N° {formData.numero}</div>
+              <div className="detail-badge">{formData.articulo}</div>
+              <span className={`badge ${formData.estado.toLowerCase().replace(/\s+/g, '-')}`}>{formData.estado}</span>
+            </div>
+          </div>
+
+          <div className="detail-sections">
+            <div className="section">
+              <h3 className="section-title">Información General</h3>
+              <div className="form-group">
+                <label>Estado</label>
+                <select value={formData.estado} onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value }))}>
+                  <option>Pendiente</option>
+                  <option>En Proceso</option>
+                  <option>En Revisión</option>
+                  <option>Aprobado</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Progreso (%)</label>
+                <input type="number" min="0" max="100" value={formData.progreso} onChange={(e) => { const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); setFormData(prev => ({ ...prev, progreso: val })); }} />
+              </div>
+              <div className="form-group">
+                <label>Responsable</label>
+                <input type="text" value={formData.responsable} onChange={(e) => setFormData(prev => ({ ...prev, responsable: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Prioridad</label>
+                <select value={formData.prioridad} onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value }))}>
+                  <option>alta</option>
+                  <option>media</option>
+                  <option>baja</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Decreto / Resolución</label>
+                <input type="text" value={formData.decreto || ''} onChange={(e) => setFormData(prev => ({ ...prev, decreto: e.target.value }))} placeholder="ej: DEC N°001/SU/2025" />
+              </div>
+              <div className="form-group">
+                <label>Artículo del Estatuto</label>
+                <input type="text" value={formData.articulo_estatuto || ''} onChange={(e) => setFormData(prev => ({ ...prev, articulo_estatuto: e.target.value }))} placeholder="ej: Art. 67" />
+              </div>
+              <div className="form-group">
+                <label>Observaciones</label>
+                <textarea value={formData.observaciones || ''} onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))} placeholder="Notas, pendientes, acuerdos..." style={{ minHeight: '80px' }}></textarea>
+              </div>
+              <div className="form-group">
+                <label>Enlace al documento</label>
+                <input type="text" value={formData.enlace || ''} onChange={(e) => setFormData(prev => ({ ...prev, enlace: e.target.value }))} placeholder="https://..." />
+                {formData.enlace && (
+                  <a href={formData.enlace} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#1a56db', display: 'inline-block', marginTop: '0.25rem' }}>🔗 Abrir documento</a>
+                )}
+              </div>
+              <div className="btn-group">
+                <button className="btn btn-primary" onClick={() => { onSave(formData); }}>Guardar Cambios</button>
+                <button className="btn btn-danger" onClick={onDelete}>Eliminar</button>
+              </div>
+            </div>
+
+            <div className="section">
+              <h3 className="section-title">Integraciones Google</h3>
+              {isGoogleConnected ? (
+                <>
+                  <button className="btn btn-primary" onClick={() => setShowMeetingModal(true)} style={{ marginBottom: "0.75rem", width: "100%" }}>
+                    📅 Agendar Reunión
+                  </button>
+                  <button className="btn btn-primary" onClick={() => setShowNotifyModal(true)} style={{ width: "100%" }}>
+                    📧 Notificar Cambio
+                  </button>
+                </>
+              ) : (
+                <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Conecta tu cuenta Google para usar estas funciones</div>
+              )}
+            </div>
+          </div>
+
+          <div className="section" style={{ marginBottom: "2rem" }}>
+            <h3 className="section-title">Documentos Adjuntos</h3>
+
+            {/* PDF Upload Zone */}
+            <div className={`pdf-upload-zone ${pdfExtracting || pdfUploading ? 'uploading' : ''}`}
+                 onClick={() => !pdfExtracting && !pdfUploading && pdfInputRef.current?.click()}>
+              <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📄</div>
+              <div style={{ fontWeight: 600, color: "#1e40af", marginBottom: "0.25rem" }}>
+                {pdfExtracting ? 'Extrayendo datos...' : pdfUploading ? 'Subiendo PDF...' : 'Subir PDF de Reglamento'}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                {pdfExtracting || pdfUploading ? pdfProgress : 'El sistema extraerá automáticamente los datos del documento'}
+              </div>
+              <input type="file" accept=".pdf" style={{ display: 'none' }} ref={pdfInputRef} onChange={handlePdfUpload} />
+            </div>
+
+            {/* Extraction Progress */}
+            {(pdfExtracting || pdfUploading) && pdfProgress && (
+              <div className="pdf-progress">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div className="spinner" style={{ width: 18, height: 18, border: "2px solid #e5e7eb", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></div>
+                  <span>{pdfProgress}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Extraction Results */}
+            {pdfExtractedData && (
+              <div className="pdf-extraction-result">
+                <div className="pdf-extraction-header">
+                  <span>Datos Extraídos del PDF</span>
+                  <button className="pdf-apply-all-btn" onClick={applyAllExtracted}>Aplicar Todos</button>
+                </div>
+                {Object.entries(pdfExtractedData).filter(([k, v]) => v && k !== 'resumen').map(([field, value]) => {
+                  const labels = {
+                    decreto: 'Decreto/Resolución',
+                    articulo_estatuto: 'Artículo Estatuto',
+                    responsable: 'Responsable',
+                    nombre_sugerido: 'Nombre Sugerido',
+                    fecha_documento: 'Fecha Documento'
+                  };
+                  return (
+                    <div key={field} className="pdf-field-row">
+                      <span className="pdf-field-label">{labels[field] || field}</span>
+                      <span className="pdf-field-value">{value}</span>
+                      <button className="pdf-apply-btn" onClick={() => applyExtractedField(field, value)}>Aplicar</button>
+                    </div>
+                  );
+                })}
+                {pdfExtractedData.resumen && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#f9fafb", borderRadius: "6px", fontSize: "0.85rem", color: "#4b5563" }}>
+                    <strong>Resumen:</strong> {pdfExtractedData.resumen}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* General file upload */}
+            <div className="upload-area" onClick={() => fileInputRef.current?.click()} style={{ marginTop: "0.75rem" }}>
+              <div className="upload-area-icon">📎</div>
+              <div className="upload-area-text">Otros archivos (Word, Excel, etc.)</div>
+              <div className="upload-area-hint">Arrastra o haz clic para adjuntar</div>
+              <input type="file" className="upload-input" ref={fileInputRef} onChange={handleFileUpload} />
+            </div>
+
+            {isGoogleConnected && (
+              <button className="btn btn-secondary" onClick={() => setShowDriveModal(true)} style={{ marginTop: "1rem", width: "100%" }}>
+                ☁️ Subir a Google Drive
+              </button>
+            )}
+
+            {formData.adjuntos.length > 0 && (
+              <div className="file-list">
+                {formData.adjuntos.map((file, idx) => (
+                  <div key={idx} className="file-item">
+                    <div className="file-item-info">
+                      <div className="file-item-icon">
+                        {file.source === 'drive' ? '☁️' : file.source === 'supabase' ? '🗄️' : '📄'}
+                      </div>
+                      <div className="file-item-details">
+                        <div className="file-item-name">
+                          {file.name}
+                          {file.source === 'supabase' && <span className="pdf-stored-badge">Supabase</span>}
+                        </div>
+                        <div className="file-item-meta">{file.date}{file.size ? ` • ${(file.size / 1024).toFixed(1)}KB` : ''}</div>
+                      </div>
+                    </div>
+                    <div className="file-item-actions">
+                      {file.source === 'drive' && file.driveUrl && (
+                        <a href={file.driveUrl} target="_blank" rel="noopener noreferrer" className="file-action-btn" title="Abrir en Drive">🔗</a>
+                      )}
+                      {file.source === 'supabase' && file.url && (
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="file-action-btn" title="Ver PDF">🔗</a>
+                      )}
+                      <button className="file-action-btn danger" onClick={() => handleRemoveFile(idx)} title="Eliminar">🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {showNotifyModal && (
+            <div className="modal-overlay" onClick={() => setShowNotifyModal(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Notificar Cambio de Estado</h3>
+                <div className="form-group">
+                  <label>Correos a Notificar (separados por comas)</label>
+                  <textarea value={notifyEmails} onChange={(e) => setNotifyEmails(e.target.value)} placeholder="usuario1@example.com, usuario2@example.com"></textarea>
+                </div>
+                <div className="btn-group">
+                  <button className="btn btn-primary" onClick={sendStatusNotification}>Enviar Notificación</button>
+                  <button className="btn btn-secondary" onClick={() => setShowNotifyModal(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showMeetingModal && (
+            <div className="modal-overlay" onClick={() => setShowMeetingModal(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Agendar Reunión de Revisión</h3>
+                <div className="form-group">
+                  <label>Fecha y Hora</label>
+                  <input type="datetime-local" value={meetingData.startTime} onChange={(e) => setMeetingData(prev => ({ ...prev, startTime: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>Duración</label>
+                  <select value={meetingData.duration} onChange={(e) => setMeetingData(prev => ({ ...prev, duration: e.target.value }))}>
+                    <option value="30">30 minutos</option>
+                    <option value="60">1 hora</option>
+                    <option value="120">2 horas</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Participantes (correos separados por comas)</label>
+                  <textarea value={meetingData.emails} onChange={(e) => setMeetingData(prev => ({ ...prev, emails: e.target.value }))} placeholder="usuario1@example.com, usuario2@example.com"></textarea>
+                </div>
+                <div className="btn-group">
+                  <button className="btn btn-primary" onClick={scheduleReviewMeeting}>Programar Reunión</button>
+                  <button className="btn btn-secondary" onClick={() => setShowMeetingModal(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showDriveModal && (
+            <div className="modal-overlay" onClick={() => setShowDriveModal(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Subir a Google Drive</h3>
+                <p className="modal-content">Selecciona un archivo para subir a Google Drive</p>
+                <div className="upload-area" onClick={() => driveInputRef.current?.click()}>
+                  <div className="upload-area-icon">☁️</div>
+                  <div className="upload-area-text">Haz clic para seleccionar archivo</div>
+                  <input type="file" style={{ display: 'none' }} ref={driveInputRef} onChange={(e) => { if (e.target.files[0]) { uploadToDrive(e.target.files[0]); setShowDriveModal(false); } }} />
+                </div>
+                <div className="btn-group" style={{ marginTop: "1.5rem" }}>
+                  <button className="btn btn-secondary" onClick={() => setShowDriveModal(false)}>Cerrar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function NewRegulation({ onCreate, onCancel }) {
+      const [formData, setFormData] = useState({
+        numero: "",
+        nombre: "",
+        articulo: "",
+        estado: "Pendiente",
+        progreso: 0,
+        prioridad: "media",
+        responsable: "",
+        decreto: "",
+        articulo_estatuto: "",
+        observaciones: "",
+        enlace: ""
+      });
+
+      const handleCreate = () => {
+        if (!formData.numero || !formData.nombre) {
+          alert("Completa los campos requeridos");
+          return;
+        }
+        onCreate(formData);
+      };
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Crear Nuevo Reglamento</h2>
+          </div>
+          <div className="section">
+            <div className="form-group">
+              <label>Número</label>
+              <input type="text" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} placeholder="ej: 25" />
+            </div>
+            <div className="form-group">
+              <label>Nombre</label>
+              <input type="text" value={formData.nombre} onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))} placeholder="Nombre del reglamento" />
+            </div>
+            <div className="form-group">
+              <label>Artículo</label>
+              <input type="text" value={formData.articulo} onChange={(e) => setFormData(prev => ({ ...prev, articulo: e.target.value }))} placeholder="ej: Art. 1-100" />
+            </div>
+            <div className="form-group">
+              <label>Responsable</label>
+              <input type="text" value={formData.responsable} onChange={(e) => setFormData(prev => ({ ...prev, responsable: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Prioridad</label>
+              <select value={formData.prioridad} onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value }))}>
+                <option>alta</option>
+                <option>media</option>
+                <option>baja</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Decreto / Resolución</label>
+              <input type="text" value={formData.decreto} onChange={(e) => setFormData(prev => ({ ...prev, decreto: e.target.value }))} placeholder="ej: DEC N°001/SU/2025" />
+            </div>
+            <div className="form-group">
+              <label>Artículo del Estatuto</label>
+              <input type="text" value={formData.articulo_estatuto} onChange={(e) => setFormData(prev => ({ ...prev, articulo_estatuto: e.target.value }))} placeholder="ej: Art. 67" />
+            </div>
+            <div className="form-group">
+              <label>Observaciones</label>
+              <textarea value={formData.observaciones} onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))} placeholder="Notas, pendientes, acuerdos..."></textarea>
+            </div>
+            <div className="form-group">
+              <label>Enlace al documento</label>
+              <input type="text" value={formData.enlace} onChange={(e) => setFormData(prev => ({ ...prev, enlace: e.target.value }))} placeholder="https://..." />
+            </div>
+            <div className="btn-group">
+              <button className="btn btn-primary" onClick={handleCreate}>Crear Reglamento</button>
+              <button className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function PlazosList() {
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Plazos de Tramitación</h2>
+            <p>Cronograma de plazos para la aprobación de reglamentos</p>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Gestión</th>
+                  <th>Plazo</th>
+                  <th>Objeto</th>
+                  <th>Formalidad</th>
+                  <th>Requisito</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLAZOS_DATA.map(p => (
+                  <tr key={p.id}>
+                    <td>{p.gestion}</td>
+                    <td>{p.plazo}</td>
+                    <td>{p.objeto}</td>
+                    <td>{p.formalidad}</td>
+                    <td>{p.requisito}</td>
+                    <td>
+                      <button className="btn btn-primary btn-small" onClick={() => alert('Función de Google Calendar aquí')}>
+                        📅 Agregar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function Settings({ regulations, onReset, onExport, googleToken, isGoogleConnected, onGoogleDisconnect, googleUser, dbMode }) {
+      const [estatutoDate, setEstatutoDate] = useState(() => {
+        const saved = localStorage.getItem("estatuto_date");
+        return saved || "2025-01-18";
+      });
+      const [notificationEmails, setNotificationEmails] = useState(() => {
+        const saved = localStorage.getItem("notification_emails");
+        return saved || "";
+      });
+      const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+      const handleSaveSettings = () => {
+        localStorage.setItem("estatuto_date", estatutoDate);
+        localStorage.setItem("notification_emails", notificationEmails);
+        alert("Configuración guardada");
+      };
+
+      const sendProgressReport = async () => {
+        if (!googleToken) {
+          alert("Conecta Google primero");
+          return;
+        }
+
+        if (!notificationEmails) {
+          alert("Configura correos de notificación primero");
+          return;
+        }
+
+        const aprobados = regulations.filter(r => r.estado === "Aprobado").length;
+        const enProceso = regulations.filter(r => r.estado === "En Proceso").length;
+        const pendientes = regulations.filter(r => r.estado === "Pendiente").length;
+        const avance = Math.round((aprobados / regulations.length) * 100);
+
+        let body = `REPORTE DE AVANCE - REGLAMENTOS UMAG\n${'='.repeat(40)}\n\n`;
+        body += `Fecha: ${new Date().toLocaleDateString('es-CL')}\n\n`;
+        body += `RESUMEN GENERAL\n`;
+        body += `- Total de reglamentos: ${regulations.length}\n`;
+        body += `- Aprobados: ${aprobados}\n`;
+        body += `- En Proceso: ${enProceso}\n`;
+        body += `- Pendientes: ${pendientes}\n`;
+        body += `- Avance general: ${avance}%\n\n`;
+        body += `DETALLE POR REGLAMENTO\n${'-'.repeat(40)}\n\n`;
+
+        regulations.forEach(r => {
+          body += `${r.numero}. ${r.nombre}\n`;
+          body += `   Estado: ${r.estado} | Progreso: ${r.progreso}% | Prioridad: ${r.prioridad}\n`;
+          if (r.responsable) body += `   Responsable: ${r.responsable}\n`;
+          body += '\n';
+        });
+
+        const subject = `Reporte de Avance - Reglamentos UMAG (${new Date().toLocaleDateString('es-CL')})`;
+        const email = [
+          `To: ${notificationEmails}`,
+          `Subject: ${subject}`,
+          'Content-Type: text/plain; charset=utf-8',
+          '',
+          body
+        ].join('\r\n');
+
+        const encodedEmail = btoa(unescape(encodeURIComponent(email))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+        try {
+          const resp = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ raw: encodedEmail })
+          });
+
+          if (resp.ok) {
+            alert("Reporte enviado correctamente");
+          } else {
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al enviar reporte: " + (errData.error?.message || `código ${resp.status}`));
+          }
+        } catch (e) {
+          alert("Error de conexión: " + e.message);
+        }
+      };
+
+      return (
+        <div className="page-content">
+          <div className="page-header">
+            <h2>Configuración</h2>
+            <p>Gestiona los parámetros del sistema</p>
+          </div>
+
+          <div className="google-integration-section">
+            <h3>🔐 Integraciones Google</h3>
+            <div className={`google-integration-status ${isGoogleConnected ? 'connected' : 'disconnected'}`}>
+              <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
+                {isGoogleConnected ? '✓ Conectado' : '✕ Desconectado'}
+              </div>
+              {isGoogleConnected && googleUser && (
+                <div style={{ fontSize: '0.875rem', color: '#475569' }}>
+                  {googleUser.email}
+                </div>
+              )}
+              {!isGoogleConnected && (
+                <div style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.5rem' }}>
+                  Conecta tu cuenta Google para acceder a Calendar, Gmail y Drive
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', fontSize: '0.85rem', color: '#475569', lineHeight: '1.6' }}>
+              <strong>Setup Requerido:</strong>
+              <ol style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                <li>Crea un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>Google Cloud Console</a></li>
+                <li>Activa APIs: Google Calendar, Gmail, Google Drive</li>
+                <li>Crea una credencial OAuth 2.0 (Cliente Web)</li>
+                <li>Reemplaza GOOGLE_CLIENT_ID en el código con tu ID</li>
+              </ol>
+            </div>
+
+            <div className="google-integration-buttons">
+              {!isGoogleConnected && (
+                <button className="btn google-btn" onClick={() => window.triggerGoogleConnect?.()}>
+                  🔗 Conectar Google
+                </button>
+              )}
+              {isGoogleConnected && (
+                <>
+                  <button className="btn btn-primary" onClick={sendProgressReport} style={{ marginRight: '0.75rem' }}>
+                    📊 Enviar Reporte
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => {
+                    if (window.confirm('¿Desconectar Google?')) {
+                      onGoogleDisconnect();
+                    }
+                  }}>
+                    ✕ Desconectar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="section" style={{ marginBottom: '2rem' }}>
+            <h3 className="section-title">Base de Datos</h3>
+            <div style={{ padding: '1rem', background: dbMode === 'supabase' ? '#d1fae5' : '#fef3c7', borderRadius: '8px', marginBottom: '1rem', borderLeft: `4px solid ${dbMode === 'supabase' ? '#10b981' : '#f59e0b'}` }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                {dbMode === 'supabase' ? '✓ Conectado a Supabase' : '⚠ Usando almacenamiento local'}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                {dbMode === 'supabase'
+                  ? 'Los datos se guardan en PostgreSQL (Supabase). Múltiples usuarios pueden acceder simultáneamente.'
+                  : 'Los datos se guardan en el navegador (localStorage). Para persistencia real y acceso multiusuario, configura Supabase.'
+                }
+              </div>
+            </div>
+            {dbMode !== 'supabase' && (
+              <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', fontSize: '0.85rem', color: '#475569', lineHeight: '1.6' }}>
+                <strong>Configurar Supabase:</strong>
+                <ol style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                  <li>Crea un proyecto en <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>supabase.com/dashboard</a></li>
+                  <li>Ve a SQL Editor y ejecuta el SQL incluido en el código</li>
+                  <li>Copia tu URL y Anon Key desde Settings → API</li>
+                  <li>Reemplaza SUPABASE_URL y SUPABASE_ANON_KEY en el código</li>
+                </ol>
+              </div>
+            )}
+          </div>
+
+          <div className="section" style={{ marginBottom: '2rem' }}>
+            <h3 className="section-title">Parámetros de Sistema</h3>
+            <div className="form-group">
+              <label>Fecha de Entrada en Vigencia del Estatuto</label>
+              <input type="date" value={estatutoDate} onChange={(e) => setEstatutoDate(e.target.value)} />
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Se usa para calcular plazos relativos</div>
+            </div>
+            <div className="form-group">
+              <label>Correos para Notificaciones (separados por comas)</label>
+              <textarea value={notificationEmails} onChange={(e) => setNotificationEmails(e.target.value)} placeholder="usuario1@example.com, usuario2@example.com"></textarea>
+            </div>
+            <button className="btn btn-primary" onClick={handleSaveSettings} style={{ marginRight: '0.75rem' }}>Guardar Configuración</button>
+          </div>
+
+          <div className="section" style={{ marginBottom: '2rem' }}>
+            <h3 className="section-title">Acciones</h3>
+            <button className="btn btn-secondary" onClick={onExport} style={{ marginRight: "0.75rem" }}>📥 Exportar Datos</button>
+            <button className="btn btn-danger" onClick={() => setShowResetConfirm(true)}>🔄 Restablecer Datos</button>
+          </div>
+
+          {showResetConfirm && (
+            <div className="modal-overlay" onClick={() => setShowResetConfirm(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Restablecer todos los datos</h3>
+                <p className="modal-content">Esta acción eliminará todos los cambios y restaurará los datos originales. ¿Estás seguro?</p>
+                <div className="btn-group" style={{ marginTop: "1.5rem" }}>
+                  <button className="btn btn-danger" onClick={() => { onReset(); setShowResetConfirm(false); }}>Restablecer</button>
+                  <button className="btn btn-secondary" onClick={() => setShowResetConfirm(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [googleToken, setGoogleToken] = useState(null);
+      const [googleUser, setGoogleUser] = useState(null);
+      const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+      const [regulations, setRegulations] = useState(() => {
+        const saved = localStorage.getItem("regulations");
+        return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
+      });
+      const [activeView, setActiveView] = useState("resumen");
+      const [selectedRegulation, setSelectedRegulation] = useState(null);
+      const [toast, setToast] = useState(null);
+      const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
+      const [isLoading, setIsLoading] = useState(!!supabase);
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+
+      // Cargar datos desde Supabase al inicio
+      useEffect(() => {
+        if (supabase) {
+          (async () => {
+            await supabaseSeedIfEmpty();
+            const data = await supabaseFetchAll();
+            if (data) {
+              setRegulations(data);
+              setDbMode('supabase');
+            } else {
+              setDbMode('local');
+            }
+            setIsLoading(false);
+          })();
+        }
+      }, []);
+
+      // Sincronizar con localStorage como backup
+      useEffect(() => {
+        localStorage.setItem("regulations", JSON.stringify(regulations));
+      }, [regulations]);
+
+      // Initialize Google and restore token
+      useEffect(() => {
+        if (typeof window !== 'undefined') {
+          window.triggerGoogleConnect = handleGoogleConnect;
+        }
+
+        const saved = sessionStorage.getItem('google_token');
+        if (saved) {
+          setGoogleToken(saved);
+          setIsGoogleConnected(true);
+          restoreGoogleUser(saved, false);
+        }
+      }, []);
+
+      const restoreGoogleUser = async (token, isNewConnection) => {
+        try {
+          const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (response.ok) {
+            const info = await response.json();
+            setGoogleUser(info);
+          } else if (!isNewConnection) {
+            // Only disconnect if restoring an old token that's expired
+            sessionStorage.removeItem('google_token');
+            setGoogleToken(null);
+            setIsGoogleConnected(false);
+          }
+        } catch (e) {
+          if (!isNewConnection) {
+            sessionStorage.removeItem('google_token');
+            setGoogleToken(null);
+            setIsGoogleConnected(false);
+          }
+        }
+      };
+
+      const handleGoogleConnect = () => {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+          const client = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: GOOGLE_SCOPES,
+            callback: (response) => {
+              if (response.access_token) {
+                setGoogleToken(response.access_token);
+                setIsGoogleConnected(true);
+                sessionStorage.setItem('google_token', response.access_token);
+                restoreGoogleUser(response.access_token, true);
+                setToast({ type: 'success', message: 'Google conectado correctamente' });
+              }
+            }
+          });
+          client.requestAccessToken();
+        } else {
+          alert('Google APIs no disponibles. Espera a que carguen e intenta de nuevo.');
+        }
+      };
+
+      const handleGoogleDisconnect = () => {
+        if (googleToken) {
+          try {
+            google.accounts.oauth2.revoke(googleToken);
+          } catch (e) {
+            // Ignore revoke errors
+          }
+        }
+        setGoogleToken(null);
+        setGoogleUser(null);
+        setIsGoogleConnected(false);
+        sessionStorage.removeItem('google_token');
+        setToast({ type: 'info', message: 'Google desconectado' });
+      };
+
+      const AUTH_PASSWORD = 'umag2026';
+      const [loginError, setLoginError] = useState('');
+      const loginPasswordRef = useRef(null);
+
+      const handleLogin = () => {
+        const passwordInput = loginPasswordRef.current;
+        if (!passwordInput || passwordInput.value !== AUTH_PASSWORD) {
+          setLoginError('Contraseña incorrecta');
+          return;
+        }
+        setLoginError('');
+        sessionStorage.setItem("umag_auth", "true");
+        setIsLoggedIn(true);
+      };
+
+      const handleLogout = () => {
+        sessionStorage.removeItem("umag_auth");
+        setIsLoggedIn(false);
+        handleGoogleDisconnect();
+        setActiveView("dashboard");
+      };
+
+      const handleSelectRegulation = (reg) => {
+        setSelectedRegulation(reg);
+        setActiveView("detail");
+      };
+
+      const handleSaveRegulation = async (updatedReg) => {
+        setRegulations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
+        setSelectedRegulation(updatedReg);
+        if (dbMode === 'supabase') await supabaseUpsert(updatedReg);
+        setToast({ type: 'success', message: 'Reglamento guardado' });
+      };
+
+      const handleDeleteRegulation = async () => {
+        if (!window.confirm(`¿Estás seguro de eliminar "${selectedRegulation.nombre}"? Esta acción no se puede deshacer.`)) return;
+        if (dbMode === 'supabase') await supabaseDelete(selectedRegulation.id);
+        setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
+        setActiveView("regulations");
+        setSelectedRegulation(null);
+        setToast({ type: 'success', message: 'Reglamento eliminado' });
+      };
+
+      const handleCreateRegulation = async (newReg) => {
+        if (dbMode === 'supabase') {
+          const created = await supabaseInsert(newReg);
+          if (created) {
+            setRegulations(prev => [...prev, created]);
+            setActiveView("regulations");
+            setToast({ type: 'success', message: 'Reglamento creado' });
+            return;
+          }
+        }
+        const id = Math.max(...regulations.map(r => r.id), 0) + 1;
+        const created = { ...newReg, id, historial: [], adjuntos: [] };
+        setRegulations(prev => [...prev, created]);
+        setActiveView("regulations");
+        setToast({ type: 'success', message: 'Reglamento creado' });
+      };
+
+      const handleExport = () => {
+        const data = JSON.stringify(regulations, null, 2);
+        const link = document.createElement("a");
+        link.href = "data:application/json;charset=utf-8," + encodeURIComponent(data);
+        link.download = `reglamentos_${new Date().toISOString().split("T")[0]}.json`;
+        link.click();
+      };
+
+      const handleReset = () => {
+        setRegulations(INITIAL_REGULATIONS);
+        setActiveView("dashboard");
+        setToast({ type: 'success', message: 'Datos restablecidos' });
+      };
+
+      if (!isLoggedIn) {
+        return (
+          <div className="login-page">
+            <div className="login-card">
+              <div className="login-logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </div>
+              <h2 className="login-title">UMAG</h2>
+              <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
+              <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" />
+              <input type="password" className="login-input" placeholder="Contraseña" ref={loginPasswordRef} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+              {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
+              <button className="login-button" onClick={handleLogin}>Iniciar Sesión</button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="app-wrapper">
+          <Header userName="Usuario UMAG" onLogout={handleLogout} isGoogleConnected={isGoogleConnected} googleUser={googleUser} onGoogleDisconnect={handleGoogleDisconnect} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="app-body">
+            <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+            <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
+            <div className="content">
+              <div className="page-container">
+                {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
+                {activeView === "dashboard" && <Dashboard regulations={regulations} />}
+                {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
+                {activeView === "detail" && selectedRegulation && (
+                  <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} googleToken={googleToken} isGoogleConnected={isGoogleConnected} />
+                )}
+                {activeView === "new" && (
+                  <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
+                )}
+                {activeView === "plazos" && <PlazosList />}
+                {activeView === "settings" && (
+                  <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} googleToken={googleToken} isGoogleConnected={isGoogleConnected} onGoogleDisconnect={handleGoogleDisconnect} googleUser={googleUser} dbMode={dbMode} />
+                )}
+              </div>
+            </div>
+          </div>
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
