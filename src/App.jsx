@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import RegulationsList from './pages/RegulationsList';
 import RegulationDetail from './pages/RegulationDetail';
 import DocumentosView from './pages/DocumentosView';
+import GanttView from './pages/GanttView';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
 
 function App() {
@@ -191,6 +192,9 @@ function App() {
             ))}
             {activeView === "new" && (
               <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
+            )}
+            {activeView === "gantt" && (
+              <GanttView regulations={regulations} />
             )}
             {activeView === "documentos" && (
               <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
