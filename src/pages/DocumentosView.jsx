@@ -6,11 +6,11 @@ function DocumentosView({ regulations, onSelectRegulation }) {
   const [filterEstado, setFilterEstado] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
-  // Filtrar reglamentos que tienen PDF (pdfUrl, enlace, o adjunto PDF con url)
+  // Filtrar reglamentos que tienen PDF (pdfUrl, enlace, o adjunto PDF con url/blobUrl)
   const regsWithPdf = regulations.filter(r => {
     const hasPdf = r.pdfUrl
-      || (r.enlace && r.enlace.toLowerCase().endsWith('.pdf'))
-      || (r.adjuntos || []).some(a => a.type === 'application/pdf' && a.url);
+      || (r.enlace && (r.enlace.toLowerCase().endsWith('.pdf') || r.enlace.includes('drive.google.com')))
+      || (r.adjuntos || []).some(a => a.type === 'application/pdf' && (a.url || a.blobUrl));
     return hasPdf;
   });
 
@@ -24,10 +24,10 @@ function DocumentosView({ regulations, onSelectRegulation }) {
   });
 
   const getPdfUrl = (r) => {
-    return r.pdfUrl
-      || ((r.adjuntos || []).find(a => a.type === 'application/pdf' && a.url) || {}).url
-      || r.enlace
-      || null;
+    if (r.pdfUrl) return r.pdfUrl;
+    const pdfAdj = (r.adjuntos || []).find(a => a.type === 'application/pdf' && (a.url || a.blobUrl));
+    if (pdfAdj) return pdfAdj.url || pdfAdj.blobUrl;
+    return r.enlace || null;
   };
 
   return (
