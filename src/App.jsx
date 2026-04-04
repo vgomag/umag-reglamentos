@@ -13,7 +13,7 @@ import RegulationDetail from './pages/RegulationDetail';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem("umag_auth") === "true");
   const [regulations, setRegulations] = useState(() => {
     try {
       const saved = localStorage.getItem("regulations");
@@ -84,7 +84,7 @@ function App() {
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
     setIsLoggedIn(false);
-    setActiveView("dashboard");
+    setActiveView("resumen");
   };
 
   const handleSelectRegulation = (reg) => {
@@ -100,6 +100,7 @@ function App() {
   };
 
   const handleDeleteRegulation = async () => {
+    if (!selectedRegulation) return;
     if (!window.confirm(`¿Estás seguro de eliminar "${selectedRegulation.nombre}"? Esta acción no se puede deshacer.`)) return;
     if (dbMode === 'supabase') await supabaseDelete(selectedRegulation.id);
     setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
