@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PdfViewer from '../components/PdfViewer';
 import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
+import { extractPdfText } from '../utils/pdf';
 
 function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
@@ -38,23 +39,6 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
       if (!window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?')) return;
     }
     onBack();
-  };
-
-  // Extract text from PDF using pdf.js
-  const extractPdfText = async (file) => {
-    if (!window.pdfjsLib) {
-      alert('La librería PDF.js no está disponible. Recarga la página.');
-      return null;
-    }
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      fullText += content.items.map(item => item.str).join(' ') + '\n';
-    }
-    return fullText;
   };
 
   // Parse extracted text to find regulation metadata

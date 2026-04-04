@@ -77,15 +77,22 @@ function App() {
   const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
   const [loginError, setLoginError] = useState('');
   const loginPasswordRef = useRef(null);
+  const loginUserRef = useRef(null);
 
   const handleLogin = () => {
+    const userInput = loginUserRef.current;
     const passwordInput = loginPasswordRef.current;
+    if (!userInput || !userInput.value.trim()) {
+      setLoginError('Ingresa un nombre de usuario');
+      return;
+    }
     if (!passwordInput || passwordInput.value !== AUTH_PASSWORD) {
       setLoginError('Contraseña incorrecta');
       return;
     }
     setLoginError('');
     sessionStorage.setItem("umag_auth", "true");
+    sessionStorage.setItem("umag_user", userInput.value.trim());
     setIsLoggedIn(true);
   };
 
@@ -185,7 +192,7 @@ function App() {
           </div>
           <h2 className="login-title">UMAG</h2>
           <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
-          <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" />
+          <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" ref={loginUserRef} />
           <input type="password" className="login-input" placeholder="Contraseña" ref={loginPasswordRef} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
           {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
           <button className="login-button" onClick={handleLogin}>Iniciar Sesión</button>
@@ -196,7 +203,7 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      <Header userName="Usuario UMAG" onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Header userName={sessionStorage.getItem("umag_user") || "Usuario UMAG"} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
         <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
         <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />

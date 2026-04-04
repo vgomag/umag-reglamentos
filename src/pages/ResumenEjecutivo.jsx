@@ -1,7 +1,8 @@
 import React from 'react';
+import { FECHAS_LIMITE } from '../config/plazos';
 
-const FECHA_LIMITE_REGLAMENTOS = "2026-05-12";
-const FECHA_LIMITE_UNIDADES = "2025-08-12";
+const FECHA_LIMITE_REGLAMENTOS = FECHAS_LIMITE.REGLAMENTOS;
+const FECHA_LIMITE_UNIDADES = FECHAS_LIMITE.UNIDADES;
 
 function calcDaysRemaining(targetDate) {
   const today = new Date();

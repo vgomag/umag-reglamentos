@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
+import { extractPdfText } from '../utils/pdf';
 
 function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa, onUpdateRegulation, showToast }) {
   const [dragging, setDragging] = useState(false);
