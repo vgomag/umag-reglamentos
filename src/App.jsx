@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_REGULATIONS } from './config/data';
 import NewRegulation from './pages/NewRegulation';
 import PlazosList from './pages/PlazosList';
-import Settings from './pages/Settings';
 import Normativa from './pages/Normativa';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -175,7 +174,7 @@ function App() {
         <div className="content">
           <div className="page-container">
             {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
-            {activeView === "dashboard" && <Dashboard regulations={regulations} />}
+            {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
             {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
             {activeView === "detail" && selectedRegulation && (
               <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
@@ -193,9 +192,6 @@ function App() {
                 onUpdateRegulation={handleSaveRegulation}
                 showToast={setToast}
               />
-            )}
-            {activeView === "settings" && (
-              <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} dbMode={dbMode} />
             )}
           </div>
         </div>

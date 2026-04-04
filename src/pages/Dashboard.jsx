@@ -1,7 +1,7 @@
 import React from 'react';
 import DonutChart from '../components/DonutChart';
 
-export default function Dashboard({ regulations }) {
+export default function Dashboard({ regulations, onExport, onReset }) {
   const approved = regulations.filter(r => r.estado === "Aprobado").length;
   const inProcess = regulations.filter(r => r.estado === "En Proceso").length;
   const inReview = regulations.filter(r => r.estado === "En Revisión").length;
@@ -133,6 +133,11 @@ export default function Dashboard({ regulations }) {
             })()}
           </div>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <button className="btn btn-secondary" onClick={onExport} style={{ fontSize: '0.85rem' }}>📥 Exportar Datos</button>
+        <button className="btn btn-danger" onClick={() => { if (window.confirm('¿Restablecer todos los datos a valores originales? Esta acción no se puede deshacer.')) onReset(); }} style={{ fontSize: '0.85rem' }}>🔄 Restablecer Datos</button>
       </div>
 
       <div className="table-container">
