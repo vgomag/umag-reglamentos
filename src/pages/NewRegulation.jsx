@@ -14,12 +14,33 @@ function NewRegulation({ onCreate, onCancel }) {
     enlace: ""
   });
 
+  const sanitize = (str) => str.replace(/[<>]/g, '').trim();
+  const isValidUrl = (url) => !url || /^https?:\/\/.+/.test(url);
+
   const handleCreate = () => {
-    if (!formData.nombre) {
-      alert("Completa los campos requeridos");
+    if (!formData.nombre || formData.nombre.trim().length < 3) {
+      alert("El nombre del reglamento debe tener al menos 3 caracteres");
       return;
     }
-    onCreate(formData);
+    if (formData.enlace && !isValidUrl(formData.enlace)) {
+      alert("El enlace debe ser una URL válida (https://...)");
+      return;
+    }
+    if (formData.nombre.length > 300 || formData.observaciones.length > 5000) {
+      alert("Texto demasiado largo. Nombre máx 300 caracteres, observaciones máx 5000.");
+      return;
+    }
+    const sanitized = {
+      ...formData,
+      nombre: sanitize(formData.nombre),
+      articulo: sanitize(formData.articulo),
+      responsable: sanitize(formData.responsable),
+      decreto: sanitize(formData.decreto),
+      articulo_estatuto: sanitize(formData.articulo_estatuto),
+      observaciones: sanitize(formData.observaciones),
+      enlace: formData.enlace.trim(),
+    };
+    onCreate(sanitized);
   };
 
   return (

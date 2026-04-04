@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
 
 function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa, onUpdateRegulation, showToast }) {
   const [dragging, setDragging] = useState(false);
@@ -307,16 +308,19 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         return;
       }
 
+      // Sanitizar texto extraído para prevenir XSS
+      const textoSeguro = sanitizePdfText(textoExtraido);
+
       // Step 2: Extract norm metadata (name, articles, deadlines)
       setExtractProgress('Analizando norma, artículos y plazos...');
-      const normMeta = extractNormMetadata(textoExtraido);
+      const normMeta = extractNormMetadata(textoSeguro);
 
       // Step 3: Detect associations with regulations
       setExtractProgress('Detectando asociaciones con reglamentos...');
-      const regulacionesAsociadas = detectAssociations(textoExtraido, normMeta);
+      const regulacionesAsociadas = detectAssociations(textoSeguro, normMeta);
 
       // Step 4: Create resumen
-      const cleanText = textoExtraido.replace(/\s+/g, ' ').trim();
+      const cleanText = textoSeguro.replace(/\s+/g, ' ').trim();
       const normaInfo = normMeta.norma ? `[${normMeta.norma}] ` : '';
       const resumen = normaInfo + cleanText.substring(0, 300) + (cleanText.length > 300 ? '...' : '');
 
@@ -327,7 +331,7 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         nombre: nombreFinal,
         tipo: documentType,
         fecha: new Date().toLocaleDateString('es-CL'),
-        textoExtraido: textoExtraido,
+        textoExtraido: textoSeguro,
         resumen: resumen,
         norma: normMeta.norma || nombreFinal,
         articulosGlobales: normMeta.articulos,

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PdfViewer from '../components/PdfViewer';
+import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
 
 function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
@@ -108,9 +109,12 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
       setPdfProgress('Extrayendo texto del PDF...');
       const text = await extractPdfText(file);
 
+      // Step 1.5: Sanitizar texto extraído
+      const safeText = sanitizePdfText(text);
+
       // Step 2: Parse metadata
       setPdfProgress('Analizando contenido...');
-      const extracted = text ? parseRegulationData(text) : {};
+      const extracted = safeText ? parseRegulationData(safeText) : {};
       extracted._fileName = file.name;
       extracted._fileSize = file.size;
 
