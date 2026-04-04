@@ -8,6 +8,18 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   useEffect(() => {
     setFormData(regulation);
   }, [regulation]);
+
+  // Cleanup: revocar blob URLs al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (formData?.pdfUrl && formData.pdfUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.pdfUrl);
+      }
+      (formData?.adjuntos || []).forEach(a => {
+        if (a.blobUrl && a.blobUrl.startsWith('blob:')) URL.revokeObjectURL(a.blobUrl);
+      });
+    };
+  }, []);
   const fileInputRef = useRef(null);
   const pdfInputRef = useRef(null);
   const [pdfExtracting, setPdfExtracting] = useState(false);
