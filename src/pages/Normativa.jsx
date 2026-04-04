@@ -15,24 +15,6 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
   const fileInputRef = useRef(null);
   const [expandedId, setExpandedId] = useState(null);
 
-  // Extract text from PDF using pdf.js
-  const extractPdfText = async (file) => {
-    if (!window.pdfjsLib) {
-      alert('La librería PDF.js no está disponible. Recarga la página.');
-      return null;
-    }
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const items = content.items || [];
-      fullText += items.map(item => item.str).join(' ') + '\n';
-    }
-    return fullText;
-  };
-
   // Escape special regex characters in a string
   const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
