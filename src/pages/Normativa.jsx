@@ -25,7 +25,8 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      fullText += content.items.map(item => item.str).join(' ') + '\n';
+      const items = content.items || [];
+      fullText += items.map(item => item.str).join(' ') + '\n';
     }
     return fullText;
   };
@@ -237,17 +238,23 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
     // Add normativa
     onAddNormativa(normativaToAdd);
 
-    // Update regulations with new requirements
+    // Build all updates first, then apply them to avoid stale state
+    const updatesMap = {};
     finalAssociations.forEach(assoc => {
       const regulation = regulations.find(r => r.id === assoc.regulationId);
       if (regulation) {
-        const newObservaciones = (regulation.observaciones || '') +
-          `\n\n📋 Requisito normativo (${normativaToAdd.nombre}): ${assoc.requisitos}`;
-        onUpdateRegulation({
+        const baseObs = updatesMap[assoc.regulationId]
+          ? updatesMap[assoc.regulationId].observaciones
+          : (regulation.observaciones || '');
+        updatesMap[assoc.regulationId] = {
           ...regulation,
-          observaciones: newObservaciones
-        });
+          observaciones: baseObs + `\n\n📋 Requisito normativo (${normativaToAdd.nombre}): ${assoc.requisitos}`
+        };
       }
+    });
+    // Apply each unique regulation update
+    Object.values(updatesMap).forEach(updatedReg => {
+      onUpdateRegulation(updatedReg);
     });
 
     showToast({ message: `Normativa "${normativaToAdd.nombre}" agregada con ${finalAssociations.length} asociación(es)`, type: 'success' });

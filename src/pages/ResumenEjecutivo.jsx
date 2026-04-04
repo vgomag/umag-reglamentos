@@ -18,8 +18,8 @@ export default function ResumenEjecutivo({ regulations }) {
   const enProceso = regulations.filter(r => r.estado === 'En Proceso').length;
   const pendientes = regulations.filter(r => r.estado === 'Pendiente').length;
   const faltantes = total - aprobados;
-  const pctAprobado = Math.round((aprobados / total) * 100);
-  const avgProgress = Math.round(regulations.reduce((s, r) => s + r.progreso, 0) / total);
+  const pctAprobado = total > 0 ? Math.round((aprobados / total) * 100) : 0;
+  const avgProgress = total > 0 ? Math.round(regulations.reduce((s, r) => s + r.progreso, 0) / total) : 0;
 
   const diasRestantes = calcDaysRemaining(FECHA_LIMITE_REGLAMENTOS);
   const diasUnidades = calcDaysRemaining(FECHA_LIMITE_UNIDADES);
@@ -40,7 +40,7 @@ export default function ResumenEjecutivo({ regulations }) {
   const medios = enRiesgo.filter(r => r.riskLevel === 'warning').length;
 
   // Velocidad requerida
-  const regsPerMonth = diasRestantes > 0 ? (faltantes / (diasRestantes / 30)).toFixed(1) : 'N/A';
+  const regsPerMonth = diasRestantes > 0 && faltantes > 0 ? (faltantes / (diasRestantes / 30)).toFixed(1) : 'N/A';
 
   // Progress ring SVG
   const ringSize = 160;
@@ -52,8 +52,9 @@ export default function ResumenEjecutivo({ regulations }) {
   // Por responsable - top 5 con más carga pendiente
   const byResp = {};
   regulations.filter(r => r.estado !== 'Aprobado').forEach(r => {
-    if (!byResp[r.responsable]) byResp[r.responsable] = 0;
-    byResp[r.responsable]++;
+    const resp = r.responsable || 'Sin responsable';
+    if (!byResp[resp]) byResp[resp] = 0;
+    byResp[resp]++;
   });
   const topResponsables = Object.entries(byResp).sort((a, b) => b[1] - a[1]).slice(0, 5);
 

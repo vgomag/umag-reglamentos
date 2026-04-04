@@ -16,8 +16,13 @@ import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supaba
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [regulations, setRegulations] = useState(() => {
-    const saved = localStorage.getItem("regulations");
-    return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
+    try {
+      const saved = localStorage.getItem("regulations");
+      return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
+    } catch (e) {
+      console.error("Error al leer regulations de localStorage:", e);
+      return INITIAL_REGULATIONS;
+    }
   });
   const [activeView, setActiveView] = useState("resumen");
   const [selectedRegulation, setSelectedRegulation] = useState(null);
@@ -26,8 +31,13 @@ function App() {
   const [isLoading, setIsLoading] = useState(!!supabase);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [normativas, setNormativas] = useState(() => {
-    const saved = localStorage.getItem('umag_normativas');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('umag_normativas');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Error al leer normativas de localStorage:", e);
+      return [];
+    }
   });
 
   // Cargar datos desde Supabase al inicio

@@ -92,13 +92,13 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
                   <td>{r.numero || '-'}</td>
                   <td>{r.nombre}</td>
                   <td>{r.articulo_estatuto || r.articulo || '-'}</td>
-                  <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
+                  <td><span className={`badge ${(r.estado || 'pendiente').toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
                   <td>
                     <div className="progress-bar">
                       <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
                     </div>
                   </td>
-                  <td>{r.responsable}</td>
+                  <td>{r.responsable || '-'}</td>
                   <td style={{ fontSize: '0.75rem' }}>{r.decreto ? (r.enlace ? <a href={r.enlace} target="_blank" rel="noopener noreferrer" style={{ color: '#1a56db' }}>{r.decreto}</a> : r.decreto) : '-'}</td>
                   <td>
                     <button className="btn btn-primary btn-small" onClick={() => onSelectRegulation(r)}>Ver</button>
@@ -127,7 +127,7 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
                     <div className="kanban-card-title">{r.numero ? `${r.numero}. ` : ''}{r.nombre}</div>
                     {r.observaciones && <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.375rem', lineHeight: '1.3', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.observaciones}</div>}
                     <div className="kanban-card-meta">
-                      <span>{r.responsable}</span>
+                      <span>{r.responsable || '-'}</span>
                       <div className="kanban-card-progress">
                         <div className="progress-bar" style={{ width: 50 }}>
                           <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>

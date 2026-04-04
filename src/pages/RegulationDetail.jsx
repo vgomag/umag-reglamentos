@@ -130,7 +130,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
         url: storageResult?.url || null,
         storagePath: storageResult?.path || null
       };
-      setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+      setFormData(prev => ({ ...prev, adjuntos: [...(prev.adjuntos || []), newAttachment] }));
 
       setPdfExtractedData(extracted);
       setPdfProgress('Extracción completada');
@@ -186,7 +186,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
           data: e.target.result,
           source: 'local'
         };
-        setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
+        setFormData(prev => ({ ...prev, adjuntos: [...(prev.adjuntos || []), newAttachment] }));
       };
       reader.onerror = () => {
         alert('Error al leer el archivo. Intenta nuevamente.');
@@ -197,7 +197,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
 
   const handleRemoveFile = (index) => {
     if (!window.confirm('¿Eliminar este archivo adjunto?')) return;
-    setFormData(prev => ({ ...prev, adjuntos: prev.adjuntos.filter((_, i) => i !== index) }));
+    setFormData(prev => ({ ...prev, adjuntos: (prev.adjuntos || []).filter((_, i) => i !== index) }));
   };
 
   return (
@@ -208,7 +208,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
         <div className="detail-meta">
           {formData.numero && <div className="detail-badge">N° {formData.numero}</div>}
           <div className="detail-badge">{formData.articulo}</div>
-          <span className={`badge ${formData.estado.toLowerCase().replace(/\s+/g, '-')}`}>{formData.estado}</span>
+          <span className={`badge ${(formData.estado || 'pendiente').toLowerCase().replace(/\s+/g, '-')}`}>{formData.estado}</span>
         </div>
       </div>
 
@@ -340,7 +340,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
           <input type="file" className="upload-input" ref={fileInputRef} onChange={handleFileUpload} />
         </div>
 
-        {formData.adjuntos && formData.adjuntos.length > 0 && (
+        {(formData.adjuntos || []).length > 0 && (
           <div className="file-list">
             {formData.adjuntos.map((file, idx) => (
               <div key={idx} className="file-item">

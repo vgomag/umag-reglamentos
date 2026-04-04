@@ -6,7 +6,7 @@ export default function Dashboard({ regulations }) {
   const inProcess = regulations.filter(r => r.estado === "En Proceso").length;
   const inReview = regulations.filter(r => r.estado === "En Revisión").length;
   const pending = regulations.filter(r => r.estado === "Pendiente").length;
-  const progress = Math.round((approved / regulations.length) * 100);
+  const progress = regulations.length > 0 ? Math.round((approved / regulations.length) * 100) : 0;
 
   const total = regulations.length;
   const statusData = [
@@ -27,7 +27,7 @@ export default function Dashboard({ regulations }) {
     { label: "Baja", count: baja, pct: Math.round((baja / total) * 100), cls: "baja", color: "#10b981" }
   ];
 
-  const avgProgress = Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total);
+  const avgProgress = total > 0 ? Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total) : 0;
 
   return (
     <div className="page-content">
@@ -152,15 +152,15 @@ export default function Dashboard({ regulations }) {
               <tr key={r.id}>
                 <td>{r.numero || '-'}</td>
                 <td>{r.nombre}</td>
-                <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
+                <td><span className={`badge ${(r.estado || 'pendiente').toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
                 <td>
                   <div className="progress-bar">
                     <div className="progress-fill" style={{ width: `${r.progreso}%` }}></div>
                   </div>
                   <div className="progress-text">{r.progreso}%</div>
                 </td>
-                <td>{r.responsable}</td>
-                <td><span className={`badge ${r.prioridad}`}>{r.prioridad}</span></td>
+                <td>{r.responsable || '-'}</td>
+                <td><span className={`badge ${r.prioridad || 'media'}`}>{r.prioridad || 'media'}</span></td>
               </tr>
             ))}
           </tbody>

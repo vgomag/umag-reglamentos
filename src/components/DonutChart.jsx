@@ -1,6 +1,21 @@
 import React from 'react';
 
 function DonutChart({ data, size = 140, strokeWidth = 20 }) {
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+        Sin datos
+      </div>
+    );
+  }
+  const totalValue = data.reduce((sum, item) => sum + (item.value || 0), 0);
+  if (totalValue === 0) {
+    return (
+      <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+        0%
+      </div>
+    );
+  }
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;

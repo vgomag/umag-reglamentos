@@ -21,7 +21,7 @@ function PlazosList() {
             </tr>
           </thead>
           <tbody>
-            {PLAZOS_DATA.map(p => (
+            {(PLAZOS_DATA || []).map(p => (
               <tr key={p.id}>
                 <td>{p.gestion}</td>
                 <td>{p.plazo}</td>
