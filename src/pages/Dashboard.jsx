@@ -150,7 +150,7 @@ export default function Dashboard({ regulations }) {
           <tbody>
             {regulations.map(r => (
               <tr key={r.id}>
-                <td>{r.numero}</td>
+                <td>{r.numero || '-'}</td>
                 <td>{r.nombre}</td>
                 <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
                 <td>

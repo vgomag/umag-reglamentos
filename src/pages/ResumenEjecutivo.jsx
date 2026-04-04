@@ -205,7 +205,7 @@ export default function ResumenEjecutivo({ regulations }) {
             {enRiesgo.slice(0, 10).map(r => (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0', borderBottom: '1px solid #f8fafc' }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: r.riskLevel === 'critical' ? '#ef4444' : r.riskLevel === 'warning' ? '#f59e0b' : '#10b981', flexShrink: 0 }}></div>
-                <span style={{ fontSize: '0.78rem', color: '#1e293b', flex: 1, lineHeight: 1.3 }}>{r.numero}. {r.nombre}</span>
+                <span style={{ fontSize: '0.78rem', color: '#1e293b', flex: 1, lineHeight: 1.3 }}>{r.numero ? `${r.numero}. ` : ''}{r.nombre}</span>
                 <span style={{ fontSize: '0.7rem', color: '#94a3b8', flexShrink: 0, fontWeight: 600 }}>{r.progreso}%</span>
               </div>
             ))}
