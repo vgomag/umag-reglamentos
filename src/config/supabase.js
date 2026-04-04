@@ -140,13 +140,14 @@ export async function supabaseInsert(regulation) {
   }
 }
 
-export async function supabaseSeedIfEmpty() {
+export async function supabaseSeedIfEmpty(initialData) {
   if (!supabase) return;
+  if (!initialData || !Array.isArray(initialData) || initialData.length === 0) return;
   try {
     const { count, error: countError } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
     if (countError) { console.warn('Supabase count error:', countError.message); return; }
     if (count === 0) {
-      const { error } = await supabase.from('regulations').insert(INITIAL_REGULATIONS.map(r => ({
+      const { error } = await supabase.from('regulations').insert(initialData.map(r => ({
         numero: r.numero, nombre: r.nombre, articulo: r.articulo,
         estado: r.estado, progreso: r.progreso, prioridad: r.prioridad,
         responsable: r.responsable, observaciones: r.observaciones || '',

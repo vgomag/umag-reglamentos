@@ -43,7 +43,7 @@ function App() {
   useEffect(() => {
     if (supabase) {
       (async () => {
-        await supabaseSeedIfEmpty();
+        await supabaseSeedIfEmpty(INITIAL_REGULATIONS);
         const data = await supabaseFetchAll();
         if (data) {
           setRegulations(data);
@@ -176,9 +176,11 @@ function App() {
             {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
             {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
             {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
-            {activeView === "detail" && selectedRegulation && (
+            {activeView === "detail" && (selectedRegulation ? (
               <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
-            )}
+            ) : (
+              <div className="page-content"><p style={{ color: '#94a3b8' }}>Selecciona un reglamento desde la lista.</p><button className="btn btn-secondary" onClick={() => setActiveView("regulations")}>Ir a Reglamentos</button></div>
+            ))}
             {activeView === "new" && (
               <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
             )}

@@ -9,11 +9,12 @@ export default function Dashboard({ regulations, onExport, onReset }) {
   const progress = regulations.length > 0 ? Math.round((approved / regulations.length) * 100) : 0;
 
   const total = regulations.length;
+  const safePct = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
   const statusData = [
-    { label: "Pendiente", count: pending, pct: Math.round((pending / total) * 100), color: "#94a3b8", cls: "pendiente" },
-    { label: "En Proceso", count: inProcess, pct: Math.round((inProcess / total) * 100), color: "#3b82f6", cls: "en-proceso" },
-    { label: "En Revisión", count: inReview, pct: Math.round((inReview / total) * 100), color: "#f59e0b", cls: "en-revision" },
-    { label: "Aprobado", count: approved, pct: Math.round((approved / total) * 100), color: "#10b981", cls: "aprobado" }
+    { label: "Pendiente", count: pending, pct: safePct(pending), color: "#94a3b8", cls: "pendiente" },
+    { label: "En Proceso", count: inProcess, pct: safePct(inProcess), color: "#3b82f6", cls: "en-proceso" },
+    { label: "En Revisión", count: inReview, pct: safePct(inReview), color: "#f59e0b", cls: "en-revision" },
+    { label: "Aprobado", count: approved, pct: safePct(approved), color: "#10b981", cls: "aprobado" }
   ];
 
   const donutData = statusData.map(s => ({ label: s.label, value: s.pct, color: s.color }));
@@ -22,9 +23,9 @@ export default function Dashboard({ regulations, onExport, onReset }) {
   const media = regulations.filter(r => r.prioridad === "media").length;
   const baja = regulations.filter(r => r.prioridad === "baja").length;
   const priorityData = [
-    { label: "Alta", count: alta, pct: Math.round((alta / total) * 100), cls: "alta", color: "#ef4444" },
-    { label: "Media", count: media, pct: Math.round((media / total) * 100), cls: "media", color: "#f59e0b" },
-    { label: "Baja", count: baja, pct: Math.round((baja / total) * 100), cls: "baja", color: "#10b981" }
+    { label: "Alta", count: alta, pct: safePct(alta), cls: "alta", color: "#ef4444" },
+    { label: "Media", count: media, pct: safePct(media), cls: "media", color: "#f59e0b" },
+    { label: "Baja", count: baja, pct: safePct(baja), cls: "baja", color: "#10b981" }
   ];
 
   const avgProgress = total > 0 ? Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total) : 0;

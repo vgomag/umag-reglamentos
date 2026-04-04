@@ -1,7 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
+
+  useEffect(() => {
+    setFormData(regulation);
+  }, [regulation]);
   const fileInputRef = useRef(null);
   const pdfInputRef = useRef(null);
   const [pdfExtracting, setPdfExtracting] = useState(false);
