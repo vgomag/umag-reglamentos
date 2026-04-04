@@ -75,7 +75,6 @@ function App() {
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
     setIsLoggedIn(false);
-    handleGoogleDisconnect();
     setActiveView("dashboard");
   };
 
@@ -159,7 +158,7 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      <Header userName="Usuario UMAG" onLogout={handleLogout} isGoogleConnected={isGoogleConnected} googleUser={googleUser} onGoogleDisconnect={handleGoogleDisconnect} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Header userName="Usuario UMAG" onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
         <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
         <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
@@ -169,7 +168,7 @@ function App() {
             {activeView === "dashboard" && <Dashboard regulations={regulations} />}
             {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
             {activeView === "detail" && selectedRegulation && (
-              <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} googleToken={googleToken} isGoogleConnected={isGoogleConnected} />
+              <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
             )}
             {activeView === "new" && (
               <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
@@ -186,7 +185,7 @@ function App() {
               />
             )}
             {activeView === "settings" && (
-              <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} googleToken={googleToken} isGoogleConnected={isGoogleConnected} onGoogleDisconnect={handleGoogleDisconnect} googleUser={googleUser} dbMode={dbMode} />
+              <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} dbMode={dbMode} />
             )}
           </div>
         </div>
