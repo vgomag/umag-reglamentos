@@ -142,12 +142,16 @@ function App() {
         setToast({ type: 'success', message: 'Reglamento creado' });
         return;
       }
+      // Si Supabase falla, avisar y caer a modo local
+      setToast({ type: 'error', message: 'Error en base de datos. Se guardó localmente.' });
     }
-    const id = regulations.length > 0 ? Math.max(...regulations.map(r => r.id)) + 1 : 1;
+    // Modo local: generar ID seguro
+    const maxId = regulations.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0);
+    const id = maxId + 1;
     const created = { ...newReg, id, historial: [], adjuntos: [] };
     setRegulations(prev => [...prev, created]);
     setActiveView("regulations");
-    setToast({ type: 'success', message: 'Reglamento creado' });
+    if (dbMode !== 'supabase') setToast({ type: 'success', message: 'Reglamento creado' });
   };
 
   const handleExport = () => {
