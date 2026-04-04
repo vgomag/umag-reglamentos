@@ -171,8 +171,8 @@ export default function ResumenEjecutivo({ regulations }) {
               { label: 'En Revision', count: enRevision, cls: 'en-revision', color: '#f59e0b' },
               { label: 'En Proceso', count: enProceso, cls: 'en-proceso', color: '#3b82f6' },
               { label: 'Pendientes', count: pendientes, cls: 'pendiente', color: '#94a3b8' }
-            ].map((s, i) => (
-              <div key={i}>
+            ].map(s => (
+              <div key={s.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#475569' }}>{s.label}</span>
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: s.color }}>{s.count}</span>
@@ -218,7 +218,7 @@ export default function ResumenEjecutivo({ regulations }) {
           <div className="chart-card-title">Carga Pendiente por Responsable</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {topResponsables.map(([name, count], i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: `hsl(${220 + i * 30}, 60%, 95%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: `hsl(${220 + i * 30}, 60%, 45%)`, flexShrink: 0 }}>{name.charAt(0)}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 500, color: '#1e293b', marginBottom: '0.2rem' }}>{name}</div>
@@ -245,7 +245,7 @@ export default function ResumenEjecutivo({ regulations }) {
               { ref: '6° Trans.', title: 'Nuevas estructuras', text: '1 ano desde CS constituido', date: '', color: '#8b5cf6' },
               { ref: 'Ley 21.790', title: 'Estudiantes cuidadores', text: 'Art. 11, normas internas', date: '19 ene 2026', color: '#0ea5e9' }
             ].map((item, i) => (
-              <div key={i} style={{ position: 'relative', paddingBottom: i < 5 ? '1rem' : 0, display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div key={item.ref} style={{ position: 'relative', paddingBottom: i < 5 ? '1rem' : 0, display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                 <div style={{ position: 'absolute', left: '-1.15rem', top: 4, width: 10, height: 10, borderRadius: '50%', background: item.color, border: '2px solid white', zIndex: 1 }}></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>

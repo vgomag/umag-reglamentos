@@ -62,8 +62,8 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
 
       {activeFilters.length > 0 && (
         <div className="active-filters" style={{ marginBottom: '1rem' }}>
-          {activeFilters.map((f, i) => (
-            <span key={i} className="filter-tag" onClick={f.clear}>{f.label} ✕</span>
+          {activeFilters.map(f => (
+            <span key={f.label} className="filter-tag" onClick={f.clear}>{f.label} ✕</span>
           ))}
           <span className="filter-tag" onClick={() => { setFilterEstado(""); setFilterPrioridad(""); setFilterResponsable(""); }} style={{ background: '#fee2e2', borderColor: '#fecaca', color: '#dc2626' }}>Limpiar todo ✕</span>
         </div>

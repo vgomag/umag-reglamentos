@@ -533,7 +533,7 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
                   {pendingNormativa.regulacionesAsociadas.map((assoc, idx) => (
-                    <div key={idx} style={{
+                    <div key={assoc.regulationId || idx} style={{
                       padding: "1rem",
                       border: "1px solid #e5e7eb",
                       borderRadius: "6px",

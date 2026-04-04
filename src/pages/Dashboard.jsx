@@ -66,8 +66,8 @@ export default function Dashboard({ regulations, onExport, onReset }) {
           <div className="donut-container">
             <DonutChart data={donutData} />
             <div className="donut-legend">
-              {statusData.map((s, i) => (
-                <div key={i} className="donut-legend-item">
+              {statusData.map(s => (
+                <div key={s.label} className="donut-legend-item">
                   <div className="donut-legend-dot" style={{ backgroundColor: s.color }}></div>
                   <span>{s.label}: {s.count} ({s.pct}%)</span>
                 </div>
@@ -79,8 +79,8 @@ export default function Dashboard({ regulations, onExport, onReset }) {
         <div className="chart-card">
           <div className="chart-card-title">Avance por Estado</div>
           <div className="bar-chart">
-            {statusData.map((s, i) => (
-              <div key={i} className="bar-row">
+            {statusData.map(s => (
+              <div key={s.label} className="bar-row">
                 <div className="bar-label">{s.label}</div>
                 <div className="bar-track">
                   <div className={`bar-fill ${s.cls}`} style={{ width: `${Math.max(s.pct, 8)}%` }}>
@@ -95,8 +95,8 @@ export default function Dashboard({ regulations, onExport, onReset }) {
         <div className="chart-card">
           <div className="chart-card-title">Distribución por Prioridad</div>
           <div className="bar-chart">
-            {priorityData.map((p, i) => (
-              <div key={i} className="bar-row">
+            {priorityData.map(p => (
+              <div key={p.label} className="bar-row">
                 <div className="bar-label">{p.label}</div>
                 <div className="bar-track">
                   <div className={`bar-fill ${p.cls}`} style={{ width: `${Math.max(p.pct, 8)}%` }}>
@@ -118,10 +118,10 @@ export default function Dashboard({ regulations, onExport, onReset }) {
                 byResp[r.responsable].total++;
                 byResp[r.responsable].sum += r.progreso;
               });
-              return Object.entries(byResp).sort((a, b) => (b[1].sum / b[1].total) - (a[1].sum / a[1].total)).map(([name, data], i) => {
+              return Object.entries(byResp).sort((a, b) => (b[1].sum / b[1].total) - (a[1].sum / a[1].total)).map(([name, data]) => {
                 const avg = Math.round(data.sum / data.total);
                 return (
-                  <div key={i} className="bar-row">
+                  <div key={name} className="bar-row">
                     <div className="bar-label" style={{ width: 110 }}>{name}</div>
                     <div className="bar-track">
                       <div className="bar-fill" style={{ width: `${Math.max(avg, 8)}%`, background: `linear-gradient(90deg, ${avg >= 75 ? '#34d399' : avg >= 40 ? '#60a5fa' : '#94a3b8'}, ${avg >= 75 ? '#10b981' : avg >= 40 ? '#3b82f6' : '#64748b'})` }}>

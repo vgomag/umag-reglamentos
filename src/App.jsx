@@ -52,18 +52,24 @@ function App() {
           setDbMode('local');
         }
         setIsLoading(false);
-      })();
+      })().catch(e => {
+        console.warn('Error inicializando Supabase:', e.message);
+        setDbMode('local');
+        setIsLoading(false);
+      });
     }
   }, []);
 
   // Sincronizar con localStorage como backup
   useEffect(() => {
-    localStorage.setItem("regulations", JSON.stringify(regulations));
+    try { localStorage.setItem("regulations", JSON.stringify(regulations)); }
+    catch (e) { console.warn('No se pudo guardar en localStorage:', e.message); }
   }, [regulations]);
 
   // Persist normativas to localStorage
   useEffect(() => {
-    localStorage.setItem('umag_normativas', JSON.stringify(normativas));
+    try { localStorage.setItem('umag_normativas', JSON.stringify(normativas)); }
+    catch (e) { console.warn('No se pudo guardar normativas en localStorage:', e.message); }
   }, [normativas]);
 
   const AUTH_PASSWORD = 'umag2026';
