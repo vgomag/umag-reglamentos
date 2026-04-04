@@ -206,7 +206,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
       <div className="detail-header">
         <h2 className="detail-title">{formData.nombre}</h2>
         <div className="detail-meta">
-          <div className="detail-badge">N° {formData.numero}</div>
+          {formData.numero && <div className="detail-badge">N° {formData.numero}</div>}
           <div className="detail-badge">{formData.articulo}</div>
           <span className={`badge ${formData.estado.toLowerCase().replace(/\s+/g, '-')}`}>{formData.estado}</span>
         </div>

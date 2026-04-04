@@ -89,7 +89,7 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
             <tbody>
               {filtered.map(r => (
                 <tr key={r.id}>
-                  <td>{r.numero}</td>
+                  <td>{r.numero || '-'}</td>
                   <td>{r.nombre}</td>
                   <td>{r.articulo_estatuto || r.articulo || '-'}</td>
                   <td><span className={`badge ${r.estado.toLowerCase().replace(/\s+/g, '-')}`}>{r.estado}</span></td>
@@ -124,7 +124,7 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
                 </div>
                 {columnRegs.map(r => (
                   <div key={r.id} className={`kanban-card ${r.prioridad}`} onClick={() => onSelectRegulation(r)} title={r.observaciones || ''}>
-                    <div className="kanban-card-title">{r.numero}. {r.nombre}</div>
+                    <div className="kanban-card-title">{r.numero ? `${r.numero}. ` : ''}{r.nombre}</div>
                     {r.observaciones && <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.375rem', lineHeight: '1.3', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.observaciones}</div>}
                     <div className="kanban-card-meta">
                       <span>{r.responsable}</span>
