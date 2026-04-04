@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 function NewRegulation({ onCreate, onCancel }) {
   const [formData, setFormData] = useState({
-    numero: "",
     nombre: "",
     articulo: "",
     estado: "Pendiente",
@@ -16,7 +15,7 @@ function NewRegulation({ onCreate, onCancel }) {
   });
 
   const handleCreate = () => {
-    if (!formData.numero || !formData.nombre) {
+    if (!formData.nombre) {
       alert("Completa los campos requeridos");
       return;
     }
@@ -26,13 +25,12 @@ function NewRegulation({ onCreate, onCancel }) {
   return (
     <div className="page-content">
       <div className="page-header">
-        <h2>Crear Nuevo Reglamento</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <button className="btn btn-secondary" onClick={onCancel} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>← Volver</button>
+          <h2 style={{ margin: 0 }}>Crear Nuevo Reglamento</h2>
+        </div>
       </div>
       <div className="section">
-        <div className="form-group">
-          <label>Número</label>
-          <input type="text" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} placeholder="ej: 25" />
-        </div>
         <div className="form-group">
           <label>Nombre</label>
           <input type="text" value={formData.nombre} onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))} placeholder="Nombre del reglamento" />
