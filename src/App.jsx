@@ -74,7 +74,7 @@ function App() {
     catch (e) { console.warn('No se pudo guardar normativas en localStorage:', e.message); }
   }, [normativas]);
 
-  const AUTH_PASSWORD = 'umag2026';
+  const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
   const [loginError, setLoginError] = useState('');
   const loginPasswordRef = useRef(null);
 

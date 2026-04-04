@@ -1,6 +1,6 @@
-// Supabase Configuration
-export const SUPABASE_URL = 'https://pzqzupcjalggdlibplcw.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6cXp1cGNqYWxnZ2RsaWJwbGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTI4MzAsImV4cCI6MjA5MDgyODgzMH0.3mP_NgsS5awP4k4_5J2x4YQwc-OaoMLsSFMFKBV2WJw';
+// Supabase Configuration — credenciales desde variables de entorno
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Inicializar cliente Supabase (solo si está configurado y la librería cargó)
 let supabase = null;
@@ -45,8 +45,21 @@ CREATE TABLE regulations (
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE regulations ENABLE ROW LEVEL SECURITY;
 
--- Política para permitir acceso público (ajustar según necesidad)
-CREATE POLICY "Allow all access" ON regulations FOR ALL USING (true) WITH CHECK (true);
+-- Políticas RLS restrictivas:
+-- Lectura: permitida para usuarios autenticados (anon key con sesión válida)
+CREATE POLICY "Authenticated read access" ON regulations
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Escritura: solo usuarios autenticados
+CREATE POLICY "Authenticated insert access" ON regulations
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated update access" ON regulations
+  FOR UPDATE USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated delete access" ON regulations
+  FOR DELETE USING (auth.role() = 'authenticated');
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at()
