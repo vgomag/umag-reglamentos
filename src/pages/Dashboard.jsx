@@ -9,12 +9,26 @@ export default function Dashboard({ regulations, onExport, onReset }) {
   const progress = regulations.length > 0 ? Math.round((approved / regulations.length) * 100) : 0;
 
   const total = regulations.length;
-  const safePct = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
+
+  // Redondeo que garantiza sumar exactamente 100%
+  const roundToHundred = (counts) => {
+    if (total === 0) return counts.map(() => 0);
+    const raw = counts.map(n => (n / total) * 100);
+    const floored = raw.map(v => Math.floor(v));
+    let remainder = 100 - floored.reduce((s, v) => s + v, 0);
+    const decimals = raw.map((v, i) => ({ i, dec: v - floored[i] }));
+    decimals.sort((a, b) => b.dec - a.dec);
+    for (let j = 0; j < remainder; j++) floored[decimals[j].i]++;
+    return floored;
+  };
+
+  const statusCounts = [pending, inProcess, inReview, approved];
+  const statusPcts = roundToHundred(statusCounts);
   const statusData = [
-    { label: "Pendiente", count: pending, pct: safePct(pending), color: "#94a3b8", cls: "pendiente" },
-    { label: "En Proceso", count: inProcess, pct: safePct(inProcess), color: "#3b82f6", cls: "en-proceso" },
-    { label: "En Revisión", count: inReview, pct: safePct(inReview), color: "#f59e0b", cls: "en-revision" },
-    { label: "Aprobado", count: approved, pct: safePct(approved), color: "#10b981", cls: "aprobado" }
+    { label: "Pendiente", count: pending, pct: statusPcts[0], color: "#94a3b8", cls: "pendiente" },
+    { label: "En Proceso", count: inProcess, pct: statusPcts[1], color: "#3b82f6", cls: "en-proceso" },
+    { label: "En Revisión", count: inReview, pct: statusPcts[2], color: "#f59e0b", cls: "en-revision" },
+    { label: "Aprobado", count: approved, pct: statusPcts[3], color: "#10b981", cls: "aprobado" }
   ];
 
   const donutData = statusData.map(s => ({ label: s.label, value: s.pct, color: s.color }));
@@ -22,10 +36,12 @@ export default function Dashboard({ regulations, onExport, onReset }) {
   const alta = regulations.filter(r => r.prioridad === "alta").length;
   const media = regulations.filter(r => r.prioridad === "media").length;
   const baja = regulations.filter(r => r.prioridad === "baja").length;
+  const priCounts = [alta, media, baja];
+  const priPcts = roundToHundred(priCounts);
   const priorityData = [
-    { label: "Alta", count: alta, pct: safePct(alta), cls: "alta", color: "#ef4444" },
-    { label: "Media", count: media, pct: safePct(media), cls: "media", color: "#f59e0b" },
-    { label: "Baja", count: baja, pct: safePct(baja), cls: "baja", color: "#10b981" }
+    { label: "Alta", count: alta, pct: priPcts[0], cls: "alta", color: "#ef4444" },
+    { label: "Media", count: media, pct: priPcts[1], cls: "media", color: "#f59e0b" },
+    { label: "Baja", count: baja, pct: priPcts[2], cls: "baja", color: "#10b981" }
   ];
 
   const avgProgress = total > 0 ? Math.round(regulations.reduce((sum, r) => sum + r.progreso, 0) / total) : 0;
