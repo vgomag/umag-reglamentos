@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function Settings({ regulations, onReset, onExport, googleToken, isGoogleConnected, onGoogleDisconnect, googleUser, dbMode }) {
+function Settings({ regulations, onReset, onExport, dbMode }) {
   const [estatutoDate, setEstatutoDate] = useState(() => {
     const saved = localStorage.getItem("estatuto_date");
     return saved || "2025-01-18";
