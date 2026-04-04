@@ -119,7 +119,7 @@ function App() {
         return;
       }
     }
-    const id = Math.max(...regulations.map(r => r.id), 0) + 1;
+    const id = regulations.length > 0 ? Math.max(...regulations.map(r => r.id)) + 1 : 1;
     const created = { ...newReg, id, historial: [], adjuntos: [] };
     setRegulations(prev => [...prev, created]);
     setActiveView("regulations");
