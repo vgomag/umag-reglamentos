@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 function NewRegulation({ onCreate, onCancel }) {
   const [formData, setFormData] = useState({
+    numero: "",
     nombre: "",
     articulo: "",
     estado: "Pendiente",
@@ -52,6 +53,10 @@ function NewRegulation({ onCreate, onCancel }) {
         </div>
       </div>
       <div className="section">
+        <div className="form-group">
+          <label>Número</label>
+          <input type="text" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} placeholder="ej: 32" />
+        </div>
         <div className="form-group">
           <label>Nombre</label>
           <input type="text" value={formData.nombre} onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))} placeholder="Nombre del reglamento" />

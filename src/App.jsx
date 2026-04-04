@@ -219,7 +219,7 @@ function App() {
             {activeView === "documentos" && (
               <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
             )}
-            {activeView === "plazos" && <PlazosList />}
+            {activeView === "plazos" && <PlazosList regulations={regulations} />}
             {activeView === "normativa" && (
               <Normativa
                 regulations={regulations}

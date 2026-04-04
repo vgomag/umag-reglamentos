@@ -279,7 +279,11 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
           <h3 className="section-title">Información General</h3>
           <div className="form-group">
             <label>Estado</label>
-            <select value={formData.estado} onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value }))}>
+            <select value={formData.estado} onChange={(e) => {
+              const nuevoEstado = e.target.value;
+              const autoProgreso = nuevoEstado === 'Aprobado' ? 100 : nuevoEstado === 'Pendiente' ? 0 : formData.progreso;
+              setFormData(prev => ({ ...prev, estado: nuevoEstado, progreso: autoProgreso }));
+            }}>
               <option>Pendiente</option>
               <option>En Proceso</option>
               <option>En Revisión</option>
@@ -288,7 +292,16 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
           </div>
           <div className="form-group">
             <label>Progreso (%)</label>
-            <input type="number" min="0" max="100" value={formData.progreso} onChange={(e) => { const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); setFormData(prev => ({ ...prev, progreso: val })); }} />
+            <input type="number" min="0" max="100" value={formData.progreso} onChange={(e) => {
+              const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+              // Auto-ajustar estado según progreso
+              let autoEstado = formData.estado;
+              if (val === 100) autoEstado = 'Aprobado';
+              else if (val === 0) autoEstado = 'Pendiente';
+              else if (val > 0 && formData.estado === 'Pendiente') autoEstado = 'En Proceso';
+              else if (val < 100 && formData.estado === 'Aprobado') autoEstado = 'En Revisión';
+              setFormData(prev => ({ ...prev, progreso: val, estado: autoEstado }));
+            }} />
           </div>
           <div className="form-group">
             <label>Responsable</label>

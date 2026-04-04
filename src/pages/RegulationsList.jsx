@@ -25,7 +25,12 @@ function RegulationsList({ regulations, onSelectRegulation, onUpdateRegulation }
   const STATES = ["Pendiente", "En Proceso", "En Revisión", "Aprobado"];
 
   const handleKanbanMove = (reg, newEstado) => {
-    const newProgreso = newEstado === "Aprobado" ? 100 : newEstado === "Pendiente" ? 0 : reg.progreso;
+    let newProgreso = reg.progreso;
+    if (newEstado === "Aprobado") newProgreso = 100;
+    else if (newEstado === "Pendiente") newProgreso = 0;
+    else if (newEstado === "En Proceso" && reg.progreso === 0) newProgreso = 10;
+    else if (newEstado === "En Revisión" && reg.progreso < 50) newProgreso = 50;
+    else if (newEstado === "En Proceso" && reg.progreso === 100) newProgreso = 75;
     onUpdateRegulation({ ...reg, estado: newEstado, progreso: newProgreso });
   };
 
