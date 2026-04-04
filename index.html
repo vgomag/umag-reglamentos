@@ -240,8 +240,8 @@
     .content {
       flex: 1;
       overflow-y: auto;
-      padding: 1.5rem;
-      background-color: #f8fafc;
+      padding: 2rem;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
     .page-container {
@@ -393,8 +393,8 @@
       gap: 0.5rem;
     }
 
-    .btn-primary { background-color: #1a56db; color: white; }
-    .btn-primary:hover { background-color: #1e40af; transform: translateY(-1px); }
+    .btn-primary { background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%); color: white; box-shadow: 0 2px 8px rgba(26, 86, 219, 0.2); }
+    .btn-primary:hover { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26, 86, 219, 0.3); }
     .btn-primary:active { transform: scale(0.98); }
 
     .btn-secondary { background-color: white; color: #1e293b; border: 1px solid #e2e8f0; }
@@ -752,7 +752,7 @@
     .modal-content { color: #475569; margin-bottom: 1.5rem; line-height: 1.6; }
 
     .progress-bar {
-      height: 6px;
+      height: 5px;
       background-color: #e2e8f0;
       border-radius: 9999px;
       overflow: hidden;
@@ -761,9 +761,9 @@
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #6366f1 0%, #1a56db 100%);
+      background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
       border-radius: 9999px;
-      transition: width 0.3s ease;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .progress-text { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
