@@ -1236,6 +1236,83 @@
       font-weight: 500;
     }
 
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 19;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-btn {
+        display: block;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: -260px;
+        z-index: 20;
+        transition: left 0.3s ease;
+        height: calc(100vh - 56px);
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .sidebar-overlay.visible {
+        display: block;
+      }
+
+      .header h1 {
+        font-size: 0.85rem;
+      }
+
+      .header-actions {
+        gap: 0.5rem;
+      }
+
+      .user-info {
+        display: none;
+      }
+
+      .content {
+        padding: 1rem;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .detail-sections {
+        grid-template-columns: 1fr;
+      }
+
+      .filters-bar {
+        flex-direction: column;
+      }
+
+      .search-input {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+
     @media (max-width: 900px) {
       .kanban-board {
         grid-template-columns: 1fr;
@@ -1405,11 +1482,21 @@
       progreso INTEGER DEFAULT 0 CHECK (progreso >= 0 AND progreso <= 100),
       prioridad TEXT DEFAULT 'media' CHECK (prioridad IN ('alta', 'media', 'baja')),
       responsable TEXT DEFAULT '',
+      observaciones TEXT DEFAULT '',
+      enlace TEXT DEFAULT '',
+      decreto TEXT DEFAULT '',
+      articulo_estatuto TEXT DEFAULT '',
       historial JSONB DEFAULT '[]',
       adjuntos JSONB DEFAULT '[]',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+
+    -- Si ya tienes la tabla creada, puedes agregar las columnas faltantes así:
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS observaciones TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS enlace TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS decreto TEXT DEFAULT '';
+    -- ALTER TABLE regulations ADD COLUMN IF NOT EXISTS articulo_estatuto TEXT DEFAULT '';
 
     -- Habilitar RLS (Row Level Security)
     ALTER TABLE regulations ENABLE ROW LEVEL SECURITY;
@@ -1594,12 +1681,15 @@
       { id: 6, gestion: "Seguimiento", plazo: "Permanente", objeto: "Monitoreo de cumplimiento", formalidad: "Reportes trimestrales", requisito: "Implementación activa" }
     ];
 
-    function Header({ userName, onLogout, isGoogleConnected, googleUser, onGoogleDisconnect }) {
+    function Header({ userName, onLogout, isGoogleConnected, googleUser, onGoogleDisconnect, onToggleSidebar }) {
       const [showGoogleDropdown, setShowGoogleDropdown] = useState(false);
 
       return (
         <div className="header">
-          <h1>UMAG - Sistema de Seguimiento de Reglamentos</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button className="mobile-menu-btn" onClick={onToggleSidebar}>☰</button>
+            <h1>UMAG - Sistema de Seguimiento de Reglamentos</h1>
+          </div>
           <div className="header-actions">
             <div className="user-info">{userName}</div>
             {isGoogleConnected && googleUser && (
@@ -1627,9 +1717,9 @@
       );
     }
 
-    function Sidebar({ activeView, onViewChange }) {
+    function Sidebar({ activeView, onViewChange, sidebarOpen }) {
       return (
-        <div className="sidebar">
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">Navegación</div>
           <div className="nav-item" onClick={() => onViewChange("resumen")} style={{ borderLeftColor: activeView === "resumen" ? "#1a56db" : "transparent" }}>
             <span className="nav-icon">📑</span> Resumen Ejecutivo
@@ -2218,6 +2308,7 @@
       const [showDriveModal, setShowDriveModal] = useState(false);
       const fileInputRef = useRef(null);
       const pdfInputRef = useRef(null);
+      const driveInputRef = useRef(null);
       const [pdfExtracting, setPdfExtracting] = useState(false);
       const [pdfProgress, setPdfProgress] = useState('');
       const [pdfExtractedData, setPdfExtractedData] = useState(null);
@@ -2369,6 +2460,7 @@
 
       // Apply all extracted fields
       const applyAllExtracted = () => {
+        if (!pdfExtractedData) return;
         const updates = {};
         if (pdfExtractedData.decreto && !pdfExtractedData._applied_decreto) updates.decreto = pdfExtractedData.decreto;
         if (pdfExtractedData.articulo_estatuto && !pdfExtractedData._applied_articulo_estatuto) updates.articulo_estatuto = pdfExtractedData.articulo_estatuto;
@@ -2401,11 +2493,15 @@
             };
             setFormData(prev => ({ ...prev, adjuntos: [...prev.adjuntos, newAttachment] }));
           };
+          reader.onerror = () => {
+            alert('Error al leer el archivo. Intenta nuevamente.');
+          };
           reader.readAsDataURL(file);
         }
       };
 
       const handleRemoveFile = (index) => {
+        if (!window.confirm('¿Eliminar este archivo adjunto?')) return;
         setFormData(prev => ({ ...prev, adjuntos: prev.adjuntos.filter((_, i) => i !== index) }));
       };
 
@@ -2439,10 +2535,11 @@
             setShowNotifyModal(false);
             setNotifyEmails("");
           } else {
-            alert("Error al enviar notificación");
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al enviar notificación: " + (errData.error?.message || `código ${resp.status}`));
           }
         } catch (e) {
-          alert("Error: " + e.message);
+          alert("Error de conexión: " + e.message);
         }
       };
 
@@ -2453,14 +2550,23 @@
         }
 
         const start = new Date(meetingData.startTime);
-        const end = new Date(start.getTime() + parseInt(meetingData.duration) * 60000);
+        const duration = parseInt(meetingData.duration) || 60;
+        const end = new Date(start.getTime() + duration * 60000);
+
+        // Validar emails
+        const emailList = meetingData.emails.split(',').map(e => e.trim()).filter(Boolean);
+        const invalidEmails = emailList.filter(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+        if (invalidEmails.length > 0) {
+          alert("Correos inválidos: " + invalidEmails.join(', '));
+          return;
+        }
 
         const event = {
           summary: `Revisión: ${formData.nombre}`,
           description: `Reglamento N°${formData.numero}: ${formData.nombre}\nEstado: ${formData.estado}\nArtículo: ${formData.articulo}`,
           start: { dateTime: start.toISOString(), timeZone: 'America/Santiago' },
           end: { dateTime: end.toISOString(), timeZone: 'America/Santiago' },
-          attendees: meetingData.emails.split(',').filter(e => e.trim()).map(e => ({ email: e.trim() })),
+          attendees: emailList.map(e => ({ email: e })),
           reminders: { useDefault: true }
         };
 
@@ -2475,10 +2581,11 @@
             setShowMeetingModal(false);
             setMeetingData({ startTime: "", endTime: "", duration: "60", emails: "" });
           } else {
-            alert("Error al programar reunión");
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al programar reunión: " + (errData.error?.message || `código ${resp.status}`));
           }
         } catch (e) {
-          alert("Error: " + e.message);
+          alert("Error de conexión: " + e.message);
         }
       };
 
@@ -2496,6 +2603,7 @@
             `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folderName)}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false`,
             { headers: { 'Authorization': 'Bearer ' + googleToken } }
           );
+          if (!searchResp.ok) throw new Error('Error al buscar carpeta en Drive');
           const searchData = await searchResp.json();
 
           if (searchData.files && searchData.files.length > 0) {
@@ -2506,6 +2614,7 @@
               headers: { 'Authorization': 'Bearer ' + googleToken, 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' })
             });
+            if (!createResp.ok) throw new Error('Error al crear carpeta en Drive');
             const folderData = await createResp.json();
             folderId = folderData.id;
           }
@@ -2515,11 +2624,12 @@
           form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
           form.append('file', file);
 
-          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + googleToken },
             body: form
           });
+          if (!uploadResp.ok) throw new Error('Error al subir archivo a Drive');
           const uploadData = await uploadResp.json();
 
           if (uploadData.id) {
@@ -2536,7 +2646,7 @@
             alert("Archivo subido a Google Drive");
           }
         } catch (e) {
-          alert("Error: " + e.message);
+          alert("Error al subir a Drive: " + e.message);
         }
       };
 
@@ -2566,7 +2676,7 @@
               </div>
               <div className="form-group">
                 <label>Progreso (%)</label>
-                <input type="text" value={formData.progreso} onChange={(e) => setFormData(prev => ({ ...prev, progreso: parseInt(e.target.value) || 0 }))} />
+                <input type="number" min="0" max="100" value={formData.progreso} onChange={(e) => { const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); setFormData(prev => ({ ...prev, progreso: val })); }} />
               </div>
               <div className="form-group">
                 <label>Responsable</label>
@@ -2773,9 +2883,10 @@
               <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modal-title">Subir a Google Drive</h3>
                 <p className="modal-content">Selecciona un archivo para subir a Google Drive</p>
-                <div className="upload-area" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = (e) => { if (e.target.files[0]) uploadToDrive(e.target.files[0]); }; input.click(); }}>
+                <div className="upload-area" onClick={() => driveInputRef.current?.click()}>
                   <div className="upload-area-icon">☁️</div>
                   <div className="upload-area-text">Haz clic para seleccionar archivo</div>
+                  <input type="file" style={{ display: 'none' }} ref={driveInputRef} onChange={(e) => { if (e.target.files[0]) { uploadToDrive(e.target.files[0]); setShowDriveModal(false); } }} />
                 </div>
                 <div className="btn-group" style={{ marginTop: "1.5rem" }}>
                   <button className="btn btn-secondary" onClick={() => setShowDriveModal(false)}>Cerrar</button>
@@ -2977,10 +3088,11 @@
           if (resp.ok) {
             alert("Reporte enviado correctamente");
           } else {
-            alert("Error al enviar reporte");
+            const errData = await resp.json().catch(() => ({}));
+            alert("Error al enviar reporte: " + (errData.error?.message || `código ${resp.status}`));
           }
         } catch (e) {
-          alert("Error: " + e.message);
+          alert("Error de conexión: " + e.message);
         }
       };
 
@@ -3118,6 +3230,7 @@
       const [toast, setToast] = useState(null);
       const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
       const [isLoading, setIsLoading] = useState(!!supabase);
+      const [sidebarOpen, setSidebarOpen] = useState(false);
 
       // Cargar datos desde Supabase al inicio
       useEffect(() => {
@@ -3214,7 +3327,17 @@
         setToast({ type: 'info', message: 'Google desconectado' });
       };
 
+      const AUTH_PASSWORD = 'umag2026';
+      const [loginError, setLoginError] = useState('');
+      const loginPasswordRef = useRef(null);
+
       const handleLogin = () => {
+        const passwordInput = loginPasswordRef.current;
+        if (!passwordInput || passwordInput.value !== AUTH_PASSWORD) {
+          setLoginError('Contraseña incorrecta');
+          return;
+        }
+        setLoginError('');
         sessionStorage.setItem("umag_auth", "true");
         setIsLoggedIn(true);
       };
@@ -3239,6 +3362,7 @@
       };
 
       const handleDeleteRegulation = async () => {
+        if (!window.confirm(`¿Estás seguro de eliminar "${selectedRegulation.nombre}"? Esta acción no se puede deshacer.`)) return;
         if (dbMode === 'supabase') await supabaseDelete(selectedRegulation.id);
         setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
         setActiveView("regulations");
@@ -3283,8 +3407,9 @@
             <div className="login-card">
               <h2 className="login-title">UMAG</h2>
               <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
-              <input type="text" className="login-input" placeholder="Usuario" />
-              <input type="password" className="login-input" placeholder="Contraseña" />
+              <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" />
+              <input type="password" className="login-input" placeholder="Contraseña" ref={loginPasswordRef} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+              {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
               <button className="login-button" onClick={handleLogin}>Iniciar Sesión</button>
             </div>
           </div>
@@ -3293,9 +3418,10 @@
 
       return (
         <div className="app-wrapper">
-          <Header userName="Usuario UMAG" onLogout={handleLogout} isGoogleConnected={isGoogleConnected} googleUser={googleUser} onGoogleDisconnect={handleGoogleDisconnect} />
+          <Header userName="Usuario UMAG" onLogout={handleLogout} isGoogleConnected={isGoogleConnected} googleUser={googleUser} onGoogleDisconnect={handleGoogleDisconnect} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
           <div className="app-body">
-            <Sidebar activeView={activeView} onViewChange={setActiveView} />
+            <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+            <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
             <div className="content">
               <div className="page-container">
                 {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
