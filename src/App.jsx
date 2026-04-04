@@ -101,16 +101,32 @@ function App() {
   };
 
   const handleSaveRegulation = async (updatedReg) => {
+    const previous = regulations.find(r => r.id === updatedReg.id);
     setRegulations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
     setSelectedRegulation(updatedReg);
-    if (dbMode === 'supabase') await supabaseUpsert(updatedReg);
+    if (dbMode === 'supabase') {
+      const ok = await supabaseUpsert(updatedReg);
+      if (!ok) {
+        // Rollback al estado anterior
+        if (previous) setRegulations(prev => prev.map(r => r.id === updatedReg.id ? previous : r));
+        setSelectedRegulation(previous || updatedReg);
+        setToast({ type: 'error', message: 'Error al guardar en la base de datos. Se revirtieron los cambios.' });
+        return;
+      }
+    }
     setToast({ type: 'success', message: 'Reglamento guardado' });
   };
 
   const handleDeleteRegulation = async () => {
     if (!selectedRegulation) return;
     if (!window.confirm(`¿Estás seguro de eliminar "${selectedRegulation.nombre}"? Esta acción no se puede deshacer.`)) return;
-    if (dbMode === 'supabase') await supabaseDelete(selectedRegulation.id);
+    if (dbMode === 'supabase') {
+      const ok = await supabaseDelete(selectedRegulation.id);
+      if (!ok) {
+        setToast({ type: 'error', message: 'Error al eliminar en la base de datos. Intenta nuevamente.' });
+        return;
+      }
+    }
     setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
     setActiveView("regulations");
     setSelectedRegulation(null);
