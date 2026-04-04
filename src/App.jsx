@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_REGULATIONS } from './config/data';
-import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES } from './config/google';
 import NewRegulation from './pages/NewRegulation';
 import PlazosList from './pages/PlazosList';
 import Settings from './pages/Settings';
@@ -16,9 +15,6 @@ import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supaba
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [googleToken, setGoogleToken] = useState(null);
-  const [googleUser, setGoogleUser] = useState(null);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [regulations, setRegulations] = useState(() => {
     const saved = localStorage.getItem("regulations");
     return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
