@@ -1,0 +1,2 @@
+export const GOOGLE_CLIENT_ID = '1043885369261-imrf6apaog9gbprdtkkp8em3sau03ua3.apps.googleusercontent.com';
+export const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
