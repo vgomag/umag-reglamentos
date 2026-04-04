@@ -34,8 +34,142 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
   // Escape special regex characters in a string
   const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+  // Extract metadata from the PDF: norm name, articles, deadlines
+  const extractNormMetadata = (textoExtraido) => {
+    const meta = {};
+
+    // Detect norm name/title (Ley, Decreto, Resolución, Estatuto)
+    const normPatterns = [
+      /(?:LEY\s+(?:N[°º]?\s*)?\d[\d.]*)/gi,
+      /(?:DECRETO\s+(?:(?:EXENTO|UNIVERSITARIO|SUPREMO)\s+)?(?:N[°º]?\s*)?\d[\d\/\-]*(?:\/SU\/\d{4})?)/gi,
+      /(?:DFL\s+(?:N[°º]?\s*)?\d[\d.]*)/gi,
+      /(?:RESOLUCI[OÓ]N\s+(?:EXENTA?\s+)?(?:N[°º]?\s*)?\d[\d\/\-]*)/gi,
+      /(?:ESTATUTO\s+(?:DE\s+LA\s+)?(?:UNIVERSIDAD|UMAG)[^.]{0,60})/gi
+    ];
+    for (const p of normPatterns) {
+      const m = textoExtraido.match(p);
+      if (m) { meta.norma = m[0].replace(/\s+/g, ' ').trim(); break; }
+    }
+    if (!meta.norma) {
+      // Try generic title detection
+      const titleMatch = textoExtraido.match(/(?:REGLAMENTO|NORMATIVA|ORDENANZA)\s+[A-ZÁÉÍÓÚÑ\s,]+/i);
+      if (titleMatch && titleMatch[0].length > 10) {
+        meta.norma = titleMatch[0].replace(/\s+/g, ' ').trim().substring(0, 120);
+      }
+    }
+
+    // Extract ALL articles mentioned in the document
+    const articulosSet = new Set();
+    const artPatterns = [
+      /Art(?:[ií]culo)?\.?\s*(\d+(?:\s*°)?(?:\s*(?:bis|ter|qu[aá]ter|inciso\s+\w+|letra\s+\w\)|[,y]\s*\d+)*))/gi,
+      /art[ií]culos?\s+(\d+(?:\s*(?:al?|y|,)\s*\d+)*)/gi
+    ];
+    for (const p of artPatterns) {
+      let match;
+      while ((match = p.exec(textoExtraido)) !== null) {
+        articulosSet.add(match[0].replace(/\s+/g, ' ').trim());
+      }
+    }
+    meta.articulos = [...articulosSet];
+
+    // Extract deadlines/plazos
+    const plazos = [];
+    const plazoPatterns = [
+      /(?:plazo\s+(?:de\s+|m[aá]ximo\s+(?:de\s+)?)?(?:\d+\s+(?:d[ií]as?|meses?|a[ñn]os?)(?:\s+(?:h[aá]biles?|corridos?|calendarios?))?)[^.]{0,80})/gi,
+      /(?:dentro\s+(?:del?\s+)?(?:plazo\s+(?:de\s+)?)?\d+\s+(?:d[ií]as?|meses?|a[ñn]os?)[^.]{0,60})/gi,
+      /(?:(?:antes\s+del?|hasta\s+el?|a\s+m[aá]s\s+tardar\s+el?)\s+\d{1,2}\s+de\s+\w+\s+(?:de\s+|del?\s+)?\d{4})/gi,
+      /(?:\d+\s+(?:d[ií]as?|meses?|a[ñn]os?)\s+(?:h[aá]biles?|corridos?|calendarios?)\s+(?:desde|contados?\s+desde|a\s+(?:contar|partir)\s+de)[^.]{0,80})/gi
+    ];
+    for (const p of plazoPatterns) {
+      let match;
+      while ((match = p.exec(textoExtraido)) !== null) {
+        const plazoText = match[0].replace(/\s+/g, ' ').trim();
+        if (!plazos.some(pl => pl.includes(plazoText) || plazoText.includes(pl))) {
+          plazos.push(plazoText);
+        }
+      }
+    }
+    meta.plazos = plazos;
+
+    return meta;
+  };
+
+  // For a given regulation, extract the specific articles and requirements from the text
+  const extractRequisitoDetallado = (textoExtraido, reg, normMeta) => {
+    const textoLower = textoExtraido.toLowerCase();
+    const resultado = { articulos: [], requisitos: [], plazos: [] };
+
+    // Find the search term that matched this regulation
+    let searchTerms = [];
+    if (reg.nombre) {
+      searchTerms.push(reg.nombre);
+      // Also add key fragments
+      const keywords = reg.nombre.split(/\s+/).filter(w => w.length > 4).map(w => w.toLowerCase());
+      searchTerms.push(...keywords);
+    }
+    if (reg.numero) searchTerms.push(String(reg.numero));
+
+    // For each search term, find surrounding articles
+    for (const term of searchTerms) {
+      try {
+        const termEscaped = escapeRegex(term.toLowerCase());
+        // Find position of term in text
+        let pos = textoLower.indexOf(termEscaped.toLowerCase());
+        if (pos === -1) pos = textoLower.indexOf(term.toLowerCase());
+        if (pos === -1) continue;
+
+        // Look for articles in a window of 500 chars around the match
+        const windowStart = Math.max(0, pos - 300);
+        const windowEnd = Math.min(textoExtraido.length, pos + term.length + 500);
+        const window = textoExtraido.substring(windowStart, windowEnd);
+
+        // Extract articles from this window
+        const artMatch = window.match(/Art(?:[ií]culo)?\.?\s*\d+[^.]*\./gi);
+        if (artMatch) {
+          artMatch.forEach(a => {
+            const cleaned = a.replace(/\s+/g, ' ').trim();
+            if (!resultado.articulos.includes(cleaned)) resultado.articulos.push(cleaned);
+          });
+        }
+
+        // Extract the full sentence/paragraph containing the term as "requisito"
+        const sentenceRegex = new RegExp(`[^.]*${escapeRegex(term)}[^.]*\\.`, 'gi');
+        const sentMatches = textoExtraido.match(sentenceRegex);
+        if (sentMatches) {
+          sentMatches.slice(0, 3).forEach(s => {
+            const cleaned = s.replace(/\s+/g, ' ').trim();
+            if (cleaned.length > 15 && !resultado.requisitos.some(r => r === cleaned)) {
+              resultado.requisitos.push(cleaned);
+            }
+          });
+        }
+
+        // Extract plazos from this window
+        const plazoMatch = window.match(/(?:plazo|dentro|antes|hasta|d[ií]as?|meses?)[^.]*\./gi);
+        if (plazoMatch) {
+          plazoMatch.forEach(p => {
+            const cleaned = p.replace(/\s+/g, ' ').trim();
+            if (cleaned.length > 10 && !resultado.plazos.includes(cleaned)) resultado.plazos.push(cleaned);
+          });
+        }
+      } catch (e) { /* ignore regex errors */ }
+    }
+
+    // If no specific articles found, use global ones from the norm
+    if (resultado.articulos.length === 0 && normMeta.articulos.length > 0) {
+      resultado.articulos = normMeta.articulos.slice(0, 5);
+    }
+
+    // If no specific plazos, use global ones
+    if (resultado.plazos.length === 0 && normMeta.plazos.length > 0) {
+      resultado.plazos = normMeta.plazos;
+    }
+
+    return resultado;
+  };
+
   // Auto-detect associations with existing regulations
-  const detectAssociations = (textoExtraido) => {
+  const detectAssociations = (textoExtraido, normMeta) => {
     const associations = [];
     const textoLower = textoExtraido.toLowerCase();
 
@@ -55,23 +189,16 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         });
       }
 
-      // Check for regulation name matches using key words from the name
+      // Check for regulation name matches
       if (reg.nombre) {
-        // Try full name match
         try {
           const fullNameRegex = new RegExp(escapeRegex(reg.nombre), 'gi');
           const found = textoExtraido.match(fullNameRegex);
           if (found) matches.push(...found);
-        } catch (e) { /* ignore regex errors */ }
+        } catch (e) { /* ignore */ }
 
-        // Try matching key words (3+ chars) from the regulation name
         if (matches.length === 0) {
-          const keywords = reg.nombre
-            .split(/\s+/)
-            .filter(w => w.length > 3)
-            .map(w => w.toLowerCase());
-
-          // If 2+ keywords found in text, consider it a match
+          const keywords = reg.nombre.split(/\s+/).filter(w => w.length > 3).map(w => w.toLowerCase());
           const matchedKeywords = keywords.filter(kw => textoLower.includes(kw));
           if (keywords.length >= 2 && matchedKeywords.length >= Math.ceil(keywords.length * 0.6)) {
             matches.push(reg.nombre);
@@ -80,40 +207,42 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
       }
 
       if (matches.length > 0) {
-        // Extract surrounding context (~200 characters)
-        let requisito = "";
+        const detalle = extractRequisitoDetallado(textoExtraido, reg, normMeta);
 
-        // Try context around number
-        if (reg.numero) {
-          try {
-            const regexCtx = new RegExp(`.{0,100}${escapeRegex(String(reg.numero))}.{0,100}`, 'gi');
-            const ctxMatch = textoExtraido.match(regexCtx);
-            if (ctxMatch) {
-              requisito = ctxMatch[0].replace(/\s+/g, ' ').trim();
-            }
-          } catch (e) { /* ignore */ }
+        // Build structured requisito text
+        let requisito = '';
+
+        if (detalle.articulos.length > 0) {
+          requisito += `Artículos: ${detalle.articulos.join(' | ')}\n\n`;
         }
 
-        // Try context around name
-        if (!requisito && reg.nombre) {
-          try {
-            const nameSnippet = reg.nombre.substring(0, 20);
-            const nameRegex = new RegExp(`.{0,100}${escapeRegex(nameSnippet)}.{0,100}`, 'gi');
-            const nameMatch = textoExtraido.match(nameRegex);
-            if (nameMatch) {
-              requisito = nameMatch[0].replace(/\s+/g, ' ').trim();
-            }
-          } catch (e) { /* ignore */ }
+        if (detalle.requisitos.length > 0) {
+          requisito += `Requisitos:\n${detalle.requisitos.map(r => `• ${r}`).join('\n')}\n\n`;
+        } else {
+          // Fallback: extract context around the match
+          let context = '';
+          if (reg.nombre) {
+            try {
+              const snippet = reg.nombre.substring(0, 20);
+              const ctxRegex = new RegExp(`.{0,150}${escapeRegex(snippet)}.{0,150}`, 'gi');
+              const ctxMatch = textoExtraido.match(ctxRegex);
+              if (ctxMatch) context = ctxMatch[0].replace(/\s+/g, ' ').trim();
+            } catch (e) { /* ignore */ }
+          }
+          requisito += `Requisitos:\n• ${context || 'Mención de ' + reg.nombre}\n\n`;
         }
 
-        if (!requisito) {
-          requisito = `Mención de ${reg.nombre}`;
+        if (detalle.plazos.length > 0) {
+          requisito += `Plazos:\n${detalle.plazos.map(p => `⏰ ${p}`).join('\n')}`;
         }
 
         associations.push({
           regulationId: reg.id,
           regulationNombre: reg.nombre,
-          requisitos: requisito
+          norma: normMeta.norma || '',
+          articulos: detalle.articulos,
+          plazos: detalle.plazos,
+          requisitos: requisito.trim()
         });
       }
     });
@@ -178,15 +307,20 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         return;
       }
 
-      // Step 2: Detect associations
+      // Step 2: Extract norm metadata (name, articles, deadlines)
+      setExtractProgress('Analizando norma, artículos y plazos...');
+      const normMeta = extractNormMetadata(textoExtraido);
+
+      // Step 3: Detect associations with regulations
       setExtractProgress('Detectando asociaciones con reglamentos...');
-      const regulacionesAsociadas = detectAssociations(textoExtraido);
+      const regulacionesAsociadas = detectAssociations(textoExtraido, normMeta);
 
-      // Step 3: Create resumen
+      // Step 4: Create resumen
       const cleanText = textoExtraido.replace(/\s+/g, ' ').trim();
-      const resumen = cleanText.substring(0, 300) + (cleanText.length > 300 ? '...' : '');
+      const normaInfo = normMeta.norma ? `[${normMeta.norma}] ` : '';
+      const resumen = normaInfo + cleanText.substring(0, 300) + (cleanText.length > 300 ? '...' : '');
 
-      // Step 4: Prepare normativa object
+      // Step 5: Prepare normativa object
       const nombreFinal = documentName || file.name.replace('.pdf', '');
       const newNormativa = {
         id: Date.now(),
@@ -195,6 +329,9 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         fecha: new Date().toLocaleDateString('es-CL'),
         textoExtraido: textoExtraido,
         resumen: resumen,
+        norma: normMeta.norma || nombreFinal,
+        articulosGlobales: normMeta.articulos,
+        plazosGlobales: normMeta.plazos,
         regulacionesAsociadas: regulacionesAsociadas,
         archivo: file.name
       };
@@ -246,9 +383,33 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         const baseObs = updatesMap[assoc.regulationId]
           ? updatesMap[assoc.regulationId].observaciones
           : (regulation.observaciones || '');
+        const normaLabel = assoc.norma || normativaToAdd.norma || normativaToAdd.nombre;
+        let obsEntry = `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 NORMA: ${normaLabel}\nFuente: ${normativaToAdd.nombre} (${normativaToAdd.tipo})\nFecha carga: ${normativaToAdd.fecha}\n`;
+
+        if (assoc.articulos && assoc.articulos.length > 0) {
+          obsEntry += `\n📌 Artículos aplicables:\n${assoc.articulos.map(a => `   • ${a}`).join('\n')}\n`;
+        }
+
+        // Parse the requisitos field for the structured content
+        const reqLines = (associationEditValues[pendingNormativa.regulacionesAsociadas.indexOf(assoc)] || assoc.requisitos || '').split('\n').filter(l => l.trim());
+        const reqSection = reqLines.filter(l => !l.startsWith('Artículos:') && !l.startsWith('Plazos:') && !l.startsWith('⏰'));
+        const plazoSection = reqLines.filter(l => l.startsWith('⏰'));
+
+        if (reqSection.length > 0) {
+          obsEntry += `\n📝 Requisitos:\n${reqSection.map(r => r.startsWith('•') || r.startsWith('Requisitos:') ? `   ${r}` : `   • ${r}`).join('\n')}\n`;
+        }
+
+        if (plazoSection.length > 0) {
+          obsEntry += `\n⏰ Plazos:\n${plazoSection.map(p => `   ${p}`).join('\n')}\n`;
+        } else if (assoc.plazos && assoc.plazos.length > 0) {
+          obsEntry += `\n⏰ Plazos:\n${assoc.plazos.map(p => `   ⏰ ${p}`).join('\n')}\n`;
+        }
+
+        obsEntry += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
         updatesMap[assoc.regulationId] = {
           ...regulation,
-          observaciones: baseObs + `\n\n📋 Requisito normativo (${normativaToAdd.nombre}): ${assoc.requisitos}`
+          observaciones: baseObs + obsEntry
         };
       }
     });
@@ -389,9 +550,21 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
                           <div style={{ fontWeight: 600, color: "#1e40af", marginBottom: "0.25rem" }}>
                             {assoc.regulationNombre}
                           </div>
-                          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                            Reglamento N°{assoc.regulationId}
-                          </div>
+                          {assoc.norma && (
+                            <div style={{ fontSize: "0.8rem", color: "#059669", fontWeight: 500, marginBottom: "0.15rem" }}>
+                              Norma: {assoc.norma}
+                            </div>
+                          )}
+                          {assoc.articulos && assoc.articulos.length > 0 && (
+                            <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "0.15rem" }}>
+                              Artículos: {assoc.articulos.slice(0, 3).join(', ')}{assoc.articulos.length > 3 ? ` (+${assoc.articulos.length - 3} más)` : ''}
+                            </div>
+                          )}
+                          {assoc.plazos && assoc.plazos.length > 0 && (
+                            <div style={{ fontSize: "0.8rem", color: "#d97706" }}>
+                              ⏰ {assoc.plazos.length} plazo(s) detectado(s)
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -521,16 +694,28 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
                                         padding: "0.75rem",
                                         backgroundColor: "#ffffff",
                                         border: "1px solid #e5e7eb",
-                                        borderRadius: "4px"
+                                        borderRadius: "6px"
                                       }}
                                     >
-                                      <div style={{ fontWeight: 500, color: "#1e40af", marginBottom: "0.25rem" }}>
+                                      <div style={{ fontWeight: 600, color: "#1e40af", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
                                         {assoc.regulationNombre}
                                       </div>
-                                      <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "0.5rem" }}>
-                                        Reglamento N°{assoc.regulationId}
-                                      </div>
-                                      <div style={{ fontSize: "0.85rem", color: "#475569", fontStyle: "italic" }}>
+                                      {assoc.norma && (
+                                        <div style={{ fontSize: "0.8rem", color: "#059669", marginBottom: "0.35rem" }}>
+                                          <strong>Norma:</strong> {assoc.norma}
+                                        </div>
+                                      )}
+                                      {assoc.articulos && assoc.articulos.length > 0 && (
+                                        <div style={{ fontSize: "0.8rem", color: "#475569", marginBottom: "0.35rem" }}>
+                                          <strong>Artículos:</strong> {assoc.articulos.join(' | ')}
+                                        </div>
+                                      )}
+                                      {assoc.plazos && assoc.plazos.length > 0 && (
+                                        <div style={{ fontSize: "0.8rem", color: "#d97706", marginBottom: "0.35rem" }}>
+                                          <strong>Plazos:</strong> {assoc.plazos.join(' | ')}
+                                        </div>
+                                      )}
+                                      <div style={{ fontSize: "0.8rem", color: "#475569", whiteSpace: "pre-wrap", marginTop: "0.5rem", padding: "0.5rem", backgroundColor: "#f9fafb", borderRadius: "4px", borderLeft: "3px solid #3b82f6" }}>
                                         {assoc.requisitos}
                                       </div>
                                     </div>
