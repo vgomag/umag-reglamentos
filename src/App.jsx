@@ -10,6 +10,7 @@ import ResumenEjecutivo from './pages/ResumenEjecutivo';
 import Dashboard from './pages/Dashboard';
 import RegulationsList from './pages/RegulationsList';
 import RegulationDetail from './pages/RegulationDetail';
+import DocumentosView from './pages/DocumentosView';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
 
 function App() {
@@ -190,6 +191,9 @@ function App() {
             ))}
             {activeView === "new" && (
               <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
+            )}
+            {activeView === "documentos" && (
+              <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
             )}
             {activeView === "plazos" && <PlazosList />}
             {activeView === "normativa" && (

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import PdfViewer from '../components/PdfViewer';
 
 function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
@@ -138,6 +139,15 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
 
       setPdfExtractedData(extracted);
       setPdfProgress('Extracción completada');
+
+      // Auto-guardar resumen y URL del PDF en el reglamento
+      const autoUpdates = {};
+      if (extracted.resumen) autoUpdates.resumenPdf = extracted.resumen;
+      if (storageResult?.url) autoUpdates.pdfUrl = storageResult.url;
+      if (extracted.fecha_documento) autoUpdates.fecha_documento = extracted.fecha_documento;
+      if (Object.keys(autoUpdates).length > 0) {
+        setFormData(prev => ({ ...prev, ...autoUpdates }));
+      }
     } catch (e) {
       console.error('Error processing PDF:', e);
       setPdfProgress('Error al procesar el PDF: ' + e.message);
@@ -215,6 +225,17 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
           <span className={`badge ${(formData.estado || 'pendiente').toLowerCase().replace(/\s+/g, '-')}`}>{formData.estado}</span>
         </div>
       </div>
+
+      {/* Visor PDF embebido si hay documento */}
+      {(() => {
+        const pdfUrl = formData.pdfUrl || formData.enlace || (formData.adjuntos || []).find(a => a.type === 'application/pdf' && a.url)?.url;
+        return pdfUrl ? (
+          <div className="section" style={{ marginBottom: '1.5rem' }}>
+            <h3 className="section-title">Documento Publicado</h3>
+            <PdfViewer pdfUrl={pdfUrl} regulation={formData} />
+          </div>
+        ) : null;
+      })()}
 
       <div className="detail-sections">
         <div className="section">
