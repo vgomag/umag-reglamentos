@@ -4,6 +4,7 @@ import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES } from './config/google';
 import NewRegulation from './pages/NewRegulation';
 import PlazosList from './pages/PlazosList';
 import Settings from './pages/Settings';
+import Normativa from './pages/Normativa';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
@@ -28,6 +29,10 @@ function App() {
   const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
   const [isLoading, setIsLoading] = useState(!!supabase);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [normativas, setNormativas] = useState(() => {
+    const saved = localStorage.getItem('umag_normativas');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Cargar datos desde Supabase al inicio
   useEffect(() => {
@@ -50,6 +55,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem("regulations", JSON.stringify(regulations));
   }, [regulations]);
+
+  // Persist normativas to localStorage
+  useEffect(() => {
+    localStorage.setItem('umag_normativas', JSON.stringify(normativas));
+  }, [normativas]);
 
   // Initialize Google and restore token
   useEffect(() => {
@@ -197,6 +207,14 @@ function App() {
     setToast({ type: 'success', message: 'Datos restablecidos' });
   };
 
+  const handleAddNormativa = (normativa) => {
+    setNormativas(prev => [...prev, normativa]);
+  };
+
+  const handleDeleteNormativa = (id) => {
+    setNormativas(prev => prev.filter(n => n.id !== id));
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="login-page">
@@ -233,6 +251,16 @@ function App() {
               <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
             )}
             {activeView === "plazos" && <PlazosList />}
+            {activeView === "normativa" && (
+              <Normativa
+                regulations={regulations}
+                normativas={normativas}
+                onAddNormativa={handleAddNormativa}
+                onDeleteNormativa={handleDeleteNormativa}
+                onUpdateRegulation={handleSaveRegulation}
+                showToast={setToast}
+              />
+            )}
             {activeView === "settings" && (
               <Settings regulations={regulations} onReset={handleReset} onExport={handleExport} googleToken={googleToken} isGoogleConnected={isGoogleConnected} onGoogleDisconnect={handleGoogleDisconnect} googleUser={googleUser} dbMode={dbMode} />
             )}
