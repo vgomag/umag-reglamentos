@@ -30,53 +30,79 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
     return fullText;
   };
 
+  // Escape special regex characters in a string
+  const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   // Auto-detect associations with existing regulations
   const detectAssociations = (textoExtraido) => {
     const associations = [];
+    const textoLower = textoExtraido.toLowerCase();
 
     regulations.forEach(reg => {
-      // Check for regulation number matches (e.g., "Reglamento 1", "Reglamento N°1")
-      const numberPatterns = [
-        new RegExp(`\\b[Rr]eglamento\\s+(?:N[°º]?\\s*)?${reg.numero}\\b`, 'g'),
-        new RegExp(`\\b[Rr]eg\\.?\\s+(?:N[°º]?\\s*)?${reg.numero}\\b`, 'g'),
-        new RegExp(`\\b#${reg.numero}\\b`, 'g')
-      ];
-
-      // Check for regulation name matches
-      const namePatterns = [
-        new RegExp(reg.nombre, 'gi'),
-        new RegExp(reg.nombre.substring(0, Math.min(30, reg.nombre.length)), 'gi')
-      ];
-
       let matches = [];
 
-      // Check number patterns
-      numberPatterns.forEach(pattern => {
-        const found = textoExtraido.match(pattern);
-        if (found) matches.push(...found);
-      });
+      // Check for regulation number matches if numero exists
+      if (reg.numero) {
+        const numStr = String(reg.numero);
+        const numberPatterns = [
+          new RegExp(`\\b[Rr]eglamento\\s+(?:N[°º]?\\s*)?${escapeRegex(numStr)}\\b`, 'g'),
+          new RegExp(`\\b[Rr]eg\\.?\\s+(?:N[°º]?\\s*)?${escapeRegex(numStr)}\\b`, 'g')
+        ];
+        numberPatterns.forEach(pattern => {
+          const found = textoExtraido.match(pattern);
+          if (found) matches.push(...found);
+        });
+      }
 
-      // Check name patterns
-      namePatterns.forEach(pattern => {
-        const found = textoExtraido.match(pattern);
-        if (found) matches.push(...found);
-      });
+      // Check for regulation name matches using key words from the name
+      if (reg.nombre) {
+        // Try full name match
+        try {
+          const fullNameRegex = new RegExp(escapeRegex(reg.nombre), 'gi');
+          const found = textoExtraido.match(fullNameRegex);
+          if (found) matches.push(...found);
+        } catch (e) { /* ignore regex errors */ }
+
+        // Try matching key words (3+ chars) from the regulation name
+        if (matches.length === 0) {
+          const keywords = reg.nombre
+            .split(/\s+/)
+            .filter(w => w.length > 3)
+            .map(w => w.toLowerCase());
+
+          // If 2+ keywords found in text, consider it a match
+          const matchedKeywords = keywords.filter(kw => textoLower.includes(kw));
+          if (keywords.length >= 2 && matchedKeywords.length >= Math.ceil(keywords.length * 0.6)) {
+            matches.push(reg.nombre);
+          }
+        }
+      }
 
       if (matches.length > 0) {
         // Extract surrounding context (~200 characters)
         let requisito = "";
-        const regexWithContext = new RegExp(`.{0,100}${reg.numero.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.{0,100}`, 'gi');
-        const contextMatch = textoExtraido.match(regexWithContext);
-        if (contextMatch) {
-          requisito = contextMatch[0].replace(/\s+/g, ' ').trim();
+
+        // Try context around number
+        if (reg.numero) {
+          try {
+            const regexCtx = new RegExp(`.{0,100}${escapeRegex(String(reg.numero))}.{0,100}`, 'gi');
+            const ctxMatch = textoExtraido.match(regexCtx);
+            if (ctxMatch) {
+              requisito = ctxMatch[0].replace(/\s+/g, ' ').trim();
+            }
+          } catch (e) { /* ignore */ }
         }
 
-        if (!requisito) {
-          const nameRegex = new RegExp(`.{0,100}${reg.nombre.substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.{0,100}`, 'gi');
-          const nameMatch = textoExtraido.match(nameRegex);
-          if (nameMatch) {
-            requisito = nameMatch[0].replace(/\s+/g, ' ').trim();
-          }
+        // Try context around name
+        if (!requisito && reg.nombre) {
+          try {
+            const nameSnippet = reg.nombre.substring(0, 20);
+            const nameRegex = new RegExp(`.{0,100}${escapeRegex(nameSnippet)}.{0,100}`, 'gi');
+            const nameMatch = textoExtraido.match(nameRegex);
+            if (nameMatch) {
+              requisito = nameMatch[0].replace(/\s+/g, ' ').trim();
+            }
+          } catch (e) { /* ignore */ }
         }
 
         if (!requisito) {
@@ -86,8 +112,7 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
         associations.push({
           regulationId: reg.id,
           regulationNombre: reg.nombre,
-          requisitos: requisito,
-          checked: true
+          requisitos: requisito
         });
       }
     });
@@ -195,13 +220,13 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
   const handleConfirmAssociations = () => {
     if (!pendingNormativa) return;
 
-    // Filter associations based on selection
+    // Filter associations based on selection and apply edited values
     const finalAssociations = pendingNormativa.regulacionesAsociadas
-      .filter((_, idx) => selectedAssociations.includes(idx))
       .map((assoc, idx) => ({
         ...assoc,
-        requisitos: associationEditValues[pendingNormativa.regulacionesAsociadas.findIndex((_, i) => selectedAssociations.includes(idx) && selectedAssociations.indexOf(idx) === selectedAssociations.indexOf(i))] || assoc.requisitos
-      }));
+        requisitos: associationEditValues[idx] || assoc.requisitos
+      }))
+      .filter((_, idx) => selectedAssociations.includes(idx));
 
     // Update the normativa with final associations
     const normativaToAdd = {
@@ -225,7 +250,7 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
       }
     });
 
-    showToast(`Normativa "${normativaToAdd.nombre}" agregada con ${finalAssociations.length} asociación(es)`, 'success');
+    showToast({ message: `Normativa "${normativaToAdd.nombre}" agregada con ${finalAssociations.length} asociación(es)`, type: 'success' });
     setShowAssociationModal(false);
     setPendingNormativa(null);
     setSelectedAssociations([]);
@@ -235,7 +260,7 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
   const handleDeleteNormativa = (id) => {
     if (window.confirm('¿Eliminar esta normativa?')) {
       onDeleteNormativa(id);
-      showToast('Normativa eliminada', 'success');
+      showToast({ message: 'Normativa eliminada', type: 'success' });
     }
   };
 
