@@ -178,7 +178,7 @@ export default function ResumenEjecutivo({ regulations }) {
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: s.color }}>{s.count}</span>
                 </div>
                 <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.max((s.count / total) * 100, 3)}%`, background: `linear-gradient(90deg, ${s.color}cc, ${s.color})`, borderRadius: 99, transition: 'width 0.6s ease' }}></div>
+                  <div style={{ height: '100%', width: `${total > 0 ? Math.max((s.count / total) * 100, 3) : 0}%`, background: `linear-gradient(90deg, ${s.color}cc, ${s.color})`, borderRadius: 99, transition: 'width 0.6s ease' }}></div>
                 </div>
               </div>
             ))}
@@ -223,7 +223,7 @@ export default function ResumenEjecutivo({ regulations }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 500, color: '#1e293b', marginBottom: '0.2rem' }}>{name}</div>
                   <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(count / faltantes) * 100}%`, background: `hsl(${220 + i * 30}, 60%, 55%)`, borderRadius: 99 }}></div>
+                    <div style={{ height: '100%', width: `${faltantes > 0 ? (count / faltantes) * 100 : 0}%`, background: `hsl(${220 + i * 30}, 60%, 55%)`, borderRadius: 99 }}></div>
                   </div>
                 </div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', minWidth: 20, textAlign: 'right' }}>{count}</span>
