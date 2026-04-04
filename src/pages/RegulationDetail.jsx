@@ -15,6 +15,19 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [pdfExtractedData, setPdfExtractedData] = useState(null);
   const [pdfUploading, setPdfUploading] = useState(false);
 
+  // Detectar cambios sin guardar
+  const hasUnsavedChanges = () => {
+    if (!regulation || !formData) return false;
+    return JSON.stringify(formData) !== JSON.stringify(regulation);
+  };
+
+  const handleBack = () => {
+    if (hasUnsavedChanges()) {
+      if (!window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?')) return;
+    }
+    onBack();
+  };
+
   // Extract text from PDF using pdf.js
   const extractPdfText = async (file) => {
     if (!window.pdfjsLib) {
@@ -227,7 +240,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
 
   return (
     <div className="page-content">
-      <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: "1.5rem" }}>← Volver</button>
+      <button className="btn btn-secondary" onClick={handleBack} style={{ marginBottom: "1.5rem" }}>← Volver</button>
       <div className="detail-header">
         <h2 className="detail-title">{formData.nombre}</h2>
         <div className="detail-meta">
