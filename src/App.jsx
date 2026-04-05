@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { INITIAL_REGULATIONS } from './config/data';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -87,30 +87,15 @@ function App() {
   const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || 'umag2026';
   const [loginError, setLoginError] = useState('');
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("umag_remember") === "true");
-  const loginPasswordRef = useRef(null);
-  const loginUserRef = useRef(null);
-
-  // Auto-login si hay credenciales guardadas
-  useEffect(() => {
-    if (!isLoggedIn && localStorage.getItem("umag_remember") === "true") {
-      const savedUser = localStorage.getItem("umag_saved_user");
-      const savedPass = localStorage.getItem("umag_saved_pass");
-      if (savedUser && savedPass === AUTH_PASSWORD) {
-        sessionStorage.setItem("umag_auth", "true");
-        sessionStorage.setItem("umag_user", savedUser);
-        setIsLoggedIn(true);
-      }
-    }
-  }, []);
+  const [loginUser, setLoginUser] = useState(() => localStorage.getItem("umag_saved_user") || 'admin');
+  const [loginPass, setLoginPass] = useState(() => localStorage.getItem("umag_saved_pass") || '');
 
   const handleLogin = () => {
-    const userInput = loginUserRef.current;
-    const passwordInput = loginPasswordRef.current;
-    if (!userInput || !userInput.value.trim()) {
+    if (!loginUser.trim()) {
       setLoginError('Ingresa un nombre de usuario');
       return;
     }
-    if (!passwordInput || passwordInput.value !== AUTH_PASSWORD) {
+    if (loginPass !== AUTH_PASSWORD) {
       setLoginError('Contraseña incorrecta');
       return;
     }
@@ -118,26 +103,22 @@ function App() {
     // Guardar credenciales si "Recordarme" está marcado
     if (rememberMe) {
       localStorage.setItem("umag_remember", "true");
-      localStorage.setItem("umag_saved_user", userInput.value.trim());
-      localStorage.setItem("umag_saved_pass", passwordInput.value);
+      localStorage.setItem("umag_saved_user", loginUser.trim());
+      localStorage.setItem("umag_saved_pass", loginPass);
     } else {
       localStorage.removeItem("umag_remember");
       localStorage.removeItem("umag_saved_user");
       localStorage.removeItem("umag_saved_pass");
     }
     sessionStorage.setItem("umag_auth", "true");
-    sessionStorage.setItem("umag_user", userInput.value.trim());
+    sessionStorage.setItem("umag_user", loginUser.trim());
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
     sessionStorage.removeItem("umag_user");
-    // Limpiar credenciales guardadas al cerrar sesión
-    localStorage.removeItem("umag_remember");
-    localStorage.removeItem("umag_saved_user");
-    localStorage.removeItem("umag_saved_pass");
-    setRememberMe(false);
+    // No borramos las credenciales guardadas para que "Recordarme" funcione al volver
     setIsLoggedIn(false);
     setActiveView("resumen");
   };
@@ -232,8 +213,8 @@ function App() {
           </div>
           <h2 className="login-title">UMAG</h2>
           <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
-          <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" ref={loginUserRef} />
-          <input type="password" className="login-input" placeholder="Contraseña" ref={loginPasswordRef} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+          <input type="text" className="login-input" placeholder="Usuario" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} />
+          <input type="password" className="login-input" placeholder="Contraseña" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', cursor: 'pointer' }} />
             Recordar contraseña
