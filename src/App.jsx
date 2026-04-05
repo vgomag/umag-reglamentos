@@ -84,10 +84,24 @@ function App() {
     catch (e) { console.warn('No se pudo guardar normativas en localStorage:', e.message); }
   }, [normativas]);
 
-  const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
+  const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || 'umag2026';
   const [loginError, setLoginError] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("umag_remember") === "true");
   const loginPasswordRef = useRef(null);
   const loginUserRef = useRef(null);
+
+  // Auto-login si hay credenciales guardadas
+  useEffect(() => {
+    if (!isLoggedIn && localStorage.getItem("umag_remember") === "true") {
+      const savedUser = localStorage.getItem("umag_saved_user");
+      const savedPass = localStorage.getItem("umag_saved_pass");
+      if (savedUser && savedPass === AUTH_PASSWORD) {
+        sessionStorage.setItem("umag_auth", "true");
+        sessionStorage.setItem("umag_user", savedUser);
+        setIsLoggedIn(true);
+      }
+    }
+  }, []);
 
   const handleLogin = () => {
     const userInput = loginUserRef.current;
@@ -101,6 +115,16 @@ function App() {
       return;
     }
     setLoginError('');
+    // Guardar credenciales si "Recordarme" está marcado
+    if (rememberMe) {
+      localStorage.setItem("umag_remember", "true");
+      localStorage.setItem("umag_saved_user", userInput.value.trim());
+      localStorage.setItem("umag_saved_pass", passwordInput.value);
+    } else {
+      localStorage.removeItem("umag_remember");
+      localStorage.removeItem("umag_saved_user");
+      localStorage.removeItem("umag_saved_pass");
+    }
     sessionStorage.setItem("umag_auth", "true");
     sessionStorage.setItem("umag_user", userInput.value.trim());
     setIsLoggedIn(true);
@@ -204,6 +228,10 @@ function App() {
           <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
           <input type="text" className="login-input" placeholder="Usuario" defaultValue="admin" ref={loginUserRef} />
           <input type="password" className="login-input" placeholder="Contraseña" ref={loginPasswordRef} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
+            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', cursor: 'pointer' }} />
+            Recordar contraseña
+          </label>
           {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
           <button className="login-button" onClick={handleLogin}>Iniciar Sesión</button>
         </div>
