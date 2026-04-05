@@ -132,6 +132,12 @@ function App() {
 
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
+    sessionStorage.removeItem("umag_user");
+    // Limpiar credenciales guardadas al cerrar sesión
+    localStorage.removeItem("umag_remember");
+    localStorage.removeItem("umag_saved_user");
+    localStorage.removeItem("umag_saved_pass");
+    setRememberMe(false);
     setIsLoggedIn(false);
     setActiveView("resumen");
   };
