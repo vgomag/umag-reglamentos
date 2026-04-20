@@ -2,9 +2,16 @@ node_modules/
 dist/
 .DS_Store
 *.local
-*.timestam
+
+# Vite build timestamps temporales
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+*.timestamp-*.mjs
 
 # Variables de entorno (contienen credenciales)
 .env
 .env.local
 .env.production
+
+# Netlify local state
+.netlify/state.json

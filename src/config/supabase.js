@@ -45,21 +45,39 @@ CREATE TABLE regulations (
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE regulations ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS restrictivas:
--- Lectura: permitida para usuarios autenticados (anon key con sesión válida)
-CREATE POLICY "Authenticated read access" ON regulations
-  FOR SELECT USING (auth.role() = 'authenticated');
+-- IMPORTANTE: La app NO usa Supabase Auth (usa clave compartida local).
+-- Las requests se envían con la "anon key" (rol = 'anon').
+-- Si se usan las policies con auth.role() = 'authenticated', TODAS las
+-- operaciones fallarán silenciosamente y la app caerá a localStorage.
+--
+-- Elige UNA de las dos opciones:
+--
+-- OPCIÓN A (actual, simple): Permitir operaciones con anon key.
+-- ADECUADA para un sitio estático con una contraseña compartida a nivel de app.
+-- El anon key igual es público (viaja al cliente); la seguridad real queda en
+-- la contraseña de la app y en que la URL no sea descubierta.
+CREATE POLICY "Anon read access" ON regulations
+  FOR SELECT USING (true);
+CREATE POLICY "Anon insert access" ON regulations
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anon update access" ON regulations
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Anon delete access" ON regulations
+  FOR DELETE USING (true);
 
--- Escritura: solo usuarios autenticados
-CREATE POLICY "Authenticated insert access" ON regulations
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
-CREATE POLICY "Authenticated update access" ON regulations
-  FOR UPDATE USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
-
-CREATE POLICY "Authenticated delete access" ON regulations
-  FOR DELETE USING (auth.role() = 'authenticated');
+-- OPCIÓN B (más segura): Usar Supabase Auth real.
+-- Requiere reemplazar el login local por supabase.auth.signInWithPassword(...).
+-- Luego sí se pueden usar las policies con auth.role() = 'authenticated':
+--
+-- CREATE POLICY "Authenticated read access" ON regulations
+--   FOR SELECT USING (auth.role() = 'authenticated');
+-- CREATE POLICY "Authenticated insert access" ON regulations
+--   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+-- CREATE POLICY "Authenticated update access" ON regulations
+--   FOR UPDATE USING (auth.role() = 'authenticated')
+--   WITH CHECK (auth.role() = 'authenticated');
+-- CREATE POLICY "Authenticated delete access" ON regulations
+--   FOR DELETE USING (auth.role() = 'authenticated');
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at()

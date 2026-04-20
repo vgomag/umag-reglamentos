@@ -1,24 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PdfViewer from '../components/PdfViewer';
-import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
+import { sanitizePdfText } from '../utils/sanitize';
 import { extractPdfText } from '../utils/pdf';
 
 function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
   const [formData, setFormData] = useState(regulation);
+  // Registro acumulativo de blob URLs creadas en esta sesión — se revocan al desmontar
+  const blobUrlsRef = useRef(new Set());
 
   useEffect(() => {
     setFormData(regulation);
   }, [regulation]);
 
-  // Cleanup: revocar blob URLs al desmontar el componente
+  // Cleanup: revocar todas las blob URLs creadas durante la sesión al desmontar
   useEffect(() => {
+    const urls = blobUrlsRef.current;
     return () => {
-      if (formData?.pdfUrl && formData.pdfUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(formData.pdfUrl);
-      }
-      (formData?.adjuntos || []).forEach(a => {
-        if (a.blobUrl && a.blobUrl.startsWith('blob:')) URL.revokeObjectURL(a.blobUrl);
+      urls.forEach(u => {
+        try { URL.revokeObjectURL(u); } catch (_) { /* ignore */ }
       });
+      urls.clear();
     };
   }, []);
   const fileInputRef = useRef(null);
@@ -142,6 +143,7 @@ function RegulationDetail({ regulation, onBack, onSave, onDelete }) {
       let viewableUrl = storageResult?.url || null;
       if (!viewableUrl) {
         viewableUrl = URL.createObjectURL(file);
+        blobUrlsRef.current.add(viewableUrl);
       }
 
       // Step 5: Add as attachment

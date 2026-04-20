@@ -51,6 +51,13 @@ function App() {
     }
   });
 
+  // Limpieza única de cualquier contraseña guardada por versiones previas de la app
+  useEffect(() => {
+    if (localStorage.getItem("umag_saved_pass") !== null) {
+      localStorage.removeItem("umag_saved_pass");
+    }
+  }, []);
+
   // Cargar datos desde Supabase al inicio
   useEffect(() => {
     if (supabase) {
@@ -88,7 +95,7 @@ function App() {
   const [loginError, setLoginError] = useState('');
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("umag_remember") === "true");
   const [loginUser, setLoginUser] = useState(() => localStorage.getItem("umag_saved_user") || 'admin');
-  const [loginPass, setLoginPass] = useState(() => localStorage.getItem("umag_saved_pass") || '');
+  const [loginPass, setLoginPass] = useState('');
 
   const handleLogin = () => {
     if (!loginUser.trim()) {
@@ -100,16 +107,16 @@ function App() {
       return;
     }
     setLoginError('');
-    // Guardar credenciales si "Recordarme" está marcado
+    // "Recordarme" sólo guarda el usuario y bandera, nunca la contraseña
     if (rememberMe) {
       localStorage.setItem("umag_remember", "true");
       localStorage.setItem("umag_saved_user", loginUser.trim());
-      localStorage.setItem("umag_saved_pass", loginPass);
     } else {
       localStorage.removeItem("umag_remember");
       localStorage.removeItem("umag_saved_user");
-      localStorage.removeItem("umag_saved_pass");
     }
+    // Limpiar credenciales legacy que pudieron haberse guardado en versiones previas
+    localStorage.removeItem("umag_saved_pass");
     sessionStorage.setItem("umag_auth", "true");
     sessionStorage.setItem("umag_user", loginUser.trim());
     setIsLoggedIn(true);
@@ -118,8 +125,9 @@ function App() {
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
     sessionStorage.removeItem("umag_user");
-    // No borramos las credenciales guardadas para que "Recordarme" funcione al volver
+    // Mantenemos el usuario si "Recordarme" está activo, pero nunca la contraseña
     setIsLoggedIn(false);
+    setLoginPass('');
     setActiveView("resumen");
   };
 
@@ -170,16 +178,18 @@ function App() {
         setToast({ type: 'success', message: 'Reglamento creado' });
         return;
       }
-      // Si Supabase falla, avisar y caer a modo local
-      setToast({ type: 'error', message: 'Error en base de datos. Se guardó localmente.' });
+      // Si Supabase falla, NO creamos el registro localmente para evitar IDs
+      // duplicados o inconsistencias al reconectarse. Informar al usuario.
+      setToast({ type: 'error', message: 'No se pudo crear el reglamento en la base de datos. Inténtalo nuevamente.' });
+      return;
     }
-    // Modo local: generar ID seguro
+    // Modo local: generar ID seguro (basado en el máximo actual)
     const maxId = regulations.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0);
     const id = maxId + 1;
     const created = { ...newReg, id, historial: [], adjuntos: [] };
     setRegulations(prev => [...prev, created]);
     setActiveView("regulations");
-    if (dbMode !== 'supabase') setToast({ type: 'success', message: 'Reglamento creado' });
+    setToast({ type: 'success', message: 'Reglamento creado' });
   };
 
   const handleExport = () => {
@@ -207,21 +217,21 @@ function App() {
   if (!isLoggedIn) {
     return (
       <div className="login-page">
-        <div className="login-card">
+        <form className="login-card" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
           <div className="login-logo">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           </div>
           <h2 className="login-title">UMAG</h2>
           <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
-          <input type="text" className="login-input" placeholder="Usuario" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} />
-          <input type="password" className="login-input" placeholder="Contraseña" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+          <input type="text" className="login-input" placeholder="Usuario" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} autoComplete="username" />
+          <input type="password" className="login-input" placeholder="Contraseña" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} autoComplete="current-password" />
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', cursor: 'pointer' }} />
-            Recordar contraseña
+            Recordar mi usuario
           </label>
           {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
-          <button className="login-button" onClick={handleLogin}>Iniciar Sesión</button>
-        </div>
+          <button type="submit" className="login-button">Iniciar Sesión</button>
+        </form>
       </div>
     );
   }

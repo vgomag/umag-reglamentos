@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { sanitizePdfText, sanitizeField } from '../utils/sanitize';
+import { sanitizePdfText } from '../utils/sanitize';
 import { extractPdfText } from '../utils/pdf';
 
 function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa, onUpdateRegulation, showToast }) {
@@ -96,10 +96,8 @@ function Normativa({ regulations, normativas, onAddNormativa, onDeleteNormativa,
     // For each search term, find surrounding articles
     for (const term of searchTerms) {
       try {
-        const termEscaped = escapeRegex(term.toLowerCase());
-        // Find position of term in text
-        let pos = textoLower.indexOf(termEscaped.toLowerCase());
-        if (pos === -1) pos = textoLower.indexOf(term.toLowerCase());
+        // indexOf trabaja con texto literal, NO con regex — no escapar aquí
+        const pos = textoLower.indexOf(term.toLowerCase());
         if (pos === -1) continue;
 
         // Look for articles in a window of 500 chars around the match
