@@ -96,3 +96,76 @@ git rm --cached vite.config.js.timestamp-*.mjs .netlify/state.json
 - `src/pages/RegulationDetail.jsx`
 - `src/pages/Normativa.jsx`
 - `AUDITORIA_BUGS.md` (nuevo)
+
+---
+
+## Segunda pasada — 20 de abril de 2026 (conexión real a Supabase)
+
+Con acceso real al proyecto Supabase `pzqzupcjalggdlibplcw` detectamos problemas que la revisión estática anterior no podía ver. Estado tras la corrección: **advisors de seguridad = 0, advisors de performance = 0, 23/23 tests pasan, build OK.**
+
+### Crítico — RLS mal configurada en producción (CAUSA RAÍZ del problema de persistencia)
+
+Aunque el SQL comentado en `supabase.js` ofrecía dos opciones (anon vs authenticated), la base de datos real tenía una combinación inconsistente:
+
+- `SELECT` con "Anon read access" → permitía leer.
+- `INSERT`, `UPDATE`, `DELETE` con policies `auth.role() = 'authenticated'` → **bloqueaban toda escritura**.
+
+La app usa el anon key, no Supabase Auth, así que cualquier edición, creación o borrado fallaba en silencio (el código tragaba el error con `console.error`) y caía a localStorage. A la usuaria le parecía que "guardaba", pero Supabase nunca se actualizaba. Además, el seed inicial estaba vacío porque `supabaseSeedIfEmpty` veía `count=0` e intentaba insertar, cosa que RLS rechazaba.
+
+**Corrección aplicada** (migración `fix_regulations_rls_for_anon_access`):
+
+- Eliminadas: `Authenticated insert access`, `Authenticated update access`, `Authenticated delete access`.
+- Reescrita: `Anon read access` usando `(select auth.role())` para que el linter de performance no se queje.
+- Creadas: `Anon insert access`, `Anon update access`, `Anon delete access`, también con `(select auth.role())`.
+
+Validado en server-side simulando el JWT `{"role":"anon"}`: INSERT, UPDATE y DELETE funcionan. La tabla tiene los 31 reglamentos sembrados y accesibles para la app.
+
+### Crítico — Función `update_updated_at` con search_path mutable
+
+El advisor de seguridad lo marcaba. Corregido (migración `secure_update_updated_at_function`): la función ahora es `SECURITY INVOKER SET search_path = pg_catalog, public`, cerrando el vector de path shadowing.
+
+### Alto — Bucket `reglamentos-pdf` permitía listar todos los archivos
+
+La policy `Public read reglamentos-pdf` con `bucket_id = 'reglamentos-pdf'` dejaba que cualquiera hiciera `list()` sobre el bucket y enumerara los PDFs. El bucket es público para acceso por URL directa, pero listar no era la intención.
+
+**Corrección** (migración `restrict_reglamentos_pdf_bucket_listing`): policy reemplazada por `Authenticated list reglamentos-pdf` restringida a rol authenticated. Los PDFs siguen accesibles por `getPublicUrl()` porque el bucket es público, pero el anon ya no puede enumerarlos.
+
+### Medio — Faltaba unique index en `regulations.numero`
+
+`supabaseUpsert` y el formulario "Nuevo" permitían crear dos reglamentos con el mismo `numero`. Añadido índice único (migración `add_numero_unique_index_regulations`). Si la app intenta duplicar, Postgres devolverá error y el toast lo mostrará.
+
+### Medio — Errores de Supabase silenciosos en el código
+
+`supabaseFetchAll/Upsert/Insert/Delete/SeedIfEmpty` sólo hacían `console.error` y devolvían `null`/`false`. La UI mostraba "Usando datos locales" sin decir por qué. Refactor en `src/config/supabase.js`:
+
+- Nuevo helper `formatSupabaseError(e)` que expone `code | message | details | hint`.
+- `supabaseFetchAll` ahora devuelve `{ data, error }` en vez de sólo data.
+- `supabaseSeedIfEmpty` ahora devuelve `{ seeded, error }`.
+- Registro del último error accesible por `getLastSupabaseError()`.
+- Refactor del shape común con un helper `toRow(r)` (elimina código duplicado entre upsert, insert y seed).
+
+En `src/App.jsx`, el `useEffect` de carga inicial ahora muestra un toast con el mensaje de error real cuando el seed o el fetch fallan, así no hay fallos invisibles.
+
+---
+
+## Verificación (segunda pasada)
+
+- `npx vitest run` — **23/23 tests pasan**.
+- `npx vite build --emptyOutDir=false` — pasa, bundle 187 KB (60 KB gzip).
+- `get_advisors(security)` — **0 lints**.
+- `get_advisors(performance)` — **0 lints**.
+- Test server-side: INSERT/UPDATE/DELETE con rol anon funcionan.
+- Conteo en tabla: 31 reglamentos.
+
+## Archivos modificados (segunda pasada)
+
+- `src/config/supabase.js` (refactor completo de helpers y manejo de errores)
+- `src/App.jsx` (toasts de error en inicialización de BD)
+- `AUDITORIA_BUGS.md` (esta sección)
+
+## Migraciones aplicadas en Supabase
+
+- `fix_regulations_rls_for_anon_access`
+- `secure_update_updated_at_function`
+- `add_numero_unique_index_regulations`
+- `restrict_reglamentos_pdf_bucket_listing`
