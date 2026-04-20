@@ -60,23 +60,29 @@ function App() {
 
   // Cargar datos desde Supabase al inicio
   useEffect(() => {
-    if (supabase) {
-      (async () => {
-        await supabaseSeedIfEmpty(INITIAL_REGULATIONS);
-        const data = await supabaseFetchAll();
-        if (data) {
-          setRegulations(data);
-          setDbMode('supabase');
-        } else {
-          setDbMode('local');
-        }
-        setIsLoading(false);
-      })().catch(e => {
-        console.warn('Error inicializando Supabase:', e.message);
+    if (!supabase) return;
+    (async () => {
+      const seedResult = await supabaseSeedIfEmpty(INITIAL_REGULATIONS);
+      if (seedResult.error) {
+        setToast({ type: 'error', message: `No se pudo sembrar la BD: ${seedResult.error}` });
+      }
+      const { data, error } = await supabaseFetchAll();
+      if (data) {
+        setRegulations(data);
+        setDbMode('supabase');
+      } else {
         setDbMode('local');
-        setIsLoading(false);
-      });
-    }
+        if (error) {
+          setToast({ type: 'error', message: `Conexión a BD falló (${error}). Usando datos locales.` });
+        }
+      }
+      setIsLoading(false);
+    })().catch(e => {
+      console.warn('Error inicializando Supabase:', e.message);
+      setDbMode('local');
+      setIsLoading(false);
+      setToast({ type: 'error', message: `Error inicializando BD: ${e.message}. Usando datos locales.` });
+    });
   }, []);
 
   // Sincronizar con localStorage como backup

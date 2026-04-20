@@ -93,42 +93,66 @@ CREATE TRIGGER trigger_update_timestamp
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 */
 
+// Formatea un error de Supabase con toda la informacion disponible
+function formatSupabaseError(e) {
+  if (!e) return 'desconocido';
+  const parts = [];
+  if (e.code) parts.push(`code=${e.code}`);
+  if (e.message) parts.push(e.message);
+  if (e.details) parts.push(`details=${e.details}`);
+  if (e.hint) parts.push(`hint=${e.hint}`);
+  return parts.join(' | ');
+}
+
+// Ultimo error reportado por cualquier operacion Supabase (para que la UI pueda mostrarlo)
+let lastSupabaseError = null;
+export function getLastSupabaseError() { return lastSupabaseError; }
+function setLastError(op, e) {
+  lastSupabaseError = { op, error: formatSupabaseError(e), at: new Date().toISOString() };
+  console.error(`[supabase:${op}]`, lastSupabaseError.error);
+}
+
+// Mapea un registro de la app al shape esperado por la tabla
+function toRow(r) {
+  return {
+    numero: r.numero,
+    nombre: r.nombre,
+    articulo: r.articulo || '',
+    estado: r.estado,
+    progreso: r.progreso,
+    prioridad: r.prioridad,
+    responsable: r.responsable || '',
+    observaciones: r.observaciones || '',
+    enlace: r.enlace || '',
+    decreto: r.decreto || '',
+    articulo_estatuto: r.articulo_estatuto || '',
+    historial: r.historial || [],
+    adjuntos: r.adjuntos || []
+  };
+}
+
 // Helper functions para Supabase
+// Devuelve { data, error }. data=null + error=null cuando no hay cliente configurado.
 export async function supabaseFetchAll() {
-  if (!supabase) return null;
+  if (!supabase) return { data: null, error: null };
   try {
     const { data, error } = await supabase.from('regulations').select('*').order('id');
     if (error) throw error;
-    return data;
+    return { data, error: null };
   } catch (e) {
-    console.error('Supabase fetch error:', e);
-    return null;
+    setLastError('fetchAll', e);
+    return { data: null, error: formatSupabaseError(e) };
   }
 }
 
 export async function supabaseUpsert(regulation) {
   if (!supabase) return false;
   try {
-    const { error } = await supabase.from('regulations').upsert({
-      id: regulation.id,
-      numero: regulation.numero,
-      nombre: regulation.nombre,
-      articulo: regulation.articulo || '',
-      estado: regulation.estado,
-      progreso: regulation.progreso,
-      prioridad: regulation.prioridad,
-      responsable: regulation.responsable || '',
-      observaciones: regulation.observaciones || '',
-      enlace: regulation.enlace || '',
-      decreto: regulation.decreto || '',
-      articulo_estatuto: regulation.articulo_estatuto || '',
-      historial: regulation.historial || [],
-      adjuntos: regulation.adjuntos || []
-    });
+    const { error } = await supabase.from('regulations').upsert({ id: regulation.id, ...toRow(regulation) });
     if (error) throw error;
     return true;
   } catch (e) {
-    console.error('Supabase upsert error:', e);
+    setLastError('upsert', e);
     return false;
   }
 }
@@ -140,7 +164,7 @@ export async function supabaseDelete(id) {
     if (error) throw error;
     return true;
   } catch (e) {
-    console.error('Supabase delete error:', e);
+    setLastError('delete', e);
     return false;
   }
 }
@@ -148,47 +172,39 @@ export async function supabaseDelete(id) {
 export async function supabaseInsert(regulation) {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from('regulations').insert({
-      numero: regulation.numero,
-      nombre: regulation.nombre,
-      articulo: regulation.articulo || '',
-      estado: regulation.estado,
-      progreso: regulation.progreso,
-      prioridad: regulation.prioridad,
-      responsable: regulation.responsable || '',
-      observaciones: regulation.observaciones || '',
-      enlace: regulation.enlace || '',
-      decreto: regulation.decreto || '',
-      articulo_estatuto: regulation.articulo_estatuto || '',
-      historial: regulation.historial || [],
-      adjuntos: regulation.adjuntos || []
-    }).select().single();
+    const { data, error } = await supabase.from('regulations').insert(toRow(regulation)).select().single();
     if (error) throw error;
     return data;
   } catch (e) {
-    console.error('Supabase insert error:', e);
+    setLastError('insert', e);
     return null;
   }
 }
 
 export async function supabaseSeedIfEmpty(initialData) {
-  if (!supabase) return;
-  if (!initialData || !Array.isArray(initialData) || initialData.length === 0) return;
+  if (!supabase) return { seeded: false, error: null };
+  if (!initialData || !Array.isArray(initialData) || initialData.length === 0) {
+    return { seeded: false, error: null };
+  }
   try {
-    const { count, error: countError } = await supabase.from('regulations').select('*', { count: 'exact', head: true });
-    if (countError) { console.warn('Supabase count error:', countError.message); return; }
-    if (count === 0) {
-      const { error } = await supabase.from('regulations').insert(initialData.map(r => ({
-        numero: r.numero, nombre: r.nombre, articulo: r.articulo,
-        estado: r.estado, progreso: r.progreso, prioridad: r.prioridad,
-        responsable: r.responsable, observaciones: r.observaciones || '',
-        enlace: r.enlace || '', decreto: r.decreto || '',
-        articulo_estatuto: r.articulo_estatuto || '',
-        historial: r.historial, adjuntos: r.adjuntos
-      })));
-      if (error) console.warn('Seed error:', error.message);
+    const { count, error: countError } = await supabase
+      .from('regulations')
+      .select('*', { count: 'exact', head: true });
+    if (countError) {
+      setLastError('seed.count', countError);
+      return { seeded: false, error: formatSupabaseError(countError) };
     }
+    if (count === 0) {
+      const { error } = await supabase.from('regulations').insert(initialData.map(toRow));
+      if (error) {
+        setLastError('seed.insert', error);
+        return { seeded: false, error: formatSupabaseError(error) };
+      }
+      return { seeded: true, error: null };
+    }
+    return { seeded: false, error: null };
   } catch (e) {
-    console.warn('Seed check error:', e.message);
+    setLastError('seed', e);
+    return { seeded: false, error: formatSupabaseError(e) };
   }
 }
