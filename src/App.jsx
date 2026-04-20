@@ -194,10 +194,17 @@ function App() {
 
   const handleExport = () => {
     const data = JSON.stringify(regulations, null, 2);
+    // Usar Blob URL evita límites de tamaño de data: URLs en navegadores
+    const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = "data:application/json;charset=utf-8," + encodeURIComponent(data);
+    link.href = url;
     link.download = `reglamentos_${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    // Revocar después de un tick para permitir que el navegador inicie la descarga
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleReset = () => {
