@@ -6,7 +6,7 @@ function Header({ userName, onLogout, onToggleSidebar, subtitulo }) {
     <div className="header">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button className="mobile-menu-btn" onClick={onToggleSidebar}>☰</button>
-        <h1>UMAG · Transparencia y Convenios</h1>
+        <h1>UMAG · Transparencia</h1>
         {subtitulo && <span className="header-subtitulo">{subtitulo}</span>}
       </div>
       <div className="header-actions">
