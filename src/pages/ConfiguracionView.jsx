@@ -7,16 +7,25 @@ import {
 import { PLAZOS_LEY_20285 } from '../config/transparencia';
 import { estadoIntegracion } from '../utils/googleCalendar';
 import { listarFeriados, hoyISO } from '../utils/fechas';
+import { esRegistroEjemplo } from '../config/datosEjemplo';
 
 /**
  * Configuración: estado del almacenamiento, reglas vigentes del sistema,
  * integración de calendario e importación/exportación de respaldos.
  */
-export default function ConfiguracionView({ convenios, solicitudes, dbMode, onImportarConvenios, onBorrarConvenios }) {
+export default function ConfiguracionView({
+  convenios, solicitudes, dbMode,
+  onImportarConvenios, onBorrarConvenios, onCargarEjemplos, onBorrarEjemplos,
+}) {
   const inputRef = useRef(null);
   const [mensaje, setMensaje] = useState('');
   const integracion = estadoIntegracion();
   const feriados = listarFeriados().filter(f => f >= hoyISO()).slice(0, 8);
+
+  // Los registros de ejemplo se reconocen por el prefijo de su código, así se
+  // pueden quitar después sin tocar los convenios reales.
+  const ejemplos = convenios.filter(esRegistroEjemplo).length
+    + solicitudes.filter(esRegistroEjemplo).length;
 
   const respaldar = () => {
     const data = JSON.stringify({ version: 1, generado: new Date().toISOString(), convenios, solicitudes }, null, 2);
@@ -85,6 +94,32 @@ export default function ConfiguracionView({ convenios, solicitudes, dbMode, onIm
             <input type="file" accept="application/json,.json" ref={inputRef} style={{ display: 'none' }} onChange={importar} />
           </div>
           {mensaje && <p className="ayuda-campo">{mensaje}</p>}
+        </div>
+
+        <div className="section">
+          <h3 className="section-title">Datos de ejemplo</h3>
+          <p className="nota-seccion">
+            Carga 8 convenios y 4 solicitudes ficticios para recorrer el sistema con
+            algo que mirar: cubren todos los estados del semáforo y todas las unidades
+            del flujo. Las fechas se calculan respecto de hoy, así que los ejemplos
+            nunca quedan obsoletos.
+          </p>
+          <p className="nota-seccion">
+            <strong>No son datos reales.</strong> Se identifican por el prefijo
+            <code> EJ-</code> en su código y por un aviso en sus observaciones, y se
+            pueden quitar después sin afectar los convenios que hayas registrado.
+          </p>
+          <table className="tabla-plazos">
+            <tbody>
+              <tr><th>Registros de ejemplo cargados</th><td>{ejemplos}</td></tr>
+            </tbody>
+          </table>
+          <div className="btn-group">
+            <button className="btn btn-secondary" onClick={onCargarEjemplos}>🧪 Cargar datos de ejemplo</button>
+            <button className="btn btn-danger" onClick={onBorrarEjemplos} disabled={ejemplos === 0}>
+              🧹 Quitar datos de ejemplo
+            </button>
+          </div>
         </div>
 
         <div className="section">
@@ -169,4 +204,6 @@ ConfiguracionView.propTypes = {
   dbMode: PropTypes.string.isRequired,
   onImportarConvenios: PropTypes.func.isRequired,
   onBorrarConvenios: PropTypes.func.isRequired,
+  onCargarEjemplos: PropTypes.func.isRequired,
+  onBorrarEjemplos: PropTypes.func.isRequired,
 };

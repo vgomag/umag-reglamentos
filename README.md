@@ -21,7 +21,10 @@ Universidad de Magallanes. Incluye tres módulos:
   observaciones por cada una.
 - Flujo **adaptable**: cada convenio puede quitar unidades que no participan,
   agregar otras o cambiar el orden. El flujo sugerido es
-  `Ingresado → VRAF → VRAC → VRIIP → VVM → PRO → Contraloría → Rectoría → Finalizado`.
+  `Ingresado → VRAC → VRIIP → VVM → VRAF → PRO → Contraloría → Rectoría → Finalizado`,
+  siguiendo el orden de visación de la Res. N°216/2019: primero la vicerrectoría
+  temática que corresponda al objeto del convenio y después VRAF, que visa
+  cuando compromete recursos.
 - **Plazos opcionales**: no hay plazo general; sólo los convenios con fecha
   límite se destacan con semáforo 🟢 en plazo · 🟡 próximo a vencer ·
   🔴 vencido · 🔵 sin plazo especial · ⚫ finalizado.
@@ -33,6 +36,21 @@ Universidad de Magallanes. Incluye tres módulos:
 - Tablero de seguimiento tipo kanban por unidad, con días de permanencia.
 - Calendario mensual, exportación `.ics` y enlaces "Agregar a Google Calendar".
 - Reportes agregados y exportación a CSV/JSON.
+
+## Datos de ejemplo
+
+La aplicación **arranca vacía**. Para recorrerla con algo que mirar, en
+**Configuración → Datos de ejemplo** hay un botón que carga 8 convenios y 4
+solicitudes ficticios que cubren todos los estados del semáforo y todas las
+ubicaciones del flujo (uno vencido, uno próximo a vencer, uno recién ingresado,
+uno pendiente de Rectoría, uno finalizado, una solicitud prorrogada, etc.).
+
+- Se identifican por el prefijo `EJ-` en su código y por un aviso en sus
+  observaciones, así que no se confunden con registros reales.
+- Sus fechas se calculan **respecto del día de carga**, de modo que los ejemplos
+  no envejecen ni quedan todos vencidos con el tiempo.
+- El botón *Quitar datos de ejemplo* los elimina sin tocar los convenios y
+  solicitudes que hayas registrado.
 
 ## Transparencia pasiva (Ley N°20.285)
 
@@ -192,6 +210,7 @@ src/
 │   ├── data.js                    # INITIAL_REGULATIONS + PLAZOS_DATA
 │   ├── plazos.js                  # fechas límite legales del estatuto
 │   ├── feriados.js                # feriados de Chile (revisar cada año)
+│   ├── datosEjemplo.js            # convenios y solicitudes de demostración
 │   ├── convenios.js               # unidades, estados, flujo, semáforo
 │   ├── conveniosStore.js          # persistencia de convenios + SQL
 │   ├── transparencia.js           # plazos y estados de la Ley 20.285

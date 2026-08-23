@@ -27,9 +27,14 @@ export function nombreUnidad(id) {
   return u ? u.nombre : (id || '—');
 }
 
-// Flujo sugerido por defecto. Se puede adaptar convenio por convenio: quitar
-// unidades, agregarlas o reordenarlas (regla de negocio N°5 y N°6).
-export const FLUJO_POR_DEFECTO = ['VRAF', 'VRAC', 'VRIIP', 'VVM', 'PRO', 'CONTRALORIA', 'RECTORIA'];
+// Flujo sugerido por defecto, según el orden de visación de la Res. N°216/2019:
+// primero la vicerrectoría temática que corresponda al objeto del convenio
+// (académica, investigación o vinculación) y después VRAF, que visa cuando el
+// convenio compromete recursos; luego Prorrectoría, Contraloría y Rectoría.
+//
+// Se puede adaptar convenio por convenio: quitar unidades que no participan,
+// agregar otras o reordenarlas (reglas de negocio N°5 y N°6).
+export const FLUJO_POR_DEFECTO = ['VRAC', 'VRIIP', 'VVM', 'VRAF', 'PRO', 'CONTRALORIA', 'RECTORIA'];
 
 // Estado global del convenio.
 export const ESTADOS_CONVENIO = [

@@ -15,6 +15,7 @@ import {
   leerSolicitudesLocal, guardarSolicitudesLocal, siguienteIdSolicitud,
 } from './config/transparenciaStore';
 import { normalizarSolicitud } from './config/transparencia';
+import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 
 // Lazy loading de páginas — reduce bundle inicial ~40%
 const ResumenEjecutivo = lazy(() => import('./pages/ResumenEjecutivo'));
@@ -354,6 +355,64 @@ function App() {
     setToast({ type: 'success', message: 'Convenios eliminados' });
   };
 
+  /* ---------------------- Datos de ejemplo ---------------------- */
+
+  // Los ejemplos NO se cargan solos: se piden desde Configuración, para que la
+  // app arranque vacía y nunca se confundan con convenios reales.
+  const handleCargarEjemplos = async () => {
+    const yaHay = convenios.some(esRegistroEjemplo) || solicitudes.some(esRegistroEjemplo);
+    const aviso = yaHay
+      ? 'Ya hay datos de ejemplo cargados. Se agregará otra copia. ¿Continuar?'
+      : 'Se cargarán 8 convenios y 4 solicitudes de ejemplo (ficticios, identificados con el prefijo EJ-). ¿Continuar?';
+    if (!window.confirm(aviso)) return;
+
+    const nuevosConvenios = generarConveniosEjemplo();
+    const nuevasSolicitudes = generarSolicitudesEjemplo();
+
+    if (dbMode === 'supabase') {
+      const convCreados = (await Promise.all(nuevosConvenios.map(insertConvenio))).filter(Boolean);
+      const soliCreadas = (await Promise.all(nuevasSolicitudes.map(insertSolicitud))).filter(Boolean);
+      if (convCreados.length === 0 && soliCreadas.length === 0) {
+        setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la base de datos.' });
+        return;
+      }
+      setConvenios(prev => [...prev, ...convCreados]);
+      setSolicitudes(prev => [...prev, ...soliCreadas]);
+      setToast({ type: 'success', message: `Cargados ${convCreados.length} convenios y ${soliCreadas.length} solicitudes de ejemplo` });
+      return;
+    }
+
+    // En modo local hay que reasignar los IDs para no pisar los ya existentes.
+    setConvenios(prev => {
+      let siguiente = siguienteIdLocal(prev);
+      return [...prev, ...nuevosConvenios.map(c => normalizarConvenio({ ...c, id: siguiente++ }))];
+    });
+    setSolicitudes(prev => {
+      let siguiente = siguienteIdSolicitud(prev);
+      return [...prev, ...nuevasSolicitudes.map(s => normalizarSolicitud({ ...s, id: siguiente++ }))];
+    });
+    setToast({ type: 'success', message: `Cargados ${nuevosConvenios.length} convenios y ${nuevasSolicitudes.length} solicitudes de ejemplo` });
+  };
+
+  const handleBorrarEjemplos = async () => {
+    const conveniosEjemplo = convenios.filter(esRegistroEjemplo);
+    const solicitudesEjemplo = solicitudes.filter(esRegistroEjemplo);
+    const total = conveniosEjemplo.length + solicitudesEjemplo.length;
+    if (total === 0) return;
+    if (!window.confirm(`¿Quitar los ${total} registro(s) de ejemplo? Los convenios y solicitudes reales se conservan.`)) return;
+
+    if (dbMode === 'supabase') {
+      await Promise.all([
+        ...conveniosEjemplo.map(c => deleteConvenio(c.id)),
+        ...solicitudesEjemplo.map(s => deleteSolicitud(s.id)),
+      ]);
+    }
+    setConvenios(prev => prev.filter(c => !esRegistroEjemplo(c)));
+    setSolicitudes(prev => prev.filter(s => !esRegistroEjemplo(s)));
+    if (selectedConvenio && esRegistroEjemplo(selectedConvenio)) setSelectedConvenio(null);
+    setToast({ type: 'success', message: 'Datos de ejemplo eliminados' });
+  };
+
   /* ------------- Solicitudes de transparencia (Ley 20.285) ------------- */
 
   const handleCrearSolicitud = async (nueva) => {
@@ -505,6 +564,8 @@ function App() {
                   dbMode={dbMode}
                   onImportarConvenios={handleImportarConvenios}
                   onBorrarConvenios={handleBorrarConvenios}
+                  onCargarEjemplos={handleCargarEjemplos}
+                  onBorrarEjemplos={handleBorrarEjemplos}
                 />
               )}
 
