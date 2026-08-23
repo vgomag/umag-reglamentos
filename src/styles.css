@@ -719,6 +719,9 @@
       background: white;
       cursor: pointer;
       min-width: 140px;
+      /* La regla global `select { width: 100% }` hacía que cada filtro ocupara
+         una línea completa; en una barra de filtros deben ir uno al lado del otro. */
+      width: auto;
     }
 
     .filter-select:focus {
@@ -2042,3 +2045,418 @@
         min-width: 900px;
       }
     }
+
+    /* ================================================================
+       Módulo de Transparencia y Convenios
+       ================================================================ */
+
+    .sidebar-grupo + .sidebar-grupo {
+      margin-top: 0.75rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.18);
+      padding-top: 0.5rem;
+    }
+
+    .header-subtitulo {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      padding-left: 0.75rem;
+    }
+
+    /* --- Semáforo de plazos --- */
+    .plazo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .plazo-badge-icono { font-size: 0.85rem; line-height: 1; }
+    .plazo-badge-fecha { font-weight: 400; color: #64748b; font-size: 0.7rem; }
+
+    .plazo-en-plazo   { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .plazo-por-vencer { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+    .plazo-vencido    { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .plazo-sin-plazo  { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .plazo-finalizado { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+
+    .leyenda-plazos { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+    /* Realce de filas según el plazo */
+    tr.fila-vencido    { background: #fef2f2; }
+    tr.fila-por-vencer { background: #fffbeb; }
+    tr.fila-inactiva   { opacity: 0.55; }
+
+    .celda-titulo { font-weight: 600; color: #0f172a; }
+    .celda-sub    { font-size: 0.72rem; color: #64748b; margin-top: 0.15rem; }
+    .celda-materia { max-width: 320px; font-size: 0.8rem; color: #475569; }
+
+    /* --- Estados propios de convenios --- */
+    .badge.ingresado         { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .badge.en-tramitacion    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge.pendiente-rectoria{ background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .badge.finalizado        { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge.observado         { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge.anulado           { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+
+    /* --- Tarjetas por unidad --- */
+    .unidades-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .unidad-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-top: 3px solid #94a3b8;
+      border-radius: 10px;
+      padding: 0.85rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .unidad-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .unidad-card-nombre { font-weight: 700; font-size: 0.85rem; color: #0f172a; }
+    .unidad-card-valor  { font-size: 1.6rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .unidad-card-desc   { font-size: 0.68rem; color: #94a3b8; line-height: 1.3; }
+
+    .unidades-check { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+    .metric-card.clickable { cursor: pointer; }
+    .metric-card.clickable:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1); }
+
+    /* --- Flujo de etapas --- */
+    .flujo-etapas {
+      display: flex;
+      align-items: stretch;
+      gap: 0.35rem;
+      overflow-x: auto;
+      padding: 0.5rem 0.25rem;
+    }
+
+    .flujo-nodo {
+      min-width: 110px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      background: #f8fafc;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .flujo-nodo.clickable { cursor: pointer; }
+    .flujo-nodo.actual {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+      background: #eff6ff;
+    }
+    .flujo-nodo.aprobado   { background: #ecfdf5; border-color: #a7f3d0; }
+    .flujo-nodo.en-revision{ background: #fffbeb; border-color: #fde68a; }
+    .flujo-nodo.observado  { background: #fef2f2; border-color: #fecaca; }
+    .flujo-nodo.no-aplica  { opacity: 0.45; }
+    .flujo-nodo.completado { background: #f1f5f9; }
+
+    .flujo-nodo-titulo { font-weight: 700; font-size: 0.78rem; color: #0f172a; }
+    .flujo-nodo-estado { font-size: 0.68rem; color: #475569; }
+    .flujo-nodo-fecha  { font-size: 0.65rem; color: #94a3b8; margin-top: 0.15rem; }
+
+    .flujo-flecha {
+      display: flex;
+      align-items: center;
+      color: #cbd5e1;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    /* --- Historial --- */
+    .historial-timeline { list-style: none; margin: 0; padding: 0; }
+
+    .historial-item {
+      display: flex;
+      gap: 0.6rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .historial-item:last-child { border-bottom: none; }
+    .historial-icono { font-size: 0.95rem; line-height: 1.4; }
+    .historial-descripcion { font-size: 0.83rem; color: #1e293b; }
+    .historial-meta { font-size: 0.7rem; color: #94a3b8; margin-top: 0.1rem; }
+    .historial-vacio { font-size: 0.85rem; color: #94a3b8; padding: 0.5rem 0; }
+
+    /* --- Listas compactas --- */
+    .lista-compacta { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .lista-compacta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.6rem;
+      border: 1px solid #f1f5f9;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .lista-compacta-item:hover { background: #f8fafc; }
+    .lista-compacta-texto { flex: 1; min-width: 0; }
+    .lista-compacta-titulo {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: #1e293b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lista-compacta-meta { font-size: 0.7rem; color: #94a3b8; }
+
+    /* --- Formularios y ayudas --- */
+    .nota-seccion {
+      font-size: 0.75rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0.5rem 0;
+    }
+
+    .nota-seccion code {
+      background: #f1f5f9;
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+    }
+
+    .ayuda-campo { font-size: 0.72rem; color: #64748b; margin-top: 0.25rem; }
+
+    .form-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.83rem;
+      color: #334155;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      accent-color: #3b82f6;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .filtros-fechas { align-items: flex-end; }
+
+    .filtro-fecha { display: flex; flex-direction: column; gap: 0.2rem; }
+    .filtro-fecha span { font-size: 0.68rem; color: #64748b; font-weight: 600; }
+
+    .filtro-fecha input {
+      padding: 0.45rem 0.6rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-family: inherit;
+    }
+
+    .orden-etapa { display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .btn-icono {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.65rem;
+      line-height: 1;
+      padding: 0.15rem 0.35rem;
+      color: #475569;
+    }
+
+    .btn-icono:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .acciones-etapa { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+
+    .acciones-flujo {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .tabla-plazos { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+
+    .tabla-plazos th {
+      text-align: left;
+      font-weight: 600;
+      color: #475569;
+      padding: 0.4rem 0.6rem 0.4rem 0;
+      vertical-align: top;
+      width: 40%;
+    }
+
+    .tabla-plazos td {
+      padding: 0.4rem 0;
+      color: #1e293b;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+
+    .lista-estado { list-style: none; margin: 0 0 0.5rem; padding: 0; font-size: 0.82rem; color: #334155; }
+    .lista-estado li { padding: 0.2rem 0; }
+
+    /* --- Tablero de seguimiento --- */
+    .seguimiento-board { align-items: flex-start; }
+
+    .seguimiento-card { border-left: 3px solid #cbd5e1; }
+    .seguimiento-card.vencido    { border-left-color: #ef4444; }
+    .seguimiento-card.por-vencer { border-left-color: #f59e0b; }
+    .seguimiento-card.en-plazo   { border-left-color: #10b981; }
+    .seguimiento-card.sin-plazo  { border-left-color: #3b82f6; }
+
+    .seguimiento-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      color: #64748b;
+      margin: 0.3rem 0;
+      flex-wrap: wrap;
+    }
+
+    .seguimiento-dias { font-size: 0.68rem; color: #94a3b8; margin-top: 0.2rem; }
+    .seguimiento-dias.alerta { color: #b45309; font-weight: 600; }
+
+    /* --- Calendario --- */
+    .calendario-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .calendario-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+    .calendario-titulo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #0f172a;
+      text-transform: capitalize;
+      min-width: 150px;
+      text-align: center;
+    }
+
+    .calendario-leyenda { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+
+    .leyenda-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      font-size: 0.72rem;
+      color: #475569;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .leyenda-chip.apagado { opacity: 0.4; text-decoration: line-through; }
+
+    .calendario-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #e2e8f0;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .calendario-encabezado {
+      background: #f8fafc;
+      padding: 0.45rem;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .calendario-celda {
+      background: white;
+      min-height: 96px;
+      padding: 0.3rem;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      /* Sin min-width:0 el ancho mínimo del contenido (títulos largos de evento)
+         desborda la grilla y las 7 columnas dejan de caber. */
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .calendario-celda:hover { background: #f8fafc; }
+    .calendario-celda.fuera-mes { background: #fafafa; color: #cbd5e1; }
+    .calendario-celda.feriado { background: #fdf2f8; }
+    .calendario-celda.hoy { box-shadow: inset 0 0 0 2px #3b82f6; }
+    .calendario-celda.seleccionado { background: #eff6ff; }
+
+    .calendario-numero { font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 0.2rem; }
+
+    .calendario-evento {
+      font-size: 0.63rem;
+      background: #f8fafc;
+      border-left: 3px solid #94a3b8;
+      border-radius: 3px;
+      padding: 0.12rem 0.25rem;
+      margin-bottom: 0.12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #334155;
+    }
+
+    .calendario-mas { font-size: 0.6rem; color: #94a3b8; padding-left: 0.25rem; }
+
+    @media (max-width: 768px) {
+      .calendario-celda { min-height: 64px; }
+      .calendario-evento { font-size: 0.55rem; }
+      .unidades-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .flujo-nodo { min-width: 92px; }
+    }
+
+    /* La barra de filtros por fechas sigue el mismo criterio que .filter-select:
+       controles en línea, no apilados a todo el ancho. */
+    .filtro-fecha input[type="date"] { width: auto; }
+
+    /* La tabla de seguimiento por unidad tiene muchas columnas editables:
+       damos anchos mínimos y dejamos que el contenedor haga scroll horizontal
+       en vez de comprimir los campos hasta volverlos ilegibles. */
+    .tabla-seguimiento { min-width: 1050px; }
+    .tabla-seguimiento input[type="date"] { min-width: 140px; }
+    .tabla-seguimiento select { min-width: 130px; width: auto; }
+    .tabla-seguimiento input[type="text"] { min-width: 180px; }
+    .tabla-seguimiento .acciones-etapa { flex-wrap: nowrap; }
