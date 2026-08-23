@@ -4,6 +4,18 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
+import { normalizarConvenio, TIPOS_HISTORIAL } from './config/convenios';
+import { conHistorial, crearEvento } from './utils/conveniosLogic';
+import {
+  fetchConvenios, insertConvenio, upsertConvenio, deleteConvenio,
+  leerLocal, guardarLocal, siguienteIdLocal,
+} from './config/conveniosStore';
+import {
+  fetchSolicitudes, insertSolicitud, upsertSolicitud, deleteSolicitud,
+  leerSolicitudesLocal, guardarSolicitudesLocal, siguienteIdSolicitud,
+} from './config/transparenciaStore';
+import { normalizarSolicitud } from './config/transparencia';
+import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 
 // Lazy loading de páginas — reduce bundle inicial ~40%
 const ResumenEjecutivo = lazy(() => import('./pages/ResumenEjecutivo'));
@@ -15,6 +27,17 @@ const GanttView = lazy(() => import('./pages/GanttView'));
 const DocumentosView = lazy(() => import('./pages/DocumentosView'));
 const PlazosList = lazy(() => import('./pages/PlazosList'));
 const Normativa = lazy(() => import('./pages/Normativa'));
+
+// Módulo de Transparencia y Convenios
+const ConveniosDashboard = lazy(() => import('./pages/ConveniosDashboard'));
+const ConveniosList = lazy(() => import('./pages/ConveniosList'));
+const ConvenioDetail = lazy(() => import('./pages/ConvenioDetail'));
+const NuevoConvenio = lazy(() => import('./pages/NuevoConvenio'));
+const SeguimientoView = lazy(() => import('./pages/SeguimientoView'));
+const CalendarioView = lazy(() => import('./pages/CalendarioView'));
+const TransparenciaView = lazy(() => import('./pages/TransparenciaView'));
+const ReportesView = lazy(() => import('./pages/ReportesView'));
+const ConfiguracionView = lazy(() => import('./pages/ConfiguracionView'));
 
 // Fallback de carga
 const PageLoader = () => (
@@ -35,8 +58,14 @@ function App() {
       return INITIAL_REGULATIONS;
     }
   });
-  const [activeView, setActiveView] = useState("resumen");
+  // La app abre en el panel de convenios: es la tarea diaria del encargado.
+  const [activeView, setActiveView] = useState("conv-dashboard");
   const [selectedRegulation, setSelectedRegulation] = useState(null);
+  // Convenios y solicitudes de transparencia (módulo nuevo)
+  const [convenios, setConvenios] = useState(() => leerLocal());
+  const [solicitudes, setSolicitudes] = useState(() => leerSolicitudesLocal());
+  const [selectedConvenio, setSelectedConvenio] = useState(null);
+  const [filtrosConvenios, setFiltrosConvenios] = useState(null);
   const [toast, setToast] = useState(null);
   const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
   const [isLoading, setIsLoading] = useState(!!supabase);
@@ -85,11 +114,26 @@ function App() {
     });
   }, []);
 
+  // Cargar convenios y solicitudes desde Supabase cuando esté disponible.
+  // Si la tabla no existe todavía, se conserva lo que haya en localStorage.
+  useEffect(() => {
+    if (!supabase) return;
+    (async () => {
+      const [resConvenios, resSolicitudes] = await Promise.all([fetchConvenios(), fetchSolicitudes()]);
+      if (resConvenios.data) setConvenios(resConvenios.data);
+      if (resSolicitudes.data) setSolicitudes(resSolicitudes.data);
+    })().catch(e => console.warn('Error cargando convenios/solicitudes:', e.message));
+  }, []);
+
   // Sincronizar con localStorage como backup
   useEffect(() => {
     try { localStorage.setItem("regulations", JSON.stringify(regulations)); }
     catch (e) { console.warn('No se pudo guardar en localStorage:', e.message); }
   }, [regulations]);
+
+  // Respaldo local de convenios y solicitudes (también cuando se usa Supabase)
+  useEffect(() => { guardarLocal(convenios); }, [convenios]);
+  useEffect(() => { guardarSolicitudesLocal(solicitudes); }, [solicitudes]);
 
   // Persist normativas to localStorage
   useEffect(() => {
@@ -134,7 +178,7 @@ function App() {
     // Mantenemos el usuario si "Recordarme" está activo, pero nunca la contraseña
     setIsLoggedIn(false);
     setLoginPass('');
-    setActiveView("resumen");
+    setActiveView("conv-dashboard");
   };
 
   const handleSelectRegulation = (reg) => {
@@ -219,6 +263,218 @@ function App() {
     setToast({ type: 'success', message: 'Datos restablecidos' });
   };
 
+  /* ---------------- Convenios institucionales ---------------- */
+
+  const usuarioActual = () => sessionStorage.getItem("umag_user") || 'Usuario UMAG';
+
+  const irA = (vista, filtros = null) => {
+    setFiltrosConvenios(filtros);
+    setActiveView(vista);
+  };
+
+  const handleSelectConvenio = (convenio) => {
+    setSelectedConvenio(convenio);
+    setActiveView("convenio-detalle");
+  };
+
+  const handleCrearConvenio = async (nuevo) => {
+    // El historial arranca con el ingreso, para que la trazabilidad esté
+    // completa desde el primer día (regla de negocio N°9).
+    const conEventoInicial = {
+      ...nuevo,
+      historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Convenio ingresado al sistema', usuarioActual())],
+    };
+    if (dbMode === 'supabase') {
+      const creado = await insertConvenio(conEventoInicial);
+      if (!creado) {
+        setToast({ type: 'error', message: 'No se pudo crear el convenio en la base de datos. Inténtalo nuevamente.' });
+        return;
+      }
+      setConvenios(prev => [...prev, creado]);
+      setSelectedConvenio(creado);
+    } else {
+      const creado = normalizarConvenio({ ...conEventoInicial, id: siguienteIdLocal(convenios) });
+      setConvenios(prev => [...prev, creado]);
+      setSelectedConvenio(creado);
+    }
+    setActiveView("convenios");
+    setToast({ type: 'success', message: 'Convenio registrado' });
+  };
+
+  const handleGuardarConvenio = async (actualizado) => {
+    const anterior = convenios.find(c => c.id === actualizado.id) || null;
+    // conHistorial compara ambas versiones y anota cada cambio relevante.
+    const conTraza = normalizarConvenio(conHistorial(anterior, actualizado, usuarioActual()));
+    setConvenios(prev => prev.map(c => c.id === conTraza.id ? conTraza : c));
+    setSelectedConvenio(conTraza);
+    if (dbMode === 'supabase') {
+      const ok = await upsertConvenio(conTraza);
+      if (!ok) {
+        if (anterior) {
+          setConvenios(prev => prev.map(c => c.id === anterior.id ? anterior : c));
+          setSelectedConvenio(anterior);
+        }
+        setToast({ type: 'error', message: 'Error al guardar el convenio. Se revirtieron los cambios.' });
+        return;
+      }
+    }
+    setToast({ type: 'success', message: 'Convenio guardado' });
+  };
+
+  const handleEliminarConvenio = async () => {
+    if (!selectedConvenio) return;
+    if (!window.confirm(`¿Eliminar el convenio "${selectedConvenio.nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (dbMode === 'supabase') {
+      const ok = await deleteConvenio(selectedConvenio.id);
+      if (!ok) {
+        setToast({ type: 'error', message: 'Error al eliminar el convenio en la base de datos.' });
+        return;
+      }
+    }
+    setConvenios(prev => prev.filter(c => c.id !== selectedConvenio.id));
+    setSelectedConvenio(null);
+    setActiveView("convenios");
+    setToast({ type: 'success', message: 'Convenio eliminado' });
+  };
+
+  // Importación de respaldo: los convenios entrantes se agregan con IDs nuevos
+  // para no pisar los existentes.
+  const handleImportarConvenios = (importados) => {
+    setConvenios(prev => {
+      let siguiente = siguienteIdLocal(prev);
+      const nuevos = importados.map(c => normalizarConvenio({ ...c, id: siguiente++ }));
+      return [...prev, ...nuevos];
+    });
+    setToast({ type: 'success', message: `${importados.length} convenio(s) importados` });
+  };
+
+  const handleBorrarConvenios = () => {
+    if (!window.confirm('¿Borrar TODOS los convenios registrados? Esta acción no se puede deshacer. Descarga un respaldo antes de continuar.')) return;
+    setConvenios([]);
+    setSelectedConvenio(null);
+    setToast({ type: 'success', message: 'Convenios eliminados' });
+  };
+
+  /* ---------------------- Datos de ejemplo ---------------------- */
+
+  // Los ejemplos NO se cargan solos: se piden desde Configuración, para que la
+  // app arranque vacía y nunca se confundan con convenios reales.
+  const handleCargarEjemplos = async () => {
+    const yaHay = convenios.some(esRegistroEjemplo) || solicitudes.some(esRegistroEjemplo);
+    const aviso = yaHay
+      ? 'Ya hay datos de ejemplo cargados. Se agregará otra copia. ¿Continuar?'
+      : 'Se cargarán 8 convenios y 4 solicitudes de ejemplo (ficticios, identificados con el prefijo EJ-). ¿Continuar?';
+    if (!window.confirm(aviso)) return;
+
+    const nuevosConvenios = generarConveniosEjemplo();
+    const nuevasSolicitudes = generarSolicitudesEjemplo();
+
+    if (dbMode === 'supabase') {
+      const convCreados = (await Promise.all(nuevosConvenios.map(insertConvenio))).filter(Boolean);
+      const soliCreadas = (await Promise.all(nuevasSolicitudes.map(insertSolicitud))).filter(Boolean);
+      if (convCreados.length === 0 && soliCreadas.length === 0) {
+        setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la base de datos.' });
+        return;
+      }
+      setConvenios(prev => [...prev, ...convCreados]);
+      setSolicitudes(prev => [...prev, ...soliCreadas]);
+      setToast({ type: 'success', message: `Cargados ${convCreados.length} convenios y ${soliCreadas.length} solicitudes de ejemplo` });
+      return;
+    }
+
+    // En modo local hay que reasignar los IDs para no pisar los ya existentes.
+    setConvenios(prev => {
+      let siguiente = siguienteIdLocal(prev);
+      return [...prev, ...nuevosConvenios.map(c => normalizarConvenio({ ...c, id: siguiente++ }))];
+    });
+    setSolicitudes(prev => {
+      let siguiente = siguienteIdSolicitud(prev);
+      return [...prev, ...nuevasSolicitudes.map(s => normalizarSolicitud({ ...s, id: siguiente++ }))];
+    });
+    setToast({ type: 'success', message: `Cargados ${nuevosConvenios.length} convenios y ${nuevasSolicitudes.length} solicitudes de ejemplo` });
+  };
+
+  const handleBorrarEjemplos = async () => {
+    const conveniosEjemplo = convenios.filter(esRegistroEjemplo);
+    const solicitudesEjemplo = solicitudes.filter(esRegistroEjemplo);
+    const total = conveniosEjemplo.length + solicitudesEjemplo.length;
+    if (total === 0) return;
+    if (!window.confirm(`¿Quitar los ${total} registro(s) de ejemplo? Los convenios y solicitudes reales se conservan.`)) return;
+
+    if (dbMode === 'supabase') {
+      await Promise.all([
+        ...conveniosEjemplo.map(c => deleteConvenio(c.id)),
+        ...solicitudesEjemplo.map(s => deleteSolicitud(s.id)),
+      ]);
+    }
+    setConvenios(prev => prev.filter(c => !esRegistroEjemplo(c)));
+    setSolicitudes(prev => prev.filter(s => !esRegistroEjemplo(s)));
+    if (selectedConvenio && esRegistroEjemplo(selectedConvenio)) setSelectedConvenio(null);
+    setToast({ type: 'success', message: 'Datos de ejemplo eliminados' });
+  };
+
+  /* ------------- Solicitudes de transparencia (Ley 20.285) ------------- */
+
+  const handleCrearSolicitud = async (nueva) => {
+    const conEvento = {
+      ...nueva,
+      historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Solicitud ingresada al sistema', usuarioActual())],
+    };
+    if (dbMode === 'supabase') {
+      const creada = await insertSolicitud(conEvento);
+      if (!creada) {
+        setToast({ type: 'error', message: 'No se pudo crear la solicitud en la base de datos.' });
+        return;
+      }
+      setSolicitudes(prev => [...prev, creada]);
+    } else {
+      setSolicitudes(prev => [...prev, normalizarSolicitud({ ...conEvento, id: siguienteIdSolicitud(prev) })]);
+    }
+    setToast({ type: 'success', message: 'Solicitud registrada' });
+  };
+
+  const handleGuardarSolicitud = async (actualizada) => {
+    const anterior = solicitudes.find(s => s.id === actualizada.id) || null;
+    const eventos = [];
+    if (anterior && anterior.estado !== actualizada.estado) {
+      eventos.push(crearEvento(TIPOS_HISTORIAL.ESTADO, `Estado: ${anterior.estado} → ${actualizada.estado}`, usuarioActual()));
+    }
+    if (anterior && !anterior.prorrogada && actualizada.prorrogada) {
+      eventos.push(crearEvento(TIPOS_HISTORIAL.PLAZO, 'Prórroga de 10 días hábiles comunicada (Art. 14)', usuarioActual()));
+    }
+    if (anterior && !anterior.fechaRespuesta && actualizada.fechaRespuesta) {
+      eventos.push(crearEvento(TIPOS_HISTORIAL.FINALIZACION, `Respuesta enviada el ${actualizada.fechaRespuesta}`, usuarioActual()));
+    }
+    const conTraza = normalizarSolicitud({
+      ...actualizada,
+      historial: [...(actualizada.historial || []), ...eventos],
+    });
+    setSolicitudes(prev => prev.map(s => s.id === conTraza.id ? conTraza : s));
+    if (dbMode === 'supabase') {
+      const ok = await upsertSolicitud(conTraza);
+      if (!ok) {
+        if (anterior) setSolicitudes(prev => prev.map(s => s.id === anterior.id ? anterior : s));
+        setToast({ type: 'error', message: 'Error al guardar la solicitud. Se revirtieron los cambios.' });
+        return;
+      }
+    }
+    setToast({ type: 'success', message: 'Solicitud guardada' });
+  };
+
+  const handleEliminarSolicitud = async (solicitud) => {
+    if (!solicitud) return;
+    if (!window.confirm(`¿Eliminar la solicitud ${solicitud.codigo || solicitud.id}?`)) return;
+    if (dbMode === 'supabase') {
+      const ok = await deleteSolicitud(solicitud.id);
+      if (!ok) {
+        setToast({ type: 'error', message: 'Error al eliminar la solicitud en la base de datos.' });
+        return;
+      }
+    }
+    setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
+    setToast({ type: 'success', message: 'Solicitud eliminada' });
+  };
+
   const handleAddNormativa = (normativa) => {
     setNormativas(prev => [...prev, normativa]);
   };
@@ -235,7 +491,7 @@ function App() {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           </div>
           <h2 className="login-title">UMAG</h2>
-          <p className="login-subtitle">Sistema de Seguimiento de Reglamentos</p>
+          <p className="login-subtitle">Transparencia</p>
           <input type="text" className="login-input" placeholder="Usuario" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} autoComplete="username" />
           <input type="password" className="login-input" placeholder="Contraseña" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} autoComplete="current-password" />
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
@@ -258,6 +514,62 @@ function App() {
         <div className="content">
           <div className="page-container">
             <Suspense fallback={<PageLoader />}>
+              {/* --- Módulo de Transparencia y Convenios --- */}
+              {activeView === "conv-dashboard" && (
+                <ConveniosDashboard convenios={convenios} onSelectConvenio={handleSelectConvenio} onIrA={irA} />
+              )}
+              {activeView === "convenios" && (
+                <ConveniosList
+                  convenios={convenios}
+                  filtrosIniciales={filtrosConvenios}
+                  onSelectConvenio={handleSelectConvenio}
+                  onNuevo={() => setActiveView("convenio-nuevo")}
+                />
+              )}
+              {activeView === "convenio-detalle" && (selectedConvenio ? (
+                <ConvenioDetail
+                  convenio={selectedConvenio}
+                  onBack={() => setActiveView("convenios")}
+                  onSave={handleGuardarConvenio}
+                  onDelete={handleEliminarConvenio}
+                />
+              ) : (
+                <div className="page-content">
+                  <p style={{ color: '#94a3b8' }}>Selecciona un convenio desde el listado.</p>
+                  <button className="btn btn-secondary" onClick={() => setActiveView("convenios")}>Ir a Convenios</button>
+                </div>
+              ))}
+              {activeView === "convenio-nuevo" && (
+                <NuevoConvenio onCrear={handleCrearConvenio} onCancelar={() => setActiveView("convenios")} />
+              )}
+              {activeView === "seguimiento" && (
+                <SeguimientoView convenios={convenios} onSelectConvenio={handleSelectConvenio} />
+              )}
+              {activeView === "calendario" && (
+                <CalendarioView convenios={convenios} solicitudes={solicitudes} onSelectConvenio={handleSelectConvenio} />
+              )}
+              {activeView === "transparencia" && (
+                <TransparenciaView
+                  solicitudes={solicitudes}
+                  onCrear={handleCrearSolicitud}
+                  onGuardar={handleGuardarSolicitud}
+                  onEliminar={handleEliminarSolicitud}
+                />
+              )}
+              {activeView === "reportes" && <ReportesView convenios={convenios} solicitudes={solicitudes} />}
+              {activeView === "configuracion" && (
+                <ConfiguracionView
+                  convenios={convenios}
+                  solicitudes={solicitudes}
+                  dbMode={dbMode}
+                  onImportarConvenios={handleImportarConvenios}
+                  onBorrarConvenios={handleBorrarConvenios}
+                  onCargarEjemplos={handleCargarEjemplos}
+                  onBorrarEjemplos={handleBorrarEjemplos}
+                />
+              )}
+
+              {/* --- Módulo de Reglamentos (existente) --- */}
               {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
               {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
               {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
