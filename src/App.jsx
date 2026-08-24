@@ -71,7 +71,11 @@ function App() {
   const [planillaCaida, setPlanillaCaida] = useState(false);
   const [cargando, setCargando] = useState(false);
   const modoDatos = calcularModo(sheetsConfigurado(), planillaCaida);
+  // Cada aviso lleva un id propio: es la `key` que hace que React monte uno
+  // nuevo en vez de reutilizar el anterior con su temporizador a medio correr.
   const [toast, setToast] = useState(null);
+  const avisosEmitidos = useRef(0);
+  const avisar = (aviso) => setToast({ ...aviso, id: ++avisosEmitidos.current });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Limpieza de los restos del acceso por contraseña de versiones anteriores.
@@ -122,7 +126,7 @@ function App() {
         setConvenios(data.convenios.map(normalizarConvenio).filter(Boolean));
         setSolicitudes(data.solicitudes.map(normalizarSolicitud).filter(Boolean));
         setPlanillaCaida(false);
-        if (!silencioso) setToast({ type: 'success', message: 'Datos actualizados desde la planilla' });
+        if (!silencioso) avisar({ type: 'success', message: 'Datos actualizados desde la planilla' });
         return true;
       }
       if (noAutorizado) {
@@ -130,7 +134,7 @@ function App() {
         return false;
       }
       setPlanillaCaida(true);
-      setToast({
+      avisar({
         type: 'error',
         message: `No se pudo leer la planilla (${error}). Puedes consultar la copia local, `
           + 'pero no registrar cambios hasta recuperar la conexión.',
@@ -159,7 +163,7 @@ function App() {
    */
   const bloqueadoSinConexion = (accion) => {
     if (permiteEscribir(modoDatos)) return false;
-    setToast({ type: 'error', message: mensajeSinConexion(accion) });
+    avisar({ type: 'error', message: mensajeSinConexion(accion) });
     return true;
   };
 
@@ -225,7 +229,7 @@ function App() {
       const { ok, datos, error } = respuesta;
       if (!ok) {
         registrarFalloRemoto(respuesta);
-        setToast({ type: 'error', message: `No se pudo crear el convenio en la planilla (${error}).` });
+        avisar({ type: 'error', message: `No se pudo crear el convenio en la planilla (${error}).` });
         return;
       }
       const creado = normalizarConvenio({ ...conEventoInicial, ...datos });
@@ -237,7 +241,7 @@ function App() {
       setSelectedConvenio(creado);
     }
     setActiveView("convenios");
-    setToast({ type: 'success', message: 'Convenio registrado' });
+    avisar({ type: 'success', message: 'Convenio registrado' });
   };
 
   const handleGuardarConvenio = async (actualizado) => {
@@ -256,11 +260,11 @@ function App() {
           setConvenios(prev => prev.map(c => c.id === anterior.id ? anterior : c));
           setSelectedConvenio(anterior);
         }
-        setToast({ type: 'error', message: `Error al guardar en la planilla (${error}). Se revirtieron los cambios.` });
+        avisar({ type: 'error', message: `Error al guardar en la planilla (${error}). Se revirtieron los cambios.` });
         return;
       }
     }
-    setToast({ type: 'success', message: 'Convenio guardado' });
+    avisar({ type: 'success', message: 'Convenio guardado' });
   };
 
   const handleEliminarConvenio = async () => {
@@ -272,14 +276,14 @@ function App() {
       const { ok, error } = respuesta;
       if (!ok) {
         registrarFalloRemoto(respuesta);
-        setToast({ type: 'error', message: `Error al eliminar el convenio en la planilla (${error}).` });
+        avisar({ type: 'error', message: `Error al eliminar el convenio en la planilla (${error}).` });
         return;
       }
     }
     setConvenios(prev => prev.filter(c => c.id !== selectedConvenio.id));
     setSelectedConvenio(null);
     setActiveView("convenios");
-    setToast({ type: 'success', message: 'Convenio eliminado' });
+    avisar({ type: 'success', message: 'Convenio eliminado' });
   };
 
   // Importación de respaldo: los convenios entrantes se agregan como nuevos,
@@ -297,7 +301,7 @@ function App() {
       const { creados, fallidos } = await crearLoteRemoto(sinId, crearConvenioRemoto, normalizarConvenio);
       if (creados.length > 0) setConvenios(prev => [...prev, ...creados]);
       registrarFallosDeLote(fallidos);
-      setToast(avisoLote(creados, fallidos, 'importados', 'convenio'));
+      avisar(avisoLote(creados, fallidos, 'importados', 'convenio'));
       return;
     }
 
@@ -306,7 +310,7 @@ function App() {
       const nuevos = importados.map(c => normalizarConvenio({ ...c, id: siguiente++ }));
       return [...prev, ...nuevos];
     });
-    setToast({ type: 'success', message: `${importados.length} convenio(s) importados` });
+    avisar({ type: 'success', message: `${importados.length} convenio(s) importados` });
   };
 
   // Igual que la importación: con planilla configurada hay que borrar allá.
@@ -324,13 +328,13 @@ function App() {
       setConvenios(prev => prev.filter(c => !borrados.has(c.id)));
       if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
       registrarFallosDeLote(fallidos);
-      setToast(avisoLote(eliminados, fallidos, 'eliminados', 'convenio'));
+      avisar(avisoLote(eliminados, fallidos, 'eliminados', 'convenio'));
       return;
     }
 
     setConvenios([]);
     setSelectedConvenio(null);
-    setToast({ type: 'success', message: 'Convenios eliminados' });
+    avisar({ type: 'success', message: 'Convenios eliminados' });
   };
 
   /* ---------------------- Datos de ejemplo ---------------------- */
@@ -355,12 +359,12 @@ function App() {
       const { creados: soliCreadas } = await crearLoteRemoto(nuevasSolicitudes, crearSolicitudRemota, normalizarSolicitud);
       if (convCreados.length === 0 && soliCreadas.length === 0) {
         setPlanillaCaida(true);
-        setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la planilla.' });
+        avisar({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la planilla.' });
         return;
       }
       setConvenios(prev => [...prev, ...convCreados]);
       setSolicitudes(prev => [...prev, ...soliCreadas]);
-      setToast({ type: 'success', message: `Cargados ${convCreados.length} convenios y ${soliCreadas.length} solicitudes de ejemplo` });
+      avisar({ type: 'success', message: `Cargados ${convCreados.length} convenios y ${soliCreadas.length} solicitudes de ejemplo` });
       return;
     }
 
@@ -373,7 +377,7 @@ function App() {
       let siguiente = siguienteIdSolicitud(prev);
       return [...prev, ...nuevasSolicitudes.map(s => normalizarSolicitud({ ...s, id: siguiente++ }))];
     });
-    setToast({ type: 'success', message: `Cargados ${nuevosConvenios.length} convenios y ${nuevasSolicitudes.length} solicitudes de ejemplo` });
+    avisar({ type: 'success', message: `Cargados ${nuevosConvenios.length} convenios y ${nuevasSolicitudes.length} solicitudes de ejemplo` });
   };
 
   const handleBorrarEjemplos = async () => {
@@ -396,14 +400,14 @@ function App() {
       if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
       const fallidos = [...conv.fallidos, ...soli.fallidos];
       registrarFallosDeLote(fallidos);
-      setToast(avisoLote([...conv.eliminados, ...soli.eliminados], fallidos, 'eliminados', 'registro de ejemplo'));
+      avisar(avisoLote([...conv.eliminados, ...soli.eliminados], fallidos, 'eliminados', 'registro de ejemplo'));
       return;
     }
 
     setConvenios(prev => prev.filter(c => !esRegistroEjemplo(c)));
     setSolicitudes(prev => prev.filter(s => !esRegistroEjemplo(s)));
     if (selectedConvenio && esRegistroEjemplo(selectedConvenio)) setSelectedConvenio(null);
-    setToast({ type: 'success', message: 'Datos de ejemplo eliminados' });
+    avisar({ type: 'success', message: 'Datos de ejemplo eliminados' });
   };
 
   /* ------------- Solicitudes de transparencia (Ley 20.285) ------------- */
@@ -419,14 +423,14 @@ function App() {
       const { ok, datos, error } = respuesta;
       if (!ok) {
         registrarFalloRemoto(respuesta);
-        setToast({ type: 'error', message: `No se pudo crear la solicitud en la planilla (${error}).` });
+        avisar({ type: 'error', message: `No se pudo crear la solicitud en la planilla (${error}).` });
         return;
       }
       setSolicitudes(prev => [...prev, normalizarSolicitud({ ...conEvento, ...datos })]);
     } else {
       setSolicitudes(prev => [...prev, normalizarSolicitud({ ...conEvento, id: siguienteIdSolicitud(prev) })]);
     }
-    setToast({ type: 'success', message: 'Solicitud registrada' });
+    avisar({ type: 'success', message: 'Solicitud registrada' });
   };
 
   const handleGuardarSolicitud = async (actualizada) => {
@@ -453,11 +457,11 @@ function App() {
       if (!ok) {
         registrarFalloRemoto(respuesta);
         if (anterior) setSolicitudes(prev => prev.map(s => s.id === anterior.id ? anterior : s));
-        setToast({ type: 'error', message: `Error al guardar la solicitud en la planilla (${error}). Se revirtieron los cambios.` });
+        avisar({ type: 'error', message: `Error al guardar la solicitud en la planilla (${error}). Se revirtieron los cambios.` });
         return;
       }
     }
-    setToast({ type: 'success', message: 'Solicitud guardada' });
+    avisar({ type: 'success', message: 'Solicitud guardada' });
   };
 
   const handleEliminarSolicitud = async (solicitud) => {
@@ -469,12 +473,12 @@ function App() {
       const { ok, error } = respuesta;
       if (!ok) {
         registrarFalloRemoto(respuesta);
-        setToast({ type: 'error', message: `Error al eliminar la solicitud en la planilla (${error}).` });
+        avisar({ type: 'error', message: `Error al eliminar la solicitud en la planilla (${error}).` });
         return;
       }
     }
     setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
-    setToast({ type: 'success', message: 'Solicitud eliminada' });
+    avisar({ type: 'success', message: 'Solicitud eliminada' });
   };
 
   if (!isLoggedIn) {
@@ -563,7 +567,7 @@ function App() {
           </div>
         </div>
       </div>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -576,14 +580,20 @@ function PantallaAcceso({ onLogin, error }) {
   const contenedorBoton = useRef(null);
   const [errorCarga, setErrorCarga] = useState('');
 
+  // El botón se monta UNA vez. Antes el efecto dependía de `onLogin`, que App
+  // recrea en cada render, así que un rechazo de autorización —que hace
+  // renderizar a App— lo volvía a dibujar y quedaban dos botones de Google.
+  const onLoginRef = useRef(onLogin);
+  onLoginRef.current = onLogin;
+
   useEffect(() => {
     if (!googleConfigurado() || !contenedorBoton.current) return;
     let vigente = true;
     montarBotonGoogle(contenedorBoton.current, (idToken) => {
-      if (vigente) onLogin(idToken);
+      if (vigente) onLoginRef.current(idToken);
     }).catch(e => { if (vigente) setErrorCarga(e.message); });
     return () => { vigente = false; };
-  }, [onLogin]);
+  }, []);
 
   return (
     <div className="login-page">

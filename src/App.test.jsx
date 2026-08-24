@@ -427,3 +427,27 @@ describe('filtros del listado de convenios', () => {
     expect(screen.queryByText('Ingreso desde')).toBeNull();
   });
 });
+
+describe('avisos', () => {
+  const avisoEnPantalla = () => document.querySelector('.toast');
+
+  it('cada aviso es un elemento nuevo, no el anterior reescrito', async () => {
+    // App le pone una `key` distinta a cada aviso para que React lo monte de
+    // nuevo. Si reutilizara la instancia, el aviso heredaría el temporizador a
+    // medio correr del anterior y podía pasar casi sin verse.
+    sheets.fetchTodo.mockResolvedValue(planillaCon([]));
+    render(<App />);
+    await irAConfiguracion();
+
+    const actualizar = screen.getByRole('button', { name: /Actualizar desde la planilla/ });
+
+    fireEvent.click(actualizar);
+    await waitFor(() => { expect(avisoEnPantalla()).not.toBeNull(); });
+    const primero = avisoEnPantalla();
+
+    fireEvent.click(actualizar);
+    await waitFor(() => { expect(avisoEnPantalla()).not.toBe(primero); });
+
+    expect(avisoEnPantalla().textContent).toContain('Datos actualizados');
+  });
+});

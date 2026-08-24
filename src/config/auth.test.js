@@ -4,7 +4,7 @@ vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '123-abc.apps.googleusercontent.com');
 
 const {
   googleConfigurado, leerToken, tokenVigente,
-  guardarSesion, leerSesion, cerrarSesion, usuarioDeSesion,
+  guardarSesion, leerSesion, cerrarSesion, usuarioDeSesion, montarBotonGoogle,
 } = await import('./auth');
 
 // Arma un ID token de mentira con la misma forma que uno real (header.payload.firma).
@@ -104,5 +104,73 @@ describe('sesión', () => {
     expect(leerSesion()).toBeNull();
     expect(() => cerrarSesion()).not.toThrow();
     Object.defineProperty(window, 'sessionStorage', original);
+  });
+});
+
+describe('montaje del botón de Google', () => {
+  // cargarGoogleIdentity() cachea la librería a propósito ("una sola vez"), así
+  // que todas las pruebas de este bloque comparten el mismo objeto de Google:
+  // el primer montaje es el que queda cacheado.
+  const id = {
+    initialize: vi.fn(),
+    // Google DIBUJA su botón dentro del contenedor; no lo reemplaza.
+    renderButton: vi.fn((contenedor) => {
+      const boton = document.createElement('div');
+      boton.className = 'boton-google';
+      contenedor.appendChild(boton);
+    }),
+    disableAutoSelect: vi.fn(),
+  };
+
+  let contenedor;
+  beforeEach(() => {
+    vi.stubGlobal('google', { accounts: { id } });
+    id.initialize.mockClear();
+    id.renderButton.mockClear();
+    contenedor = document.createElement('div');
+  });
+
+  it('dibuja el botón dentro del contenedor', async () => {
+    await montarBotonGoogle(contenedor, () => {});
+
+    expect(contenedor.querySelectorAll('.boton-google')).toHaveLength(1);
+    expect(id.initialize).toHaveBeenCalledOnce();
+  });
+
+  it('montarlo dos veces no deja dos botones', async () => {
+    // Pasaba tras un rechazo de autorización: App volvía a renderizar, el
+    // efecto se repetía y quedaban dos botones de Google uno debajo del otro.
+    await montarBotonGoogle(contenedor, () => {});
+    await montarBotonGoogle(contenedor, () => {});
+
+    expect(contenedor.querySelectorAll('.boton-google')).toHaveLength(1);
+  });
+
+  it('el segundo montaje deja vivo el botón nuevo, no el viejo', async () => {
+    await montarBotonGoogle(contenedor, () => {});
+    const primero = contenedor.firstChild;
+    await montarBotonGoogle(contenedor, () => {});
+
+    expect(contenedor.firstChild).not.toBe(primero);
+    expect(contenedor.childElementCount).toBe(1);
+  });
+
+  it('la credencial llega al callback que se le pasó', async () => {
+    const recibido = vi.fn();
+    await montarBotonGoogle(contenedor, recibido);
+
+    // Google invoca el callback que se registró en initialize().
+    id.initialize.mock.calls[0][0].callback({ credential: 'id-token-de-google' });
+
+    expect(recibido).toHaveBeenCalledWith('id-token-de-google');
+  });
+
+  it('una respuesta sin credencial no dispara el callback', async () => {
+    const recibido = vi.fn();
+    await montarBotonGoogle(contenedor, recibido);
+
+    id.initialize.mock.calls[0][0].callback({});
+
+    expect(recibido).not.toHaveBeenCalled();
   });
 });
