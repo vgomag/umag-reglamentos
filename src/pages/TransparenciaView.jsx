@@ -76,7 +76,8 @@ export default function TransparenciaView({ solicitudes, onGuardar, onCrear, onE
       <div className="dashboard-grid">
         <div className="metric-card"><div className="metric-value">{stats.total}</div><div className="metric-label">Total de solicitudes</div></div>
         <div className="metric-card warning"><div className="metric-value">{stats.enTramite}</div><div className="metric-label">En tramitación</div></div>
-        <div className="metric-card danger"><div className="metric-value">{stats.vencidas}</div><div className="metric-label">Plazo vencido</div></div>
+        <div className="metric-card danger"><div className="metric-value">{stats.vencidas}</div><div className="metric-label">Vencidas sin responder</div></div>
+        <div className="metric-card danger"><div className="metric-value">{stats.fueraDePlazo}</div><div className="metric-label">Respondidas fuera de plazo</div></div>
         <div className="metric-card warning"><div className="metric-value">{stats.porVencer}</div><div className="metric-label">Próximas a vencer</div></div>
         <div className="metric-card"><div className="metric-value">{stats.prorrogadas}</div><div className="metric-label">Con prórroga</div></div>
         <div className="metric-card success"><div className="metric-value">{stats.respondidas}</div><div className="metric-label">Respondidas</div></div>
@@ -96,7 +97,9 @@ export default function TransparenciaView({ solicitudes, onGuardar, onCrear, onE
           <option value="">Cualquier plazo</option>
           <option value="en-plazo">🟢 En plazo</option>
           <option value="por-vencer">🟡 Próximas a vencer</option>
-          <option value="vencido">🔴 Vencidas</option>
+          <option value="vencido">🔴 Vencidas sin responder</option>
+          <option value="fuera-de-plazo">🔴 Respondidas fuera de plazo</option>
+          <option value="respondida">✅ Respondidas en plazo</option>
         </select>
         <select className="filter-select" value={filtros.situacion} onChange={set('situacion')}>
           <option value="">Todas</option>

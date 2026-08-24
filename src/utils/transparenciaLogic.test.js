@@ -4,6 +4,7 @@ import {
   fechaVencimiento, fechaTopeSubsanacion, fechaTopeOposicion, fechaTopeAmparo,
   infoPlazoSolicitud, textoPlazoSolicitud, solicitudCerrada, conVencimiento,
   resumenSolicitudes, filtrarSolicitudes, ordenarSolicitudes,
+  solicitudRespondida, margenDeRespuesta, fechaVencimiento,
 } from './transparenciaLogic';
 
 // Datos reales del acuse de recibo UN016T0000633 (Universidad de Magallanes).
@@ -110,5 +111,91 @@ describe('listado de solicitudes', () => {
 
   it('ordena por fecha de ingreso cuando se pide', () => {
     expect(ordenarSolicitudes(lista, 'ingreso').map(s => s.id)).toEqual([1, 3, 2]);
+  });
+});
+
+describe('una solicitud respondida no incumple el plazo', () => {
+  // Ingresada el 26-01-2026, vence el 23-02-2026 (20 días hábiles, Art. 14).
+  const base = { fechaIngreso: '2026-01-26', materia: 'Copia de convenios' };
+  const MUY_DESPUES = '2026-03-30';
+
+  it('respondida a tiempo pero sin cambiar el estado: ya no aparece vencida', () => {
+    // Éste era el fallo: el semáforo sólo miraba el estado, así que reportaba
+    // un incumplimiento legal que no había ocurrido.
+    const s = crearSolicitud({ ...base, fechaRespuesta: '2026-02-05', estado: 'En búsqueda de información' });
+    const info = infoPlazoSolicitud(s, MUY_DESPUES);
+
+    expect(info.key).toBe('respondida');
+    expect(info.label).toBe('Respondida en plazo');
+    expect(textoPlazoSolicitud(s, MUY_DESPUES)).toContain('de margen');
+  });
+
+  it('y el dashboard deja de contarla como vencida', () => {
+    const s = crearSolicitud({ ...base, fechaRespuesta: '2026-02-05', estado: 'En búsqueda de información' });
+    const r = resumenSolicitudes([s], MUY_DESPUES);
+
+    expect(r.vencidas).toBe(0);
+    expect(r.fueraDePlazo).toBe(0);
+    expect(r.respondidas).toBe(1);
+  });
+
+  it('responder el último día del plazo cuenta como cumplido', () => {
+    const s = crearSolicitud({ ...base, fechaRespuesta: '2026-02-23' });
+
+    expect(infoPlazoSolicitud(s, MUY_DESPUES).key).toBe('respondida');
+    expect(margenDeRespuesta(s)).toBe(0);
+    expect(textoPlazoSolicitud(s, MUY_DESPUES)).toBe('Respondida el último día del plazo');
+  });
+
+  it('responder tarde SÍ queda registrado como incumplimiento', () => {
+    // No se puede tapar: el registro de cumplimiento tiene que conservarlo.
+    const s = crearSolicitud({ ...base, fechaRespuesta: '2026-02-26', estado: 'Respondida' });
+    const info = infoPlazoSolicitud(s, MUY_DESPUES);
+
+    expect(info.key).toBe('fuera-de-plazo');
+    expect(info.label).toBe('Respondida fuera de plazo');
+    expect(textoPlazoSolicitud(s, MUY_DESPUES)).toContain('después del vencimiento');
+    expect(resumenSolicitudes([s], MUY_DESPUES).fueraDePlazo).toBe(1);
+  });
+
+  it('las vencidas ahora son sólo las que siguen sin responder', () => {
+    const sinResponder = crearSolicitud({ ...base, estado: 'En búsqueda de información' });
+    const tarde = crearSolicitud({ ...base, fechaRespuesta: '2026-02-26' });
+    const r = resumenSolicitudes([sinResponder, tarde], MUY_DESPUES);
+
+    expect(r.vencidas).toBe(1);      // la accionable
+    expect(r.fueraDePlazo).toBe(1);  // el incumplimiento ya consumado
+  });
+
+  it('la prórroga corre el listón antes de juzgar la respuesta', () => {
+    // Con prórroga vence 10 días hábiles más tarde, así que el 26-02 va en plazo.
+    const s = crearSolicitud({ ...base, prorrogada: true, fechaRespuesta: '2026-02-26' });
+
+    expect(fechaVencimiento(s) > '2026-02-26').toBe(true);
+    expect(infoPlazoSolicitud(s, MUY_DESPUES).key).toBe('respondida');
+  });
+
+  it('desistida o anulada, sin respuesta, siguen cerrándose sin más', () => {
+    const desistida = crearSolicitud({ ...base, estado: 'Desistida' });
+
+    expect(solicitudRespondida(desistida)).toBe(false);
+    expect(infoPlazoSolicitud(desistida, MUY_DESPUES).key).toBe('finalizado');
+  });
+
+  it('se puede filtrar por cada uno de los dos desenlaces', () => {
+    const aTiempo = crearSolicitud({ ...base, codigo: 'A', fechaRespuesta: '2026-02-05' });
+    const tarde = crearSolicitud({ ...base, codigo: 'B', fechaRespuesta: '2026-02-26' });
+    const lista = [aTiempo, tarde];
+
+    expect(filtrarSolicitudes(lista, { plazo: 'respondida' }, MUY_DESPUES).map(s => s.codigo)).toEqual(['A']);
+    expect(filtrarSolicitudes(lista, { plazo: 'fuera-de-plazo' }, MUY_DESPUES).map(s => s.codigo)).toEqual(['B']);
+  });
+
+  it('una respuesta sin fecha de ingreso no inventa un margen', () => {
+    const s = crearSolicitud({ materia: 'x', fechaRespuesta: '2026-02-05' });
+
+    expect(margenDeRespuesta(s)).toBeNull();
+    expect(infoPlazoSolicitud(s).key).toBe('respondida');
+    expect(textoPlazoSolicitud(s)).toBe('Respondida');
   });
 });

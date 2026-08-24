@@ -62,6 +62,10 @@ uno pendiente de Rectoría, uno finalizado, una solicitud prorrogada, etc.).
 - Los días hábiles excluyen sábados, domingos y festivos (Ley 19.880 art. 25).
   El calendario de feriados está en [`src/config/feriados.js`](src/config/feriados.js)
   y **debe revisarse cada año**: los feriados movibles y los de elecciones cambian.
+- **El plazo se cumple respondiendo, no cambiando un estado.** Si la solicitud
+  tiene fecha de respuesta, el semáforo la juzga contra el vencimiento:
+  ✅ respondida en plazo o 🔴 respondida fuera de plazo. El contador de vencidas
+  queda para las que siguen sin responder, que son las accionables.
 - La app **sabe hasta dónde llega esa tabla**. Un plazo que cae en un año sin
   feriados cargados se muestra marcado con ⚠️, porque los feriados que faltan se
   cuentan como hábiles y la fecha real puede ser posterior. Configuración avisa

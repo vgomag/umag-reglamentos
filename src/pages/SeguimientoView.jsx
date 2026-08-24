@@ -26,7 +26,9 @@ export default function SeguimientoView({ convenios, onSelectConvenio }) {
     const mapa = {};
     COLUMNAS.forEach(c => { mapa[c.id] = []; });
     convenios.forEach(c => {
-      if (soloPendientes && estaCerrado(c) && ubicacionActual(c) !== 'FINALIZADO') return;
+      // Los cerrados van todos a la columna Finalizado, que se oculta al
+      // marcar "Ocultar finalizados": no hace falta filtrarlos aparte.
+      if (soloPendientes && estaCerrado(c)) return;
       const ubic = ubicacionActual(c);
       if (mapa[ubic]) mapa[ubic].push(c);
     });
