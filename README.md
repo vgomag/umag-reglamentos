@@ -127,10 +127,60 @@ npm run test:watch      # modo watch
    - Build command: `npm run build`
    - Publish directory: `dist`
 4. Configura las variables de entorno en Netlify:
-   - `VITE_AUTH_PASSWORD`
+   - `VITE_GOOGLE_CLIENT_ID` (inicio de sesión)
    - `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` (planilla de Google)
    - `VITE_SHEET_URL` y `VITE_DRIVE_FOLDER_URL` (opcionales, sólo enlaces)
-   - `VITE_GOOGLE_CLIENT_ID` y `VITE_GOOGLE_CALENDAR_ID` (opcionales)
+   - `VITE_GOOGLE_CALENDAR_ID` (opcional)
+
+## Quién puede entrar
+
+El acceso es con **cuenta de Google**, restringido a una lista de correos
+autorizados. No hay contraseñas ni roles: quien está en la lista tiene acceso
+completo.
+
+```
+Navegador ──"Entrar con Google"──▶ Google emite un ID token firmado
+    │
+    └──cada petición lleva el token──▶ Apps Script lo verifica contra Google
+                                       y comprueba la lista de autorizados
+```
+
+**La lista vive en el Apps Script**, en la constante `USUARIOS_AUTORIZADOS`.
+Eso es lo que hace que la restricción sea real: alguien que edite el JavaScript
+del navegador puede saltarse la pantalla de acceso, pero no va a conseguir que
+la planilla le responda, porque quien decide es el script.
+
+### Dar de alta a una persona
+
+1. Abre la planilla → **Extensiones → Apps Script**.
+2. Agrega su correo a `USUARIOS_AUTORIZADOS`.
+3. **Implementar → Gestionar implementaciones → ✏️ → Versión: Nueva versión**.
+
+Dar de baja es lo mismo, borrando la línea. Surte efecto en unos cinco minutos
+(el script guarda en caché la verificación durante ese tiempo).
+
+No hace falta compartirle la planilla ni la carpeta de Drive: el script entra a
+ambas con la cuenta de quien lo publicó. Compartírselas sólo sirve si además
+quieres que pueda abrir el Sheet directamente.
+
+### Crear el ID de cliente OAuth
+
+Una sola vez, en [Google Cloud Console](https://console.cloud.google.com):
+
+1. Crea un proyecto.
+2. **APIs y servicios → Pantalla de consentimiento de OAuth**: tipo *Externo*,
+   completa nombre y correo de contacto.
+3. **Credenciales → Crear credenciales → ID de cliente de OAuth** → tipo
+   *Aplicación web*.
+4. En **Orígenes autorizados de JavaScript** agrega la URL del sitio, sin barra
+   final (por ejemplo `https://umag-transparencia.netlify.app`). Para trabajar
+   en local agrega también `http://localhost:5173`.
+5. Copia el **ID de cliente** y ponlo en dos lugares: `VITE_GOOGLE_CLIENT_ID`
+   en Netlify y `CLIENT_ID` en el Apps Script. Tienen que coincidir.
+
+> Mientras la pantalla de consentimiento esté en modo *Prueba*, sólo entran las
+> cuentas que agregues como usuarios de prueba. Publicarla quita ese límite;
+> igual manda la lista del script.
 
 ## Dónde viven los datos
 
@@ -154,7 +204,9 @@ Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google
 
 1. Abre la planilla → **Extensiones → Apps Script**.
 2. Reemplaza `Código.gs` por [`google-apps-script/Codigo.gs`](google-apps-script/Codigo.gs).
-3. Cambia la constante `TOKEN` por una cadena larga y aleatoria propia.
+3. Cambia tres constantes: `TOKEN` (cadena larga y aleatoria),
+   `USUARIOS_AUTORIZADOS` (los correos que pueden entrar) y `CLIENT_ID`
+   (el ID de cliente OAuth).
 4. Ejecuta una vez la función `prepararPlanilla` para crear las hojas
    `Convenios`, `Solicitudes` e `Historial` con sus encabezados.
 5. **Implementar → Nueva implementación → Aplicación web**:
@@ -162,9 +214,13 @@ Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google
    - Quién tiene acceso: **Cualquier usuario**
 
    Copia la URL que termina en `/exec`.
-6. En Netlify define `VITE_SHEETS_API_URL` (esa URL) y `VITE_SHEETS_TOKEN`
-   (el mismo TOKEN del paso 3). Opcionalmente `VITE_SHEET_URL` y
-   `VITE_DRIVE_FOLDER_URL` para que Configuración muestre los enlaces.
+6. En Netlify define `VITE_SHEETS_API_URL` (esa URL), `VITE_SHEETS_TOKEN`
+   (el mismo TOKEN del paso 3) y `VITE_GOOGLE_CLIENT_ID` (el mismo CLIENT_ID).
+   Opcionalmente `VITE_SHEET_URL` y `VITE_DRIVE_FOLDER_URL` para que
+   Configuración muestre los enlaces.
+
+   ⚠ Vite congela estas variables al compilar: después de agregarlas hay que
+   **volver a desplegar** (Deploys → Trigger deploy).
 7. Entra a **Configuración → Comprobar conexión** para verificarlo.
 
 > Si al comprobar aparece *"La respuesta no es JSON"*, casi siempre es que la
@@ -191,27 +247,24 @@ la app queda pendiente.
 
 ## Seguridad
 
-- `VITE_AUTH_PASSWORD` se incluye en el bundle cliente: ofrece obfuscación,
-  no autenticación real. Para acceso sensible hace falta un proveedor de
-  identidad de verdad (OIDC, Google Workspace) detrás de un backend.
-- La app NUNCA guarda la contraseña en localStorage (versiones anteriores
-  sí lo hacían; al abrir la app se limpia automáticamente cualquier valor
-  legacy `umag_saved_pass`).
-- `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` viajan en el bundle del cliente:
-  ofrecen el mismo nivel de protección que la contraseña de la app, es decir
-  disuaden pero no son autenticación fuerte. Quien obtenga ambos puede leer y
-  escribir en la planilla.
+- El control de acceso está en `USUARIOS_AUTORIZADOS`, dentro del Apps Script.
+  Es server-side: no se puede saltar editando el navegador.
+- El ID de cliente OAuth es público por diseño; no es un secreto.
+- La sesión se guarda en `sessionStorage` y caduca con el token de Google
+  (una hora). Se cierra al cerrar la pestaña.
+- La app ya no usa contraseña compartida. Al abrirla se limpian
+  automáticamente los restos que dejaron las versiones anteriores.
+- `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` viajan en el bundle del cliente,
+  así que no son secretos. **Pero ya no bastan para entrar**: desde que existe
+  el inicio de sesión con Google, cada petición tiene que traer además un ID
+  token válido de una cuenta autorizada. Quien consiga la URL y el token, sin
+  una cuenta de la lista, no lee ni escribe nada.
 - ⚠️ Las solicitudes de transparencia contienen **datos personales** del
-  solicitante (nombre, correo, teléfono). Si eso es una preocupación real,
-  conviene mover el acceso a una función de Netlify con cuenta de servicio, de
-  modo que las credenciales nunca lleguen al navegador.
+  solicitante (nombre, correo, teléfono). Viajan al navegador de quien esté
+  autorizado y quedan en su `localStorage` como respaldo; conviene no usar la
+  app en equipos compartidos.
 - La planilla y la carpeta de Drive se comparten con los permisos de Google:
   revisa quién tiene acceso antes de cargar datos reales.
-
-## Acceso por defecto
-
-- Usuario: `admin` (editable)
-- Contraseña por defecto: `umag2026` (cambiar vía `VITE_AUTH_PASSWORD`)
 
 ## Estructura del proyecto
 
@@ -235,6 +288,7 @@ src/
 │   ├── ReportesView.jsx           # reportes agregados y CSV/JSON
 │   └── ConfiguracionView.jsx      # reglas, almacenamiento, respaldos
 ├── config/
+│   ├── auth.js                    # inicio de sesión con Google
 │   ├── convenios.js               # unidades, estados, flujo, semáforo
 │   ├── transparencia.js           # plazos y estados de la Ley 20.285
 │   ├── feriados.js                # feriados de Chile (revisar cada año)
