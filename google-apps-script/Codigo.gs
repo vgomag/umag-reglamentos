@@ -45,7 +45,7 @@
 // ⚠ SÚBELO CADA VEZ que cambies algo de este archivo. Hay una prueba
 // (src/config/versionScript.test.js) que falla si te olvidas de subir también
 // VERSION_SCRIPT_ESPERADA en src/config/versionScript.js.
-var VERSION_SCRIPT = '1';
+var VERSION_SCRIPT = '2';
 
 var TOKEN = 'CAMBIA-ESTE-TOKEN-POR-UNO-LARGO-Y-ALEATORIO';
 
@@ -103,7 +103,10 @@ var CAMPOS_HISTORIAL = ['entidad', 'ref_id', 'evento_id', 'fecha', 'tipo', 'desc
 function encabezadosConvenios() {
   var cols = CAMPOS_CONVENIO.map(function (c) { return c[0]; });
   UNIDADES.forEach(function (u) {
-    cols.push(u + '_inicio', u + '_termino', u + '_estado', u + '_observaciones');
+    // `_orden` guarda la posición de la unidad EN ESTE convenio. Sin ella, el
+    // flujo volvía siempre en el orden fijo de UNIDADES y se perdía el que
+    // hubiera armado la ficha (reglas de negocio N°5 y N°6).
+    cols.push(u + '_inicio', u + '_termino', u + '_estado', u + '_observaciones', u + '_orden');
   });
   cols.push('actualizado');
   return cols;
@@ -113,7 +116,32 @@ function encabezadosSolicitudes() {
   return CAMPOS_SOLICITUD.map(function (c) { return c[0]; }).concat(['actualizado']);
 }
 
-// Devuelve la hoja pedida, creándola con sus encabezados si no existe.
+/**
+ * Agrega a la derecha los encabezados que la hoja todavía no tiene.
+ *
+ * Cuando el script gana una columna, las planillas que ya existen se quedan sin
+ * ella y el dato se pierde en silencio. Las nuevas se agregan AL FINAL y nunca
+ * se mueven ni se renombran las que ya están: las filas viejas quedan intactas
+ * y sólo estrenan celdas vacías.
+ *
+ * Que la columna nueva no quede junto a las de su unidad es feo pero da igual:
+ * el script mapea por NOMBRE de encabezado, no por posición.
+ */
+function migrarEncabezados(h, esperados) {
+  var ancho = h.getLastColumn();
+  if (ancho === 0) return esperados;
+  var actuales = h.getRange(1, 1, 1, ancho).getValues()[0].map(function (c) { return String(c).trim(); });
+
+  var faltantes = esperados.filter(function (e) { return actuales.indexOf(e) === -1; });
+  if (faltantes.length === 0) return actuales;
+
+  h.getRange(1, ancho + 1, 1, faltantes.length).setValues([faltantes]);
+  h.getRange(1, ancho + 1, 1, faltantes.length).setFontWeight('bold');
+  return actuales.concat(faltantes);
+}
+
+// Devuelve la hoja pedida, creándola con sus encabezados si no existe y
+// completándolos si le faltan columnas de una versión anterior del script.
 function hoja(nombre) {
   var libro = SpreadsheetApp.getActiveSpreadsheet();
   var h = libro.getSheetByName(nombre);
@@ -128,6 +156,8 @@ function hoja(nombre) {
   } else if (h.getLastRow() === 0) {
     h.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
     h.setFrozenRows(1);
+  } else {
+    migrarEncabezados(h, encabezados);
   }
   return h;
 }
@@ -161,19 +191,30 @@ function filaAConvenio(fila, encabezados) {
   obj.plazoEspecial = aBooleano(fila[idx.plazo_especial]);
 
   obj.etapas = [];
-  UNIDADES.forEach(function (u, orden) {
+  UNIDADES.forEach(function (u, posicionPorDefecto) {
     var estado = aTexto(fila[idx[u + '_estado']]);
     var inicio = aTexto(fila[idx[u + '_inicio']]);
     var termino = aTexto(fila[idx[u + '_termino']]);
     var obs = aTexto(fila[idx[u + '_observaciones']]);
-    // Una unidad sin ningún dato no participa en este convenio.
+    // Una unidad sin ningún dato no participa en este convenio. `_orden` no
+    // cuenta para decidirlo: si contara, una unidad quitada del flujo podría
+    // revivir por un orden que quedó suelto.
     if (!estado && !inicio && !termino && !obs) return;
+
+    // Filas anteriores a la columna `_orden` no la traen: ahí se cae al orden
+    // fijo del flujo, que es lo que la app hacía siempre hasta ahora.
+    var guardado = Number(aTexto(fila[idx[u + '_orden']]));
+    var orden = isNaN(guardado) || aTexto(fila[idx[u + '_orden']]) === ''
+      ? posicionPorDefecto
+      : guardado;
+
     obj.etapas.push({
       unidad: u, orden: orden,
       fechaInicio: inicio, fechaTermino: termino,
       estado: estado || 'Pendiente', observaciones: obs,
     });
   });
+  obj.etapas.sort(function (a, b) { return a.orden - b.orden; });
 
   obj.historial = [];
   obj.adjuntos = [];
@@ -201,6 +242,9 @@ function convenioAFila(c, encabezados) {
     if (sufijo === 'termino') return etapa.fechaTermino || '';
     if (sufijo === 'estado') return etapa.estado || '';
     if (sufijo === 'observaciones') return etapa.observaciones || '';
+    // El 0 es un orden válido (la primera unidad del flujo), así que no vale
+    // el `|| ''` de los demás campos.
+    if (sufijo === 'orden') return typeof etapa.orden === 'number' ? etapa.orden : '';
     return '';
   });
 }

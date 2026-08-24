@@ -60,13 +60,18 @@ describe('encabezados', () => {
     expect(gs.UNIDADES).toEqual(['VRAC', 'VRIIP', 'VVM', 'VRAF', 'PRO', 'CONTRALORIA', 'RECTORIA']);
   });
 
-  it('genera 43 columnas: 14 de base, 28 de etapas y la marca de tiempo', () => {
+  it('genera 50 columnas: 14 de base, 35 de etapas y la marca de tiempo', () => {
     const cols = gs.encabezadosConvenios();
-    expect(cols).toHaveLength(43);
+    expect(cols).toHaveLength(50);   // 14 + 7 unidades × 5 columnas + 1
     expect(cols[0]).toBe('id');
     expect(cols[cols.length - 1]).toBe('actualizado');
     expect(cols).toContain('VRAC_inicio');
     expect(cols).toContain('RECTORIA_observaciones');
+  });
+
+  it('cada unidad tiene su columna de orden', () => {
+    const cols = gs.encabezadosConvenios();
+    gs.UNIDADES.forEach(u => expect(cols).toContain(`${u}_orden`));
   });
 
   it('los encabezados de solicitudes terminan en la marca de tiempo', () => {
@@ -101,11 +106,73 @@ describe('convenio → fila → convenio', () => {
     expect(vrac.observaciones).toBe('Sin objeciones');
   });
 
-  it('reasigna el orden de las etapas según el flujo de la planilla', () => {
-    // VRAF es la cuarta del flujo: su orden vuelve como 3, no como venía.
+  it('conserva el orden de las etapas tal como venía', () => {
     const vuelta = gs.filaAConvenio(gs.convenioAFila(CONVENIO, encabezados), encabezados);
-    expect(vuelta.etapas.find(e => e.unidad === 'VRAF').orden).toBe(3);
     expect(vuelta.etapas.find(e => e.unidad === 'VRAC').orden).toBe(0);
+    expect(vuelta.etapas.find(e => e.unidad === 'VRAF').orden).toBe(3);
+  });
+
+  it('conserva un orden que contradice el flujo por defecto', () => {
+    // Lo que importa de verdad: la ficha permite reordenar la visación, y antes
+    // ese orden se perdía al releer porque volvía el fijo de UNIDADES.
+    // Acá VRAF (cuarta del flujo) va primero y VRAC (primera) va después.
+    const alReves = {
+      ...CONVENIO,
+      etapas: [
+        { unidad: 'VRAF', orden: 0, fechaInicio: '', fechaTermino: '', estado: 'En Revisión', observaciones: '' },
+        { unidad: 'VRAC', orden: 1, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+      ],
+    };
+    const vuelta = gs.filaAConvenio(gs.convenioAFila(alReves, encabezados), encabezados);
+
+    expect(vuelta.etapas.map(e => e.unidad)).toEqual(['VRAF', 'VRAC']);
+    expect(vuelta.etapas.map(e => e.orden)).toEqual([0, 1]);
+  });
+
+  it('devuelve las etapas ya ordenadas, no en el orden de UNIDADES', () => {
+    const alReves = {
+      ...CONVENIO,
+      etapas: [
+        { unidad: 'RECTORIA', orden: 0, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+        { unidad: 'PRO', orden: 1, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+        { unidad: 'VRAC', orden: 2, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+      ],
+    };
+    const vuelta = gs.filaAConvenio(gs.convenioAFila(alReves, encabezados), encabezados);
+
+    expect(vuelta.etapas.map(e => e.unidad)).toEqual(['RECTORIA', 'PRO', 'VRAC']);
+  });
+
+  it('el orden 0 se guarda, no se confunde con vacío', () => {
+    // Con `|| ''` el 0 se habría escrito como celda vacía y la primera unidad
+    // del flujo habría vuelto con el orden por defecto.
+    const fila = gs.convenioAFila(CONVENIO, encabezados);
+    expect(fila[encabezados.indexOf('VRAC_orden')]).toBe(0);
+  });
+
+  it('una unidad que no participa deja su orden vacío', () => {
+    const fila = gs.convenioAFila(CONVENIO, encabezados);
+    expect(fila[encabezados.indexOf('CONTRALORIA_orden')]).toBe('');
+  });
+
+  it('una fila sin la columna de orden usa el flujo por defecto', () => {
+    // Filas escritas por la versión anterior del script: la columna existe pero
+    // está vacía, y ahí el comportamiento tiene que ser el de antes.
+    const fila = gs.convenioAFila(CONVENIO, encabezados);
+    fila[encabezados.indexOf('VRAC_orden')] = '';
+    fila[encabezados.indexOf('VRAF_orden')] = '';
+    const vuelta = gs.filaAConvenio(fila, encabezados);
+
+    expect(vuelta.etapas.find(e => e.unidad === 'VRAC').orden).toBe(0);
+    expect(vuelta.etapas.find(e => e.unidad === 'VRAF').orden).toBe(3);
+  });
+
+  it('un orden suelto no revive a una unidad quitada del flujo', () => {
+    const fila = gs.convenioAFila(CONVENIO, encabezados);
+    fila[encabezados.indexOf('CONTRALORIA_orden')] = 5;  // resto de una edición previa
+    const vuelta = gs.filaAConvenio(fila, encabezados);
+
+    expect(vuelta.etapas.map(e => e.unidad)).toEqual(['VRAC', 'VRAF']);
   });
 
   it('deja vacías las columnas de las unidades que no participan', () => {

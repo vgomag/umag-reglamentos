@@ -288,3 +288,57 @@ describe('métricas del dashboard', () => {
     expect(entregadoARectoria(lista[0])).toBe(false);
   });
 });
+
+describe('historial del orden del flujo', () => {
+  const etapas = (unidades) => unidades.map((unidad, orden) => ({
+    unidad, orden, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '',
+  }));
+  const base = (unidades) => ({
+    id: 1, nombre: 'Convenio', estado: 'Ingresado', prioridad: 'normal',
+    fechaLimite: '', fechaIngreso: '2026-01-10', fechaEntregaRectoria: '',
+    etapas: etapas(unidades), historial: [],
+  });
+  const descripciones = (a, b) => calcularEventos(a, b, 'ana@umag.cl').map(e => e.descripcion);
+
+  it('anota el reordenamiento con la secuencia resultante', () => {
+    const antes = base(['VRAC', 'VRAF', 'PRO']);
+    const despues = base(['PRO', 'VRAC', 'VRAF']);
+
+    const orden = descripciones(antes, despues).filter(d => d.startsWith('Orden del flujo'));
+    expect(orden).toEqual(['Orden del flujo: «VRAC → VRAF → PRO» ahora es «PRO → VRAC → VRAF»']);
+  });
+
+  it('el antes y el después se distinguen a simple vista', () => {
+    // Con una flecha separándolos, la frase era una fila de unidades sin
+    // principio ni fin: "VRAC → VRAF → PRO → PRO → VRAC → VRAF".
+    const [descripcion] = descripciones(base(['VRAC', 'VRAF', 'PRO']), base(['PRO', 'VRAC', 'VRAF']))
+      .filter(d => d.startsWith('Orden del flujo'));
+
+    expect(descripcion.split('«')).toHaveLength(3);
+    expect(descripcion).toContain('ahora es');
+  });
+
+  it('no anota nada si el orden no cambió', () => {
+    const antes = base(['VRAC', 'VRAF']);
+    expect(descripciones(antes, base(['VRAC', 'VRAF']))).toEqual([]);
+  });
+
+  it('un alta no se confunde con un reordenamiento', () => {
+    const d = descripciones(base(['VRAC']), base(['VRAC', 'PRO']));
+
+    expect(d.some(x => x.includes('Se agregó la etapa'))).toBe(true);
+    expect(d.some(x => x.startsWith('Orden del flujo'))).toBe(false);
+  });
+
+  it('una baja tampoco', () => {
+    const d = descripciones(base(['VRAC', 'PRO']), base(['VRAC']));
+
+    expect(d.some(x => x.includes('Se quitó la etapa'))).toBe(true);
+    expect(d.some(x => x.startsWith('Orden del flujo'))).toBe(false);
+  });
+
+  it('un solo evento aunque se muevan varias unidades', () => {
+    const d = descripciones(base(['VRAC', 'VRAF', 'PRO']), base(['PRO', 'VRAF', 'VRAC']));
+    expect(d.filter(x => x.startsWith('Orden del flujo'))).toHaveLength(1);
+  });
+});

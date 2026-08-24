@@ -339,7 +339,38 @@ export function calcularEventos(anterior, actualizado, usuario = '') {
     }
   });
 
+  // Cambiar el orden de visación es una decisión sobre la tramitación, no un
+  // detalle de presentación: se anota una sola vez con la secuencia resultante,
+  // en vez de un evento por etapa movida.
+  const secuencia = (etapas = []) => [...etapas]
+    .sort((a, b) => a.orden - b.orden)
+    .map(e => e.unidad)
+    .join(' → ');
+  const antes = secuencia(anterior.etapas);
+  const ahora = secuencia(actualizado.etapas);
+  if (antes !== ahora && mismasUnidades(anterior.etapas, actualizado.etapas)) {
+    // Las comillas separan el antes del después: con una flecha entre ambos, la
+    // frase quedaba "VRAC → VRAF → PRO → PRO → VRAC → VRAF" y no se entendía
+    // dónde terminaba una secuencia y empezaba la otra.
+    push(TIPOS_HISTORIAL.ETAPA, `Orden del flujo: «${ordenLegible(anterior.etapas)}» ahora es «${ordenLegible(actualizado.etapas)}»`);
+  }
+
   return eventos;
+}
+
+// Si el conjunto de unidades cambió, lo que hubo fue un alta o una baja —ya
+// anotadas arriba— y no un reordenamiento.
+function mismasUnidades(a = [], b = []) {
+  if (a.length !== b.length) return false;
+  const unidadesB = new Set(b.map(e => e.unidad));
+  return a.every(e => unidadesB.has(e.unidad));
+}
+
+function ordenLegible(etapas = []) {
+  return [...etapas]
+    .sort((a, b) => a.orden - b.orden)
+    .map(e => nombreUnidad(e.unidad))
+    .join(' → ');
 }
 
 // Devuelve el convenio actualizado con su historial ya enriquecido.

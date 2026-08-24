@@ -15,7 +15,7 @@
 // google-apps-script/Codigo.gs. No se sincroniza solo, pero versionScript.test.js
 // falla si alguien sube uno y se olvida del otro.
 
-export const VERSION_SCRIPT_ESPERADA = '1';
+export const VERSION_SCRIPT_ESPERADA = '2';
 
 export const ESTADO_VERSION = {
   COINCIDE: 'coincide',
