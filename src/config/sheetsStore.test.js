@@ -164,3 +164,53 @@ describe('comprobación de conexión', () => {
     expect(error).toBe('Token inválido');
   });
 });
+
+describe('versión del script publicado', () => {
+  it('la devuelve al comprobar la conexión', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      respuesta({ version: '7', ok: true, datos: { pong: true, version: '7' } })));
+
+    expect((await probarConexion()).version).toBe('7');
+  });
+
+  it('la devuelve TAMBIÉN cuando la planilla rechaza la petición', async () => {
+    // Es el caso que importa: saber qué código está publicado sirve sobre todo
+    // cuando algo falla, y ahí nunca se llega a los datos.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      respuesta({ version: '7', ok: false, error: 'Sesión no iniciada.', noAutorizado: true })));
+
+    const { ok, version, noAutorizado } = await probarConexion();
+
+    expect(ok).toBe(false);
+    expect(noAutorizado).toBe(true);
+    expect(version).toBe('7');
+  });
+
+  it('viaja en la lectura de datos y en las escrituras', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      respuesta({ version: '7', ok: true, datos: { convenios: [], solicitudes: [] } })));
+    expect((await fetchTodo()).version).toBe('7');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      respuesta({ version: '7', ok: true, datos: { id: 3 } })));
+    const creado = await crearConvenioRemoto({ nombre: 'X' });
+    expect(creado.version).toBe('7');
+    expect(creado.datos).toEqual({ id: 3 });   // el parámetro `datos` no se pisa
+  });
+
+  it('queda vacía si el script publicado es anterior y no la informa', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      respuesta({ ok: true, datos: { pong: true } })));
+
+    expect((await probarConexion()).version).toBe('');
+  });
+
+  it('queda vacía cuando la respuesta ni siquiera es JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respuesta('<!doctype html><html>')));
+
+    const { ok, version } = await probarConexion();
+
+    expect(ok).toBe(false);
+    expect(version).toBe('');
+  });
+});

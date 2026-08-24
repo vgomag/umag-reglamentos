@@ -31,6 +31,22 @@
  * evento, que es la forma natural de un registro cronológico.
  */
 
+// ── VERSIÓN DE ESTE ARCHIVO ──────────────────────────────────────────
+//
+// Guardar el código en el editor NO actualiza la aplicación web: hay que
+// publicar una versión nueva. Son dos pasos separados y es fácil hacer sólo el
+// primero, con lo que el editor muestra el código nuevo mientras la planilla
+// sigue respondiendo con el viejo, sin ninguna señal.
+//
+// Este número viaja en cada respuesta para que la app pueda comparar lo que
+// hay publicado con lo que espera el repositorio. Configuración → Comprobar
+// conexión lo muestra y avisa si no coinciden.
+//
+// ⚠ SÚBELO CADA VEZ que cambies algo de este archivo. Hay una prueba
+// (src/config/versionScript.test.js) que falla si te olvidas de subir también
+// VERSION_SCRIPT_ESPERADA en src/config/versionScript.js.
+var VERSION_SCRIPT = '1';
+
 var TOKEN = 'CAMBIA-ESTE-TOKEN-POR-UNO-LARGO-Y-ALEATORIO';
 
 // ── QUIÉN PUEDE ENTRAR ───────────────────────────────────────────────
@@ -477,8 +493,20 @@ function verificarIdentidad(idToken) {
 
 /* ── Puntos de entrada HTTP ────────────────────────────────────────── */
 
+/**
+ * Envuelve la respuesta y le agrega la versión del script.
+ *
+ * La versión va en TODAS las respuestas, incluidos los rechazos, a propósito:
+ * si sólo viajara cuando la identidad es válida, no serviría justamente cuando
+ * más se necesita —diagnosticar por qué nadie puede entrar—. Es metadato del
+ * despliegue, no información de nadie.
+ */
 function responder(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  var cuerpo = { version: VERSION_SCRIPT };
+  for (var clave in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, clave)) cuerpo[clave] = obj[clave];
+  }
+  return ContentService.createTextOutput(JSON.stringify(cuerpo))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -495,7 +523,7 @@ function doGet(e) {
     if (!identidad.ok) return responder({ ok: false, error: identidad.error, noAutorizado: true });
 
     if (p.accion === 'ping') {
-      return responder({ ok: true, datos: { pong: true, email: identidad.email } });
+      return responder({ ok: true, datos: { pong: true, email: identidad.email, version: VERSION_SCRIPT } });
     }
     return responder({ ok: true, datos: listarTodo() });
   } catch (err) {
