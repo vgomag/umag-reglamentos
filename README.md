@@ -301,6 +301,10 @@ la app queda pendiente.
   (una hora). Se cierra al cerrar la pestaña.
 - La app ya no usa contraseña compartida. Al abrirla se limpian
   automáticamente los restos que dejaron las versiones anteriores.
+- Todas las peticiones al Apps Script son **POST**, incluidas las lecturas. El
+  ID token de Google va en el cuerpo y nunca en la URL: como parámetro quedaba
+  escrito en los registros de ejecución de Apps Script, en el historial del
+  navegador y en cualquier proxy intermedio.
 - `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` viajan en el bundle del cliente,
   así que no son secretos. **Pero ya no bastan para entrar**: desde que existe
   el inicio de sesión con Google, cada petición tiene que traer además un ID

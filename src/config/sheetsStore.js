@@ -74,13 +74,19 @@ async function leerRespuesta(respuesta, op) {
 }
 
 /**
- * POST al Apps Script.
+ * POST al Apps Script. Lo usan TODAS las operaciones, incluidas las lecturas.
  *
  * Va con Content-Type text/plain A PROPÓSITO: así el navegador lo trata como
  * "simple request" y no dispara la petición preflight OPTIONS, que Apps Script
  * no sabe responder. El cuerpo sigue siendo JSON y el script lo parsea igual.
+ *
+ * Que las lecturas también vayan por acá es lo que mantiene el ID token de
+ * Google fuera de la URL: como parámetro quedaba escrito en los registros de
+ * ejecución de Apps Script, en el historial del navegador y en cualquier proxy
+ * intermedio. En el cuerpo de un POST no queda en ninguno de los tres.
  */
 async function enviar(accion, entidad, datos) {
+  const op = entidad ? `${accion}:${entidad}` : accion;
   if (!sheetsConfigurado()) return { ok: false, error: 'Google Sheets no configurado' };
   try {
     const respuesta = await fetchConTimeout(SHEETS_API_URL, {
@@ -90,52 +96,40 @@ async function enviar(accion, entidad, datos) {
       redirect: 'follow',
     });
     // Ojo: el parámetro de esta función también se llama `datos`.
-    const respondido = await leerRespuesta(respuesta, `${accion}:${entidad}`);
+    const respondido = await leerRespuesta(respuesta, op);
     return { ok: true, datos: respondido.datos, version: respondido.version };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
-    registrarError(`${accion}:${entidad}`, mensaje);
+    registrarError(op, mensaje);
     return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
   }
 }
 
 export async function fetchTodo() {
   if (!sheetsConfigurado()) return { data: null, error: null };
-  try {
-    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_TOKEN)}`
-      + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
-    const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
-    const { datos, version } = await leerRespuesta(respuesta, 'listar');
-    return {
-      data: {
-        convenios: Array.isArray(datos?.convenios) ? datos.convenios : [],
-        solicitudes: Array.isArray(datos?.solicitudes) ? datos.solicitudes : [],
-      },
-      error: null,
-      version,
-    };
-  } catch (e) {
-    const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
-    registrarError('listar', mensaje);
-    return { data: null, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
-  }
+  const { ok, datos, error, noAutorizado, version } = await enviar('listar');
+  if (!ok) return { data: null, error, noAutorizado, version };
+  return {
+    data: {
+      convenios: Array.isArray(datos?.convenios) ? datos.convenios : [],
+      solicitudes: Array.isArray(datos?.solicitudes) ? datos.solicitudes : [],
+    },
+    error: null,
+    version,
+  };
 }
 
 // Comprueba la conexión sin traer datos; lo usa la vista de Configuración.
 export async function probarConexion() {
-  if (!sheetsConfigurado()) return { ok: false, error: 'Falta VITE_SHEETS_API_URL' };
-  try {
-    const url = `${SHEETS_API_URL}?accion=ping&token=${encodeURIComponent(SHEETS_TOKEN)}`
-      + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
-    const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
-    const { datos, version } = await leerRespuesta(respuesta, 'ping');
+  if (!sheetsConfigurado()) return { ok: false, error: 'Falta VITE_SHEETS_API_URL', version: '' };
+  const { ok, datos, error, noAutorizado, version } = await enviar('ping');
+  return {
+    ok,
+    error: ok ? null : error,
+    noAutorizado: Boolean(noAutorizado),
     // La versión viene en el sobre; el ping la repite dentro por comodidad.
-    return { ok: true, error: null, version: datos?.version || version };
-  } catch (e) {
-    const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
-    registrarError('ping', mensaje);
-    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
-  }
+    version: datos?.version || version || '',
+  };
 }
 
 export const crearConvenioRemoto = (convenio) => enviar('crear', 'convenio', convenio);

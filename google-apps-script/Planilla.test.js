@@ -45,12 +45,31 @@ function hojaFalsa(nombre) {
   };
 }
 
+const CLIENT_ID_PRUEBA = '123-abc.apps.googleusercontent.com';
+const CORREO_AUTORIZADO = 'ana@umag.cl';
+
 function cargarScript() {
   const hojas = {};
   const propiedades = {};
+  const respuestas = [];   // lo que el script devolvió por HTTP
   const servicios = {
     Utilities: {
       formatDate: (f) => `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`,
+      computeDigest: () => [1, 2, 3],
+      base64EncodeWebSafe: () => 'huella',
+      DigestAlgorithm: { SHA_256: 'sha256' },
+    },
+    CacheService: {
+      getScriptCache: () => ({ get: () => null, put: () => {} }),
+    },
+    // Google confirma la identidad del ID token; acá siempre dice que sí.
+    UrlFetchApp: {
+      fetch: () => ({
+        getResponseCode: () => 200,
+        getContentText: () => JSON.stringify({
+          aud: CLIENT_ID_PRUEBA, email_verified: 'true', email: CORREO_AUTORIZADO,
+        }),
+      }),
     },
     Session: { getScriptTimeZone: () => 'America/Santiago' },
     SpreadsheetApp: {
@@ -65,19 +84,42 @@ function cargarScript() {
         setProperty: (k, v) => { propiedades[k] = String(v); },
       }),
     },
-    ContentService: { createTextOutput: () => ({ setMimeType: () => ({}) }), MimeType: { JSON: 'json' } },
+    ContentService: {
+      createTextOutput: (texto) => { respuestas.push(texto); return { setMimeType: () => ({}) }; },
+      MimeType: { JSON: 'json' },
+    },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   };
 
-  const exportar = `; return {
-    crearConvenio, actualizarConvenio, eliminarConvenio,
-    crearSolicitud, eliminarSolicitud,
-    listarTodo, leerHoja, hoja, siguienteId, encabezadosConvenios,
-    HOJA_HISTORIAL, HOJA_CONVENIOS,
-  };`;
+  // La configuración del archivo del repo son valores de ejemplo; se
+  // reemplazan para que verificarIdentidad pueda pasar.
+  const exportar = `
+    ; CLIENT_ID = ${JSON.stringify(CLIENT_ID_PRUEBA)};
+    USUARIOS_AUTORIZADOS = [${JSON.stringify(CORREO_AUTORIZADO)}];
+    TOKEN = 'token-de-prueba';
+    return {
+      crearConvenio, actualizarConvenio, eliminarConvenio,
+      crearSolicitud, eliminarSolicitud,
+      listarTodo, leerHoja, hoja, siguienteId, encabezadosConvenios,
+      doGet, doPost,
+      HOJA_HISTORIAL, HOJA_CONVENIOS,
+    };`;
   // eslint-disable-next-line no-new-func
   const api = new Function(...Object.keys(servicios), codigo + exportar)(...Object.values(servicios));
-  return { ...api, hojas, propiedades };
+
+  // Simula una petición HTTP y devuelve la respuesta ya parseada.
+  const postear = (cuerpo) => {
+    api.doPost({ postData: { contents: JSON.stringify({
+      token: 'token-de-prueba', idToken: 'id-token-de-google', ...cuerpo,
+    }) } });
+    return JSON.parse(respuestas[respuestas.length - 1]);
+  };
+  const getear = () => {
+    api.doGet({ parameter: {} });
+    return JSON.parse(respuestas[respuestas.length - 1]);
+  };
+
+  return { ...api, hojas, propiedades, respuestas, postear, getear };
 }
 
 const evento = (id, descripcion, usuario = 'ana@umag.cl') => ({
@@ -311,5 +353,84 @@ describe('migración de planillas ya existentes', () => {
     gs.hoja(gs.HOJA_CONVENIOS);
 
     expect(gs.hojas.Convenios.filas[0].length).toBe(anchoInicial);
+  });
+});
+
+describe('lecturas por POST', () => {
+  // El ID token dejó de viajar en la URL, así que listar y ping entran por
+  // doPost como cualquier otra operación.
+
+  it('listar devuelve los datos', () => {
+    gs.crearConvenio({ nombre: 'Convenio A', etapas: [], historial: [] });
+
+    const r = gs.postear({ accion: 'listar' });
+
+    expect(r.ok).toBe(true);
+    expect(r.datos.convenios.map(c => c.nombre)).toEqual(['Convenio A']);
+    expect(r.datos.solicitudes).toEqual([]);
+  });
+
+  it('ping responde con la identidad y la versión', () => {
+    const r = gs.postear({ accion: 'ping' });
+
+    expect(r.ok).toBe(true);
+    expect(r.datos.pong).toBe(true);
+    expect(r.datos.email).toBe(CORREO_AUTORIZADO);
+    expect(r.datos.version).toBe(r.version);
+  });
+
+  it('sin identidad válida no entrega nada', () => {
+    gs.crearConvenio({ nombre: 'Convenio reservado', etapas: [], historial: [] });
+
+    const r = gs.postear({ accion: 'listar', idToken: '' });
+
+    expect(r.ok).toBe(false);
+    expect(r.noAutorizado).toBe(true);
+    expect(r.datos).toBeUndefined();
+  });
+
+  it('un token de aplicación equivocado tampoco', () => {
+    const r = gs.postear({ accion: 'listar', token: 'otro-token' });
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('Token inválido');
+    expect(r.datos).toBeUndefined();
+  });
+
+  it('las escrituras siguen funcionando por el mismo camino', () => {
+    const r = gs.postear({ accion: 'crear', entidad: 'convenio', datos: { nombre: 'Nuevo', etapas: [], historial: [] } });
+
+    expect(r.ok).toBe(true);
+    expect(r.datos.id).toBe(1);
+    expect(gs.postear({ accion: 'listar' }).datos.convenios).toHaveLength(1);
+  });
+
+  it('una acción desconocida se rechaza', () => {
+    const r = gs.postear({ accion: 'inventada', entidad: 'convenio' });
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('no reconocida');
+  });
+
+  it('todas las respuestas informan la versión, incluidos los rechazos', () => {
+    expect(gs.postear({ accion: 'listar' }).version).toBeTruthy();
+    expect(gs.postear({ accion: 'listar', idToken: '' }).version).toBeTruthy();
+    expect(gs.postear({ accion: 'listar', token: 'malo' }).version).toBeTruthy();
+  });
+});
+
+describe('doGet ya no atiende lecturas', () => {
+  it('no entrega datos ni siquiera con credenciales válidas', () => {
+    gs.crearConvenio({ nombre: 'Convenio reservado', etapas: [], historial: [] });
+
+    const r = gs.getear();
+
+    expect(r.ok).toBe(false);
+    expect(r.datos).toBeUndefined();
+  });
+
+  it('explica qué hacer en vez de dar un error críptico', () => {
+    // Una pestaña con el sitio viejo cargado sigue pidiendo por GET.
+    expect(gs.getear().error).toContain('Recarga la aplicación');
   });
 });

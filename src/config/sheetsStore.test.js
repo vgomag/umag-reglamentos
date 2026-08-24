@@ -27,7 +27,7 @@ describe('configuración', () => {
 });
 
 describe('lectura', () => {
-  it('pide los datos con el token en la query', async () => {
+  it('pide los datos por POST, con las credenciales en el cuerpo', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       respuesta({ ok: true, datos: { convenios: [{ id: 1 }], solicitudes: [] } }));
     vi.stubGlobal('fetch', fetchMock);
@@ -37,9 +37,9 @@ describe('lectura', () => {
     expect(error).toBeNull();
     expect(data.convenios).toHaveLength(1);
     const [url, opciones] = fetchMock.mock.calls[0];
-    expect(url).toContain(API_URL);
-    expect(url).toContain('token=token-de-prueba');
-    expect(opciones.method).toBe('GET');
+    expect(url).toBe(API_URL);
+    expect(opciones.method).toBe('POST');
+    expect(JSON.parse(opciones.body)).toMatchObject({ accion: 'listar', token: 'token-de-prueba' });
   });
 
   it('devuelve listas vacías si la planilla no trae nada', async () => {
@@ -154,7 +154,7 @@ describe('comprobación de conexión', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { ok } = await probarConexion();
     expect(ok).toBe(true);
-    expect(fetchMock.mock.calls[0][0]).toContain('accion=ping');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).accion).toBe('ping');
   });
 
   it('reporta el motivo cuando falla', async () => {
@@ -212,5 +212,76 @@ describe('versión del script publicado', () => {
 
     expect(ok).toBe(false);
     expect(version).toBe('');
+  });
+});
+
+describe('el ID token no viaja en la URL', () => {
+  // Como parámetro de la URL, la credencial de Google quedaba escrita en los
+  // registros de ejecución de Apps Script, en el historial del navegador y en
+  // cualquier proxy intermedio. En el cuerpo de un POST no queda en ninguno.
+  // leerSesion() descarta lo que no sea un ID token vigente, así que hay que
+  // armar uno con forma real y caducidad futura.
+  const b64 = (obj) => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj))))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const TOKEN_DE_SESION = `${b64({ alg: 'RS256' })}`
+    + `.${b64({ email: 'ana@umag.cl', exp: Math.floor(Date.now() / 1000) + 3600 })}`
+    + '.firma-no-verificada';
+
+  const espiarPeticiones = () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta({ ok: true, datos: {} }));
+    vi.stubGlobal('fetch', fetchMock);
+    sessionStorage.setItem('umag_google_token', TOKEN_DE_SESION);
+    return fetchMock;
+  };
+
+  const urlsDe = (fetchMock) => fetchMock.mock.calls.map(c => c[0]);
+  const cuerposDe = (fetchMock) => fetchMock.mock.calls.map(c => JSON.parse(c[1].body));
+
+  it('al leer los datos', async () => {
+    const fetchMock = espiarPeticiones();
+    await fetchTodo();
+
+    urlsDe(fetchMock).forEach(url => {
+      expect(url).toBe(API_URL);
+      expect(url).not.toContain('idToken');
+    });
+  });
+
+  it('al comprobar la conexión', async () => {
+    const fetchMock = espiarPeticiones();
+    await probarConexion();
+
+    urlsDe(fetchMock).forEach(url => {
+      expect(url).toBe(API_URL);
+      expect(url).not.toContain('idToken');
+    });
+  });
+
+  it('al escribir', async () => {
+    const fetchMock = espiarPeticiones();
+    await crearConvenioRemoto({ nombre: 'Convenio X' });
+    await eliminarConvenioRemoto(3);
+
+    urlsDe(fetchMock).forEach(url => expect(url).toBe(API_URL));
+  });
+
+  it('ninguna petición lleva jamás una query', async () => {
+    const fetchMock = espiarPeticiones();
+    await fetchTodo();
+    await probarConexion();
+    await crearConvenioRemoto({ nombre: 'Convenio X' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    urlsDe(fetchMock).forEach(url => expect(url).not.toContain('?'));
+  });
+
+  it('pero sí llega en el cuerpo, que es donde tiene que ir', async () => {
+    const fetchMock = espiarPeticiones();
+    await fetchTodo();
+    await probarConexion();
+
+    cuerposDe(fetchMock).forEach(cuerpo => {
+      expect(cuerpo.idToken).toBe(TOKEN_DE_SESION);
+    });
   });
 });
