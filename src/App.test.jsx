@@ -331,3 +331,99 @@ describe('sin planilla configurada', () => {
     expect(sheets.eliminarConvenioRemoto).not.toHaveBeenCalled();
   });
 });
+
+describe('filtros del listado de convenios', () => {
+  const irAlListado = async () => {
+    fireEvent.click(screen.getByText('Convenios'));
+    return screen.findByPlaceholderText(/Buscar por nombre/);
+  };
+  const cuenta = () => screen.getByText(/\d+ de \d+ convenios/).textContent;
+
+  const conConvenios = () => sheets.fetchTodo.mockResolvedValue(planillaCon([
+    { ...convenio(1, 'Convenio en trámite'), estado: 'En Tramitación' },
+    { ...convenio(2, 'Convenio finalizado'), estado: 'Finalizado' },
+    { ...convenio(3, 'Convenio anulado'), estado: 'Anulado' },
+  ]));
+
+  it('la tarjeta del dashboard aplica su filtro', async () => {
+    conConvenios();
+    render(<App />);
+
+    // La tarjeta ya navega al listado; no hay que pasar por el menú.
+    fireEvent.click(await screen.findByText('Finalizados'));
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+
+    expect(cuenta()).toBe('1 de 3 convenios');
+  });
+
+  it('entrar por el menú lateral NO arrastra el filtro de la tarjeta', async () => {
+    // Éste era el problema: la lista aparecía recortada por un criterio que
+    // venía de otra navegación y nada explicaba.
+    conConvenios();
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Finalizados'));
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+    expect(cuenta()).toBe('1 de 3 convenios');
+
+    fireEvent.click(screen.getByText('Dashboard'));
+    await screen.findByText('Panel de Convenios');
+    await irAlListado();
+
+    expect(cuenta()).toBe('3 de 3 convenios');
+  });
+
+  it('volver desde una ficha SÍ conserva lo que se había filtrado', async () => {
+    conConvenios();
+    render(<App />);
+    const buscador = await irAlListado();
+
+    fireEvent.change(buscador, { target: { value: 'anulado' } });
+    await waitFor(() => { expect(cuenta()).toBe('1 de 3 convenios'); });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver' }));
+    await screen.findByText('Flujo de tramitación');
+    fireEvent.click(screen.getByRole('button', { name: /Volver al listado/ }));
+
+    const vuelto = await screen.findByPlaceholderText(/Buscar por nombre/);
+    expect(vuelto.value).toBe('anulado');
+    expect(cuenta()).toBe('1 de 3 convenios');
+  });
+
+  it('el filtro de la tarjeta también sobrevive al ir y volver de una ficha', async () => {
+    conConvenios();
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Finalizados'));
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver' }));
+    await screen.findByText('Flujo de tramitación');
+    fireEvent.click(screen.getByRole('button', { name: /Volver al listado/ }));
+
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+    expect(cuenta()).toBe('1 de 3 convenios');
+  });
+
+  it('«Limpiar filtros» deja la lista completa', async () => {
+    conConvenios();
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Finalizados'));
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+    fireEvent.click(screen.getByText(/Limpiar filtros/));
+
+    await waitFor(() => { expect(cuenta()).toBe('3 de 3 convenios'); });
+  });
+
+  it('un filtro de fecha llega con el panel abierto, uno de estado no', async () => {
+    // Si el panel quedara cerrado, la lista saldría recortada por un criterio
+    // invisible; abrirlo siempre sería ruido.
+    conConvenios();
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Finalizados'));
+    await screen.findByPlaceholderText(/Buscar por nombre/);
+    expect(screen.queryByText('Ingreso desde')).toBeNull();
+  });
+});

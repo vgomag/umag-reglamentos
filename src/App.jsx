@@ -3,7 +3,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
 import { normalizarConvenio, TIPOS_HISTORIAL } from './config/convenios';
-import { conHistorial, crearEvento } from './utils/conveniosLogic';
+import { conHistorial, crearEvento, FILTROS_VACIOS, hayFiltrosAvanzados } from './utils/conveniosLogic';
 import { leerLocal, guardarLocal, siguienteIdLocal } from './config/conveniosStore';
 import { leerSolicitudesLocal, guardarSolicitudesLocal, siguienteIdSolicitud } from './config/transparenciaStore';
 import {
@@ -31,6 +31,10 @@ const TransparenciaView = lazy(() => import('./pages/TransparenciaView'));
 const ReportesView = lazy(() => import('./pages/ReportesView'));
 const ConfiguracionView = lazy(() => import('./pages/ConfiguracionView'));
 
+// Punto de partida del listado de convenios: sin filtros, por orden de llegada
+// (regla de negocio N°1) y con el panel de fechas cerrado.
+const LISTA_CONVENIOS_INICIAL = { filtros: FILTROS_VACIOS, orden: 'llegada', avanzados: false };
+
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', color: '#94a3b8' }}>
     <div className="spinner" style={{ width: 24, height: 24, border: '3px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: '0.75rem' }}></div>
@@ -48,7 +52,17 @@ function App() {
   const [convenios, setConvenios] = useState(() => leerLocal());
   const [solicitudes, setSolicitudes] = useState(() => leerSolicitudesLocal());
   const [selectedConvenio, setSelectedConvenio] = useState(null);
-  const [filtrosConvenios, setFiltrosConvenios] = useState(null);
+  // El estado del listado de convenios (filtros, orden y panel de fechas) vive
+  // acá y no dentro de ConveniosList por dos razones opuestas:
+  //
+  //   · La lista se desmonta al abrir una ficha, así que lo que la persona
+  //     hubiera filtrado o buscado se perdía al volver del detalle.
+  //   · Y al revés: el filtro que llegaba desde una tarjeta del dashboard se
+  //     quedaba pegado y volvía a aplicarse al entrar por el menú lateral, sin
+  //     que nada explicara por qué la lista aparecía recortada.
+  //
+  // Teniéndolo acá, cada navegación decide explícitamente si lo conserva.
+  const [listaConvenios, setListaConvenios] = useState(LISTA_CONVENIOS_INICIAL);
   // Convenios y solicitudes viven en Google Sheets; localStorage es el respaldo.
   //
   // "La planilla no responde" es un estado transitorio, no otra forma de
@@ -171,8 +185,24 @@ function App() {
   // de quien hizo el cambio, no un nombre que alguien escribió a mano.
   const usuarioActual = () => usuario?.email || 'desconocido';
 
+  /**
+   * Navegación que REEMPLAZA el estado del listado de convenios.
+   *
+   * La usan el menú lateral (sin filtros: la lista arranca limpia) y las
+   * tarjetas del dashboard (con el filtro de la tarjeta). Volver desde una
+   * ficha no pasa por acá justamente para conservar lo que hubiera filtrado.
+   */
   const irA = (vista, filtros = null) => {
-    setFiltrosConvenios(filtros);
+    if (vista === 'convenios') {
+      const aplicados = { ...FILTROS_VACIOS, ...(filtros || {}) };
+      setListaConvenios({
+        ...LISTA_CONVENIOS_INICIAL,
+        filtros: aplicados,
+        // El panel de fechas se abre sólo si el filtro que llega está adentro:
+        // recortar la lista con un criterio invisible es lo que confundía.
+        avanzados: hayFiltrosAvanzados(aplicados),
+      });
+    }
     setActiveView(vista);
   };
 
@@ -456,7 +486,7 @@ function App() {
       <Header userName={usuario?.nombre || usuario?.email || "Usuario"} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
         <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
-        <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
+        <Sidebar activeView={activeView} onViewChange={(view) => { irA(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
         <div className="content">
           <div className="page-container">
             {modoDatos === MODO.SIN_CONEXION && (
@@ -479,7 +509,8 @@ function App() {
               {activeView === "convenios" && (
                 <ConveniosList
                   convenios={convenios}
-                  filtrosIniciales={filtrosConvenios}
+                  estado={listaConvenios}
+                  onEstadoChange={setListaConvenios}
                   onSelectConvenio={handleSelectConvenio}
                   onNuevo={() => setActiveView("convenio-nuevo")}
                 />
