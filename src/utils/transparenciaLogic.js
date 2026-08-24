@@ -5,7 +5,7 @@ import {
   PLAZOS_LEY_20285, ESTADOS_SOLICITUD_CERRADOS,
 } from '../config/transparencia';
 import {
-  sumarDiasHabiles, diasHabilesHasta, esFechaValida, hoyISO,
+  sumarDiasHabiles, diasHabilesHasta, diasHabilesEntre, esFechaValida, hoyISO,
   feriadosCubrenRango, ultimoAnioConFeriados,
 } from './fechas';
 
@@ -17,8 +17,31 @@ export const AVISO_FERIADOS_INCOMPLETOS =
   + 'Los feriados que falten se contaron como días hábiles, así que la fecha real '
   + 'puede ser posterior a la que se muestra: verifícala antes de responder.';
 
+// Cerrada para el trámite: ya no está sobre el escritorio de nadie.
 export function solicitudCerrada(solicitud) {
   return ESTADOS_SOLICITUD_CERRADOS.includes(solicitud?.estado);
+}
+
+/**
+ * ¿Se respondió?
+ *
+ * El plazo del Art. 14 se cumple RESPONDIENDO antes de la fecha tope, no
+ * cambiando un estado en esta aplicación. Son dos cosas distintas y hasta ahora
+ * el semáforo sólo miraba el estado: una solicitud respondida dentro de plazo a
+ * la que se le olvidó cambiar el estado aparecía como "Plazo vencido" y engrosaba
+ * el contador de vencidas. Es decir, el sistema reportaba un incumplimiento legal
+ * que no había ocurrido, mientras su propio historial anotaba "Respuesta enviada".
+ */
+export function solicitudRespondida(solicitud) {
+  return esFechaValida(solicitud?.fechaRespuesta);
+}
+
+// Días hábiles de margen entre la respuesta y la fecha tope. Positivo si se
+// respondió antes, negativo si se pasó. null si falta alguna de las dos fechas.
+export function margenDeRespuesta(solicitud) {
+  const vencimiento = fechaVencimiento(solicitud);
+  if (!solicitudRespondida(solicitud) || !esFechaValida(vencimiento)) return null;
+  return diasHabilesEntre(solicitud.fechaRespuesta, vencimiento);
 }
 
 // Fecha máxima de respuesta: 20 días hábiles desde el ingreso (Art. 14),
@@ -78,6 +101,18 @@ export function infoPlazoSolicitud(solicitud, referencia = hoyISO()) {
   const feriadosIncompletos = !plazoConFeriadosCompletos(solicitud);
   const info = (datos) => ({ ...datos, feriadosIncompletos });
 
+  // Se mira ANTES que el estado: si hay respuesta, el plazo legal ya se
+  // resolvió, y lo que importa es si se resolvió a tiempo o no.
+  if (solicitudRespondida(solicitud)) {
+    const margen = margenDeRespuesta(solicitud);
+    if (margen === null || margen >= 0) {
+      return info({ key: 'respondida', icono: '✅', label: 'Respondida en plazo', color: '#10b981', vencimiento, diasHabiles: margen });
+    }
+    // Se responde igual, pero fuera de plazo: es un hecho que el registro de
+    // cumplimiento no debe perder.
+    return info({ key: 'fuera-de-plazo', icono: '🔴', label: 'Respondida fuera de plazo', color: '#ef4444', vencimiento, diasHabiles: margen });
+  }
+
   if (solicitudCerrada(solicitud)) {
     return info({ key: 'finalizado', icono: '⚫', label: 'Cerrada', color: '#64748b', vencimiento, diasHabiles: null });
   }
@@ -95,6 +130,19 @@ export function infoPlazoSolicitud(solicitud, referencia = hoyISO()) {
 
 export function textoPlazoSolicitud(solicitud, referencia = hoyISO()) {
   const info = infoPlazoSolicitud(solicitud, referencia);
+
+  // Una vez respondida, los días que quedaban dejan de ser una cuenta atrás y
+  // pasan a ser el margen con que se cumplió (o el retraso con que no).
+  if (info.key === 'respondida') {
+    // Sin fecha de ingreso no hay vencimiento contra el que medir el margen.
+    if (info.diasHabiles === null) return 'Respondida';
+    if (info.diasHabiles === 0) return 'Respondida el último día del plazo';
+    return `Respondida con ${info.diasHabiles} día(s) hábil(es) de margen`;
+  }
+  if (info.key === 'fuera-de-plazo') {
+    return `Respondida ${Math.abs(info.diasHabiles)} día(s) hábil(es) después del vencimiento`;
+  }
+
   if (info.diasHabiles === null) return info.label;
   if (info.diasHabiles < 0) return `Vencido hace ${Math.abs(info.diasHabiles)} día(s) hábil(es)`;
   if (info.diasHabiles === 0) return 'Vence hoy';
@@ -111,11 +159,16 @@ export function resumenSolicitudes(solicitudes = [], referencia = hoyISO()) {
   const total = solicitudes.length;
   const cerradas = solicitudes.filter(solicitudCerrada).length;
   const enTramite = total - cerradas;
+  // `vencidas` son las que siguen SIN responder pasado el plazo: las accionables.
+  // Las que se respondieron tarde salen aparte, en `fueraDePlazo`, porque ya no
+  // hay nada que hacer con ellas pero el incumplimiento no debe desaparecer.
   const vencidas = solicitudes.filter(s => infoPlazoSolicitud(s, referencia).key === 'vencido').length;
+  const fueraDePlazo = solicitudes.filter(s => infoPlazoSolicitud(s, referencia).key === 'fuera-de-plazo').length;
   const porVencer = solicitudes.filter(s => infoPlazoSolicitud(s, referencia).key === 'por-vencer').length;
   const prorrogadas = solicitudes.filter(s => s.prorrogada && !solicitudCerrada(s)).length;
-  const respondidas = solicitudes.filter(s => s.estado === 'Respondida').length;
-  return { total, cerradas, enTramite, vencidas, porVencer, prorrogadas, respondidas };
+  // Cuenta las dos formas de decir lo mismo: la fecha de respuesta y el estado.
+  const respondidas = solicitudes.filter(s => solicitudRespondida(s) || s.estado === 'Respondida').length;
+  return { total, cerradas, enTramite, vencidas, fueraDePlazo, porVencer, prorrogadas, respondidas };
 }
 
 const normalizar = (s) => (s || '').toString().toLowerCase()

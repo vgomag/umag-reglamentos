@@ -176,11 +176,13 @@ describe('solicitudes de ejemplo', () => {
     solicitudes.forEach(s => expect(esDiaHabil(s.fechaIngreso)).toBe(true));
   });
 
-  it('cubre vencida, próxima a vencer y cerrada', () => {
+  it('cubre vencida, próxima a vencer y respondida', () => {
     const estados = solicitudes.map(s => infoPlazoSolicitud(s, HOY).key);
     expect(estados).toContain('vencido');
     expect(estados).toContain('por-vencer');
-    expect(estados).toContain('finalizado');
+    // La que trae fecha de respuesta se reconoce como respondida en plazo, no
+    // como una "Cerrada" genérica: el ejemplo muestra el caso que importa.
+    expect(estados).toContain('respondida');
   });
 
   it('la prorrogada sigue en plazo gracias a los 10 días extra del Art. 14', () => {

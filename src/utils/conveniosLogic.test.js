@@ -369,3 +369,53 @@ describe('hayFiltrosAvanzados', () => {
     });
   });
 });
+
+describe('la tarjeta del dashboard y el listado cuentan lo mismo', () => {
+  const enUnidad = (id, estado) => normalizarConvenio({
+    id, nombre: `Convenio ${id}`, estado,
+    etapas: [{ unidad: 'VRAF', orden: 0, fechaInicio: '', fechaTermino: '', estado: 'En Revisión', observaciones: '' }],
+  });
+
+  it('un convenio anulado ya no figura en ninguna unidad', () => {
+    // Antes ubicacionActual sólo descartaba los 'Finalizado', así que un
+    // anulado seguía diciendo que estaba en VRAF: el tablero por unidad lo
+    // excluía y el filtro del listado lo mostraba.
+    const anulado = enUnidad(1, 'Anulado');
+
+    expect(ubicacionActual(anulado)).toBe('FINALIZADO');
+    expect(filtrarConvenios([anulado], { unidadActual: 'VRAF' })).toHaveLength(0);
+  });
+
+  it('el recuento por unidad coincide con lo que muestra el filtro', () => {
+    const cartera = [
+      enUnidad(1, 'En Tramitación'),
+      enUnidad(2, 'Anulado'),
+      enUnidad(3, 'Finalizado'),
+    ];
+
+    expect(pendientesPorUnidad(cartera).VRAF)
+      .toBe(filtrarConvenios(cartera, { unidadActual: 'VRAF' }).length);
+  });
+
+  it('lo mismo con la tarjeta de Ingresado', () => {
+    const sinDerivar = (id, estado) => normalizarConvenio({ id, nombre: `C${id}`, estado, etapas: [] });
+    const cartera = [sinDerivar(1, 'Ingresado'), sinDerivar(2, 'Anulado')];
+
+    expect(pendientesPorUnidad(cartera).INGRESADO)
+      .toBe(filtrarConvenios(cartera, { unidadActual: 'INGRESADO' }).length);
+  });
+
+  it('a un anulado no se le llama "Finalizado"', () => {
+    // Los dos comparten ubicación, pero no son lo mismo y la etiqueta lo dice.
+    expect(etiquetaUbicacion(enUnidad(1, 'Anulado'))).toBe('Cerrado');
+    expect(etiquetaUbicacion(enUnidad(2, 'Finalizado'))).toBe('Finalizado');
+  });
+
+  it('los convenios vivos siguen apareciendo donde estaban', () => {
+    const activo = enUnidad(1, 'En Tramitación');
+
+    expect(ubicacionActual(activo)).toBe('VRAF');
+    expect(etiquetaUbicacion(activo)).toBe('VRAF');
+    expect(filtrarConvenios([activo], { unidadActual: 'VRAF' })).toHaveLength(1);
+  });
+});

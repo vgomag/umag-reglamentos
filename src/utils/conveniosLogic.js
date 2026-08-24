@@ -73,9 +73,16 @@ export function etapaActual(convenio) {
 
 // Identificador de ubicación: 'FINALIZADO' | 'INGRESADO' | id de unidad.
 export function ubicacionActual(convenio) {
-  if (estaFinalizado(convenio)) return 'FINALIZADO';
+  // Cualquier convenio cerrado —finalizado o anulado— ya no está EN una unidad.
+  //
+  // Antes esta primera comprobación era `estaFinalizado`, que sólo reconoce
+  // 'Finalizado': un convenio anulado se colaba hasta abajo y devolvía la unidad
+  // de su última etapa activa. Como el tablero por unidad sí descarta los
+  // cerrados y el filtro del listado no, la tarjeta decía 1 y el listado
+  // mostraba 2.
+  if (estaCerrado(convenio)) return 'FINALIZADO';
   const etapa = etapaActual(convenio);
-  if (!etapa) return estaCerrado(convenio) ? 'FINALIZADO' : 'INGRESADO';
+  if (!etapa) return 'INGRESADO';
   if (etapa.estado === 'Pendiente' && !etapasActivas(convenio).some(e => e.estado !== 'Pendiente')) {
     return 'INGRESADO';
   }
@@ -84,7 +91,9 @@ export function ubicacionActual(convenio) {
 
 export function etiquetaUbicacion(convenio) {
   const ubic = ubicacionActual(convenio);
-  if (ubic === 'FINALIZADO') return 'Finalizado';
+  // 'FINALIZADO' agrupa a todos los cerrados, pero llamar "Finalizado" a un
+  // convenio anulado sería mentir. Mismo criterio que textoPlazo.
+  if (ubic === 'FINALIZADO') return estaFinalizado(convenio) ? 'Finalizado' : 'Cerrado';
   if (ubic === 'INGRESADO') return 'Ingresado';
   return nombreUnidad(ubic);
 }

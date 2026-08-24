@@ -999,7 +999,9 @@
     .leyenda-plazos { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
     /* Realce de filas según el plazo */
-    tr.fila-vencido    { background: #fef2f2; }
+    tr.fila-vencido       { background: #fef2f2; }
+    tr.fila-fuera-de-plazo { background: #fef2f2; }
+    tr.fila-respondida     { background: #f0fdf4; }
     tr.fila-por-vencer { background: #fffbeb; }
     tr.fila-inactiva   { opacity: 0.55; }
 
