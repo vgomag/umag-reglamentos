@@ -189,10 +189,10 @@ Una sola vez, en [Google Cloud Console](https://console.cloud.google.com):
 | Convenios | Google Sheets | `localStorage` |
 | Transparencia | Google Sheets | `localStorage` |
 
-Todo vive en una planilla de Google
-a la que la app accede a través de un Apps Script publicado desde la propia
-planilla: no hace falta proyecto en Google Cloud, ni cuenta de servicio, ni que
-nadie inicie sesión con Google.
+Todo vive en una planilla de Google a la que la app accede a través de un Apps
+Script publicado desde la propia planilla: no hace falta proyecto en Google
+Cloud para los datos ni cuenta de servicio. El único trámite en Google Cloud es
+el ID de cliente OAuth del inicio de sesión (ver más arriba).
 
 ```
 Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google Sheets

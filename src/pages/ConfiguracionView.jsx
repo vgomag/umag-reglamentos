@@ -9,6 +9,7 @@ import { estadoIntegracion } from '../utils/googleCalendar';
 import { listarFeriados, hoyISO } from '../utils/fechas';
 import { esRegistroEjemplo } from '../config/datosEjemplo';
 import { sheetsConfigurado, probarConexion, SHEET_URL, DRIVE_FOLDER_URL } from '../config/sheetsStore';
+import { usuarioDeSesion } from '../config/auth';
 
 /**
  * Configuración: estado del almacenamiento, reglas vigentes del sistema,
@@ -28,6 +29,7 @@ export default function ConfiguracionView({
   const ejemplos = convenios.filter(esRegistroEjemplo).length
     + solicitudes.filter(esRegistroEjemplo).length;
   const [prueba, setPrueba] = useState(null);
+  const cuenta = usuarioDeSesion();
 
   const comprobar = async () => {
     setPrueba({ estado: 'probando' });
@@ -83,6 +85,10 @@ export default function ConfiguracionView({
               <tr>
                 <th>Modo actual</th>
                 <td>{dbMode === 'sheets' ? 'Google Sheets (con respaldo local)' : 'localStorage (sólo este navegador)'}</td>
+              </tr>
+              <tr>
+                <th>Sesión iniciada como</th>
+                <td>{cuenta ? `${cuenta.nombre} (${cuenta.email})` : '—'}</td>
               </tr>
               <tr><th>Convenios registrados</th><td>{convenios.length}</td></tr>
               <tr><th>Solicitudes registradas</th><td>{solicitudes.length}</td></tr>

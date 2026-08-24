@@ -7,6 +7,8 @@
 //
 // Si no hay URL configurada, la app funciona igual guardando en localStorage.
 
+import { leerSesion } from './auth';
+
 export const SHEETS_API_URL = import.meta.env?.VITE_SHEETS_API_URL || '';
 export const SHEETS_TOKEN = import.meta.env?.VITE_SHEETS_TOKEN || '';
 
@@ -54,7 +56,13 @@ async function leerRespuesta(respuesta, op) {
     // sesión de Google pide iniciar sesión: es el error más habitual al montarlo.
     throw new Error('La respuesta no es JSON. Revisa que la implementación esté publicada con acceso "Cualquier usuario".');
   }
-  if (!cuerpo.ok) throw new Error(cuerpo.error || 'Error desconocido del script');
+  if (!cuerpo.ok) {
+    const error = new Error(cuerpo.error || 'Error desconocido del script');
+    // El script marca así los rechazos por identidad, para que la app pueda
+    // pedir que se vuelva a entrar en vez de mostrar un error cualquiera.
+    if (cuerpo.noAutorizado) error.noAutorizado = true;
+    throw error;
+  }
   return cuerpo.datos;
 }
 
@@ -71,21 +79,22 @@ async function enviar(accion, entidad, datos) {
     const respuesta = await fetchConTimeout(SHEETS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ token: SHEETS_TOKEN, accion, entidad, datos }),
+      body: JSON.stringify({ token: SHEETS_TOKEN, idToken: leerSesion(), accion, entidad, datos }),
       redirect: 'follow',
     });
     return { ok: true, datos: await leerRespuesta(respuesta, `${accion}:${entidad}`) };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError(`${accion}:${entidad}`, mensaje);
-    return { ok: false, error: mensaje };
+    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
   }
 }
 
 export async function fetchTodo() {
   if (!sheetsConfigurado()) return { data: null, error: null };
   try {
-    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_TOKEN)}`;
+    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_TOKEN)}`
+      + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
     const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
     const datos = await leerRespuesta(respuesta, 'listar');
     return {
@@ -98,7 +107,7 @@ export async function fetchTodo() {
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError('listar', mensaje);
-    return { data: null, error: mensaje };
+    return { data: null, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
   }
 }
 
@@ -106,14 +115,15 @@ export async function fetchTodo() {
 export async function probarConexion() {
   if (!sheetsConfigurado()) return { ok: false, error: 'Falta VITE_SHEETS_API_URL' };
   try {
-    const url = `${SHEETS_API_URL}?accion=ping&token=${encodeURIComponent(SHEETS_TOKEN)}`;
+    const url = `${SHEETS_API_URL}?accion=ping&token=${encodeURIComponent(SHEETS_TOKEN)}`
+      + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
     const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
     await leerRespuesta(respuesta, 'ping');
     return { ok: true, error: null };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError('ping', mensaje);
-    return { ok: false, error: mensaje };
+    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
   }
 }
 

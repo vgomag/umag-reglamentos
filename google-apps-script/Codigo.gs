@@ -5,10 +5,11 @@
  * La app (sitio estático en Netlify) le habla por HTTP; no hay servidor propio,
  * ni proyecto en Google Cloud, ni cuenta de servicio.
  *
- * ── Instalación ──────────────────────────────────────────────────────────
+ * ── Instalación ────────────────────────────────────────────────────────
  * 1. Abre la planilla → Extensiones → Apps Script.
  * 2. Reemplaza el contenido de Código.gs por este archivo y guarda.
- * 3. Edita TOKEN abajo y pon una cadena larga y aleatoria propia.
+ * 3. Edita abajo: TOKEN (cadena larga y aleatoria), USUARIOS_AUTORIZADOS
+ *    (los correos que pueden entrar) y CLIENT_ID (el ID de cliente OAuth).
  * 4. Implementar → Nueva implementación → Aplicación web:
  *      - Ejecutar como: Yo
  *      - Quién tiene acceso: Cualquier usuario
@@ -17,13 +18,13 @@
  *      VITE_SHEETS_API_URL = la URL /exec
  *      VITE_SHEETS_TOKEN   = el mismo TOKEN de abajo
  *
- * ⚠ "Cualquier usuario" significa que quien conozca la URL puede llamarla, por
- * eso existe el TOKEN. Ambos viajan en el bundle del navegador, así que ofrecen
- * el mismo nivel de protección que la contraseña actual de la app: disuaden,
- * no son autenticación fuerte. Para datos sensibles, usa una cuenta de servicio
- * detrás de una función de Netlify.
+ * ⚠ "Cualquier usuario" significa que quien conozca la URL puede llamarla. Por
+ * eso el control de acceso real NO está en la URL ni en el TOKEN —ambos viajan
+ * en el bundle del navegador— sino en USUARIOS_AUTORIZADOS: cada petición trae
+ * un ID token firmado por Google que este script verifica antes de responder.
+ * Sin una cuenta de la lista no se lee ni se escribe nada.
  *
- * ── Cómo guarda los datos ────────────────────────────────────────────────
+ * ── Cómo guarda los datos ─────────────────────────────────────────────
  * Las etapas de cada convenio se guardan en columnas planas (VRAC_inicio,
  * VRAC_estado, …) en vez de como JSON, para que la planilla siga siendo
  * legible y editable a mano. El historial va en su propia hoja, una fila por
@@ -31,6 +32,24 @@
  */
 
 var TOKEN = 'CAMBIA-ESTE-TOKEN-POR-UNO-LARGO-Y-ALEATORIO';
+
+// ── QUIÉN PUEDE ENTRAR ───────────────────────────────────────────────
+//
+// Escribe aquí los correos de Google autorizados, en minúsculas. Quien no esté
+// en esta lista no puede leer ni escribir nada, aunque conozca la URL y el
+// TOKEN. No hay roles: todos los de la lista tienen acceso completo.
+//
+// Para dar de baja a alguien, borra su línea y vuelve a implementar
+// (Implementar → Gestionar implementaciones → ✏️ → Versión: Nueva versión).
+var USUARIOS_AUTORIZADOS = [
+  'tu-correo@gmail.com',
+  'correo-de-camilo@gmail.com',
+];
+
+// ID de cliente OAuth creado en Google Cloud Console. Tiene que ser EL MISMO
+// que VITE_GOOGLE_CLIENT_ID en Netlify: el script comprueba que el token venga
+// de esta aplicación y no de otra cualquiera.
+var CLIENT_ID = 'PEGA-AQUI-TU-ID-DE-CLIENTE.apps.googleusercontent.com';
 
 // Orden del flujo sugerido (Res. N°216/2019). Debe coincidir con
 // FLUJO_POR_DEFECTO de src/config/convenios.js.
@@ -63,7 +82,7 @@ var CAMPOS_SOLICITUD = [
 
 var CAMPOS_HISTORIAL = ['entidad', 'ref_id', 'evento_id', 'fecha', 'tipo', 'descripcion', 'usuario'];
 
-/* ── Encabezados ───────────────────────────────────────────────────────── */
+/* ── Encabezados ──────────────────────────────────────────────────── */
 
 function encabezadosConvenios() {
   var cols = CAMPOS_CONVENIO.map(function (c) { return c[0]; });
@@ -97,7 +116,7 @@ function hoja(nombre) {
   return h;
 }
 
-/* ── Conversión fila ↔ objeto ──────────────────────────────────────────── */
+/* ── Conversión fila ↔ objeto ───────────────────────────────────────── */
 
 // Las celdas de fecha pueden volver como Date; el dominio usa "YYYY-MM-DD".
 function aTexto(valor) {
@@ -196,7 +215,7 @@ function solicitudAFila(s, encabezados) {
   });
 }
 
-/* ── Lectura ───────────────────────────────────────────────────────────── */
+/* ── Lectura ──────────────────────────────────────────────────────── */
 
 function leerHoja(nombre) {
   var h = hoja(nombre);
@@ -253,7 +272,7 @@ function listarTodo() {
   return { convenios: convenios, solicitudes: solicitudes };
 }
 
-/* ── Escritura ─────────────────────────────────────────────────────────── */
+/* ── Escritura ─────────────────────────────────────────────────── */
 
 function buscarFila(nombreHoja, id) {
   var datos = leerHoja(nombreHoja);
@@ -345,7 +364,72 @@ function eliminarSolicitud(id) {
   return { id: id };
 }
 
-/* ── Puntos de entrada HTTP ────────────────────────────────────────────── */
+
+/* ── Identidad ─────────────────────────────────────────────────── */
+
+/**
+ * Verifica el ID token que envía la aplicación y devuelve
+ * { ok: true, email } si la persona está autorizada.
+ *
+ * La verificación la hace Google: se le pregunta por el token y él responde
+ * si la firma es válida y a quién pertenece. Por eso nadie puede fabricar
+ * un token falso desde el navegador.
+ */
+function verificarIdentidad(idToken) {
+  if (!USUARIOS_AUTORIZADOS || USUARIOS_AUTORIZADOS.length === 0) {
+    return { ok: false, error: 'Falta configurar USUARIOS_AUTORIZADOS en el script.' };
+  }
+  if (CLIENT_ID.indexOf('PEGA-AQUI') === 0) {
+    return { ok: false, error: 'Falta configurar CLIENT_ID en el script.' };
+  }
+  if (!idToken) {
+    return { ok: false, error: 'Sesión no iniciada.' };
+  }
+
+  // Se guarda el resultado unos minutos: si no, cada clic en la app
+  // significaría una consulta extra a Google.
+  var cache = CacheService.getScriptCache();
+  var clave = 'id:' + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, idToken));
+  var enCache = cache.get(clave);
+  if (enCache) return { ok: true, email: enCache };
+
+  var datos;
+  try {
+    var respuesta = UrlFetchApp.fetch(
+      'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
+      { muteHttpExceptions: true });
+    if (respuesta.getResponseCode() !== 200) {
+      return { ok: false, error: 'Sesión expirada o inválida. Vuelve a entrar.' };
+    }
+    datos = JSON.parse(respuesta.getContentText());
+  } catch (err) {
+    return { ok: false, error: 'No se pudo verificar la sesión: ' + err };
+  }
+
+  // El token tiene que haber sido emitido PARA esta aplicación.
+  if (datos.aud !== CLIENT_ID) {
+    return { ok: false, error: 'La sesión no corresponde a esta aplicación.' };
+  }
+  if (String(datos.email_verified) !== 'true') {
+    return { ok: false, error: 'La cuenta de Google no tiene el correo verificado.' };
+  }
+
+  var email = String(datos.email || '').toLowerCase();
+  var autorizado = USUARIOS_AUTORIZADOS.some(function (u) {
+    return String(u).toLowerCase().trim() === email;
+  });
+  if (!autorizado) {
+    return { ok: false, error: 'La cuenta ' + email + ' no está autorizada para esta aplicación.' };
+  }
+
+  // El token de Google dura una hora; el cache, menos, para que dar de baja a
+  // alguien surta efecto pronto.
+  cache.put(clave, email, 300);
+  return { ok: true, email: email };
+}
+
+/* ── Puntos de entrada HTTP ────────────────────────────────────────── */
 
 function responder(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -360,7 +444,13 @@ function doGet(e) {
   try {
     var p = (e && e.parameter) || {};
     if (!tokenValido(p.token)) return responder({ ok: false, error: 'Token inválido' });
-    if (p.accion === 'ping') return responder({ ok: true, datos: { pong: true } });
+
+    var identidad = verificarIdentidad(p.idToken);
+    if (!identidad.ok) return responder({ ok: false, error: identidad.error, noAutorizado: true });
+
+    if (p.accion === 'ping') {
+      return responder({ ok: true, datos: { pong: true, email: identidad.email } });
+    }
     return responder({ ok: true, datos: listarTodo() });
   } catch (err) {
     return responder({ ok: false, error: String(err) });
@@ -379,6 +469,9 @@ function doPost(e) {
     lock.waitLock(20000);
     var cuerpo = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!tokenValido(cuerpo.token)) return responder({ ok: false, error: 'Token inválido' });
+
+    var identidad = verificarIdentidad(cuerpo.idToken);
+    if (!identidad.ok) return responder({ ok: false, error: identidad.error, noAutorizado: true });
 
     var d = cuerpo.datos || {};
     var resultado;
