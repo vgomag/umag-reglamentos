@@ -7,7 +7,7 @@ import {
 import {
   filtrarSolicitudes, ordenarSolicitudes, infoPlazoSolicitud, textoPlazoSolicitud,
   resumenSolicitudes, fechaVencimiento, fechaTopeSubsanacion, fechaTopeOposicion,
-  fechaTopeAmparo, solicitudCerrada,
+  fechaTopeAmparo, solicitudCerrada, AVISO_FERIADOS_INCOMPLETOS, anioLimiteDeCalculo,
 } from '../utils/transparenciaLogic';
 import { formatFecha, hoyISO } from '../utils/fechas';
 import { UNIDADES } from '../config/convenios';
@@ -139,6 +139,9 @@ export default function TransparenciaView({ solicitudes, onGuardar, onCrear, onE
                   <td>{formatFecha(s.fechaIngreso)}</td>
                   <td>
                     {formatFecha(fechaVencimiento(s))}
+                    {info.feriadosIncompletos && (
+                      <span className="marca-plazo-dudoso" title={AVISO_FERIADOS_INCOMPLETOS}> ⚠️</span>
+                    )}
                     <div className="celda-sub">{textoPlazoSolicitud(s)}{s.prorrogada ? ' · prorrogada' : ''}</div>
                   </td>
                   <td>{s.etapa}</td>
@@ -177,7 +180,9 @@ export default function TransparenciaView({ solicitudes, onGuardar, onCrear, onE
         </div>
         <p className="nota-seccion">
           Los días hábiles excluyen sábados, domingos y festivos (Ley 19.880, art. 25).
-          El calendario de feriados está en <code>src/config/feriados.js</code> y debe revisarse cada año.
+          La app sabe contar hasta el <strong>{anioLimiteDeCalculo()}</strong>: más allá de ese
+          año los plazos aparecen marcados con ⚠️ porque los feriados que falten se cuentan
+          como hábiles. El calendario está en <code>src/config/feriados.js</code>.
         </p>
       </div>
     </div>
@@ -388,6 +393,11 @@ function FormularioSolicitud({ inicial, titulo, onGuardar, onCancelar, onElimina
                 </tr>
               </tbody>
             </table>
+            {info.feriadosIncompletos && (
+              <div className="form-error" style={{ marginTop: '0.75rem' }} role="alert">
+                ⚠️ {AVISO_FERIADOS_INCOMPLETOS}
+              </div>
+            )}
             <p className="nota-seccion">
               Todos los plazos se recalculan solos a partir de la fecha de ingreso y de las
               casillas de prórroga y subsanación; no hay que digitarlos.

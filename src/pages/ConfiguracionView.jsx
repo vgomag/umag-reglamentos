@@ -5,10 +5,12 @@ import {
   DIAS_ALERTA_VENCIMIENTO, SEMAFORO, normalizarConvenio,
 } from '../config/convenios';
 import { PLAZOS_LEY_20285 } from '../config/transparencia';
+import { anioLimiteDeCalculo } from '../utils/transparenciaLogic';
 import { estadoIntegracion } from '../utils/googleCalendar';
 import { listarFeriados, hoyISO } from '../utils/fechas';
 import { esRegistroEjemplo } from '../config/datosEjemplo';
 import { sheetsConfigurado, probarConexion, SHEET_URL, DRIVE_FOLDER_URL } from '../config/sheetsStore';
+import { etiquetaModo } from '../config/modoDatos';
 import { usuarioDeSesion } from '../config/auth';
 
 /**
@@ -16,13 +18,19 @@ import { usuarioDeSesion } from '../config/auth';
  * integración de calendario e importación/exportación de respaldos.
  */
 export default function ConfiguracionView({
-  convenios, solicitudes, dbMode,
+  convenios, solicitudes, dbMode, cargando, onRecargar,
   onImportarConvenios, onBorrarConvenios, onCargarEjemplos, onBorrarEjemplos,
 }) {
   const inputRef = useRef(null);
   const [mensaje, setMensaje] = useState('');
   const integracion = estadoIntegracion();
   const feriados = listarFeriados().filter(f => f >= hoyISO()).slice(0, 8);
+
+  // Los plazos de la Ley 20.285 se cuentan en días hábiles, así que dejan de
+  // ser fiables en cuanto se acaba la tabla de feriados. Se avisa el mismo año
+  // en que se agota, no cuando ya empezó a calcular mal.
+  const anioLimite = anioLimiteDeCalculo();
+  const faltanFeriados = anioLimite !== null && anioLimite <= Number(hoyISO().slice(0, 4));
 
   // Los registros de ejemplo se reconocen por el prefijo de su código, así se
   // pueden quitar después sin tocar los convenios reales.
@@ -84,7 +92,7 @@ export default function ConfiguracionView({
             <tbody>
               <tr>
                 <th>Modo actual</th>
-                <td>{dbMode === 'sheets' ? 'Google Sheets (con respaldo local)' : 'localStorage (sólo este navegador)'}</td>
+                <td>{etiquetaModo(dbMode)}</td>
               </tr>
               <tr>
                 <th>Sesión iniciada como</th>
@@ -112,7 +120,14 @@ export default function ConfiguracionView({
                 <button className="btn btn-secondary btn-small" onClick={comprobar} disabled={prueba?.estado === 'probando'}>
                   {prueba?.estado === 'probando' ? 'Comprobando…' : '🔌 Comprobar conexión'}
                 </button>
+                <button className="btn btn-secondary btn-small" onClick={() => onRecargar()} disabled={cargando}>
+                  {cargando ? 'Actualizando…' : '🔄 Actualizar desde la planilla'}
+                </button>
               </div>
+              <p className="nota-seccion">
+                La planilla se lee al entrar. Si alguien más está trabajando en ella,
+                usa «Actualizar» para traer sus cambios antes de editar.
+              </p>
               {prueba?.estado === 'ok' && <p className="ayuda-campo">✓ La planilla responde correctamente.</p>}
               {prueba?.estado === 'error' && <p className="ayuda-campo">✕ {prueba.error}</p>}
             </>
@@ -216,9 +231,31 @@ export default function ConfiguracionView({
               </span>
             ))}
           </div>
+          <table className="tabla-plazos" style={{ marginTop: '0.75rem' }}>
+            <tbody>
+              <tr>
+                <th>Feriados cargados hasta</th>
+                <td>{anioLimite || '—'}</td>
+              </tr>
+              <tr>
+                <th>Próximos feriados</th>
+                <td>{feriados.join(', ') || 'Sin feriados próximos en la tabla'}</td>
+              </tr>
+            </tbody>
+          </table>
+          {faltanFeriados && (
+            <div className="form-error" style={{ marginTop: '0.75rem' }} role="alert">
+              ⚠️ La tabla de feriados llega hasta el {anioLimite}. Desde el {anioLimite + 1} los
+              plazos de la Ley 20.285 se calculan contando los feriados que falten como días
+              hábiles, así que quedan <strong>antes</strong> de la fecha real. Las solicitudes
+              afectadas aparecen marcadas con ⚠️ en Transparencia pasiva.
+            </div>
+          )}
           <p className="nota-seccion">
-            Próximos feriados considerados en el cálculo de días hábiles: {feriados.join(', ') || 'sin feriados próximos en la tabla'}.
-            La lista está en <code>src/config/feriados.js</code> y debe revisarse cada año.
+            Para extender el cálculo, agrega los feriados del año siguiente a{' '}
+            <code>src/config/feriados.js</code> y vuelve a desplegar. Ojo con los movibles
+            (Viernes Santo, San Pedro y San Pablo, Encuentro de Dos Mundos, Iglesias
+            Evangélicas) y con los feriados de elecciones, que cambian de fecha cada año.
           </p>
         </div>
       </div>
@@ -240,6 +277,8 @@ ConfiguracionView.propTypes = {
   convenios: PropTypes.array.isRequired,
   solicitudes: PropTypes.array.isRequired,
   dbMode: PropTypes.string.isRequired,
+  cargando: PropTypes.bool,
+  onRecargar: PropTypes.func.isRequired,
   onImportarConvenios: PropTypes.func.isRequired,
   onBorrarConvenios: PropTypes.func.isRequired,
   onCargarEjemplos: PropTypes.func.isRequired,

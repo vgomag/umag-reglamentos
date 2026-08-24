@@ -62,6 +62,10 @@ uno pendiente de Rectoría, uno finalizado, una solicitud prorrogada, etc.).
 - Los días hábiles excluyen sábados, domingos y festivos (Ley 19.880 art. 25).
   El calendario de feriados está en [`src/config/feriados.js`](src/config/feriados.js)
   y **debe revisarse cada año**: los feriados movibles y los de elecciones cambian.
+- La app **sabe hasta dónde llega esa tabla**. Un plazo que cae en un año sin
+  feriados cargados se muestra marcado con ⚠️, porque los feriados que faltan se
+  cuentan como hábiles y la fecha real puede ser posterior. Configuración avisa
+  el mismo año en que la tabla se agota, antes de que empiece a calcular mal.
 
 ## Integración con Google Calendar
 
@@ -197,8 +201,21 @@ el ID de cliente OAuth del inicio de sesión (ver más arriba).
 ```
 Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google Sheets
         │
-        └── localStorage (copia local, permite trabajar si la planilla falla)
+        └── localStorage (copia local, permite consultar si la planilla falla)
 ```
+
+### Si la planilla no responde
+
+La app queda en **sin conexión**: se puede seguir consultando la copia local,
+pero no registrar cambios, y aparece un aviso con un botón para reintentar.
+
+Es a propósito. Los ids los asigna la planilla, así que un convenio creado
+mientras está caída llevaría un id inventado que chocaría con los suyos y
+desaparecería en la siguiente carga, después de haber avisado «guardado ✓».
+Mejor no dejar guardar que perder lo guardado.
+
+Cuando la planilla no está configurada la situación es distinta: ahí
+`localStorage` es el almacén de verdad y todo funciona con normalidad.
 
 ### Puesta en marcha de la planilla
 
@@ -233,7 +250,13 @@ Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google
   (`VRAC_inicio`, `VRAC_estado`, …) en vez de JSON, para que la planilla siga
   siendo legible y editable a mano. Una unidad sin ningún dato se entiende como
   que no participa en ese convenio.
-- **Historial**: una fila por evento, en su propia hoja. Es append-only.
+- **Historial**: una fila por evento, en su propia hoja. Es append-only mientras
+  el registro existe; al eliminar un convenio o una solicitud se borran también
+  sus filas de historial, para que no queden huérfanas ni sobrevivan datos del
+  solicitante a un borrado.
+- **Ids**: los asigna el script y **nunca se reutilizan**, ni aunque se borre el
+  registro de id más alto. El último id entregado se guarda en las propiedades
+  del script (`ultimo_id_<hoja>`).
 - **Solicitudes**: una fila por solicitud de acceso a la información.
 
 Se puede editar la planilla a mano; la app lee esos cambios en la siguiente
@@ -316,6 +339,12 @@ google-apps-script/
   constante global, para que se pueda alterar convenio por convenio.
 - **Feriados**: la tabla de `src/config/feriados.js` cubre 2025-2027 y debe
   actualizarse cada año; afecta directamente el cálculo de los plazos legales.
+  Fuera de ese rango la app **no adivina**: marca el plazo como no verificado en
+  vez de dar una fecha que parece exacta y no lo es.
+- **Exportación a CSV**: los campos van entrecomillados y, si empiezan por
+  `= + - @`, con un apóstrofo delante. Entrecomillar no basta: Excel evalúa el
+  contenido de la celda igual, y el texto de convenios y solicitudes lo escriben
+  personas. Está en [`src/utils/csv.js`](src/utils/csv.js).
 - **Escrituras secuenciales**: al cargar datos de ejemplo, la app envía los
   registros de a uno. El Apps Script asigna los `id` leyendo el máximo actual,
   así que en paralelo se pisarían entre sí.

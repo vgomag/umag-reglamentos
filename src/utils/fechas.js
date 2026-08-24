@@ -94,6 +94,47 @@ export function esFeriado(iso) {
   return feriados.has(iso.slice(0, 10));
 }
 
+/* ------------------ Hasta dónde llega la tabla de feriados ---------------- */
+//
+// La tabla se escribe a mano y se acaba. Pasado el último año cargado,
+// `esFeriado` devuelve false para TODO y los días hábiles se cuentan de más:
+// el plazo calculado queda antes del real, sin que nada lo advierta.
+//
+// Estas funciones permiten que quien calcula un plazo sepa si la respuesta se
+// apoya en datos completos, y avisar cuando no.
+
+export function aniosConFeriados() {
+  return [...new Set([...feriados].map(f => Number(f.slice(0, 4))))].sort((a, b) => a - b);
+}
+
+export function ultimoAnioConFeriados() {
+  const anios = aniosConFeriados();
+  return anios.length > 0 ? anios[anios.length - 1] : null;
+}
+
+// ¿Se sabe qué días son feriados en el año de esta fecha?
+export function feriadosCubren(iso) {
+  const fecha = parseFecha(iso);
+  if (!fecha) return false;
+  return aniosConFeriados().includes(fecha.getFullYear());
+}
+
+// Igual, para un tramo completo: un plazo que empieza en diciembre termina el
+// año siguiente, y basta con que a ese año le falten feriados para que la
+// cuenta salga mal.
+export function feriadosCubrenRango(isoA, isoB) {
+  const a = parseFecha(isoA);
+  const b = parseFecha(isoB);
+  if (!a || !b) return false;
+  const conocidos = new Set(aniosConFeriados());
+  const desde = Math.min(a.getFullYear(), b.getFullYear());
+  const hasta = Math.max(a.getFullYear(), b.getFullYear());
+  for (let anio = desde; anio <= hasta; anio++) {
+    if (!conocidos.has(anio)) return false;
+  }
+  return true;
+}
+
 export function esDiaHabil(iso) {
   return esFechaValida(iso) && !esFinDeSemana(iso) && !esFeriado(iso);
 }

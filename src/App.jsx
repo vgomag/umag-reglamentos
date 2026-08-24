@@ -12,6 +12,8 @@ import {
   crearSolicitudRemota, actualizarSolicitudRemota, eliminarSolicitudRemota,
 } from './config/sheetsStore';
 import { normalizarSolicitud } from './config/transparencia';
+import { MODO, calcularModo, usaPlanilla, permiteEscribir, mensajeSinConexion } from './config/modoDatos';
+import { crearLoteRemoto, eliminarLoteRemoto, avisoLote, huboRechazoDeAcceso } from './config/sincronizacion';
 import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 import {
   googleConfigurado, montarBotonGoogle, guardarSesion, leerSesion,
@@ -48,7 +50,13 @@ function App() {
   const [selectedConvenio, setSelectedConvenio] = useState(null);
   const [filtrosConvenios, setFiltrosConvenios] = useState(null);
   // Convenios y solicitudes viven en Google Sheets; localStorage es el respaldo.
-  const [modoDatos, setModoDatos] = useState(sheetsConfigurado() ? 'sheets' : 'local');
+  //
+  // "La planilla no responde" es un estado transitorio, no otra forma de
+  // trabajar: se sale de él reintentando. Por eso se guarda aparte de si la
+  // planilla está configurada, y el modo se deriva de las dos cosas.
+  const [planillaCaida, setPlanillaCaida] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const modoDatos = calcularModo(sheetsConfigurado(), planillaCaida);
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -58,32 +66,6 @@ function App() {
     sessionStorage.removeItem('umag_auth');
     sessionStorage.removeItem('umag_user');
   }, []);
-
-  // Cargar convenios y solicitudes desde la planilla de Google.
-  // Si falla, se conserva lo que haya en localStorage y se avisa.
-  useEffect(() => {
-    if (!sheetsConfigurado() || !sesion) return;
-    (async () => {
-      const { data, error, noAutorizado } = await fetchTodo();
-      if (data) {
-        setConvenios(data.convenios.map(normalizarConvenio).filter(Boolean));
-        setSolicitudes(data.solicitudes.map(normalizarSolicitud).filter(Boolean));
-        setModoDatos('sheets');
-      } else if (noAutorizado) {
-        manejarNoAutorizado(error);
-      } else if (error) {
-        setModoDatos('local');
-        setToast({ type: 'error', message: `No se pudo leer la planilla (${error}). Usando datos locales.` });
-      }
-    })().catch(e => {
-      setModoDatos('local');
-      console.warn('Error cargando desde la planilla:', e.message);
-    });
-  }, [sesion]);
-
-  // Respaldo local (también cuando se usa la planilla)
-  useEffect(() => { guardarLocal(convenios); }, [convenios]);
-  useEffect(() => { guardarSolicitudesLocal(solicitudes); }, [solicitudes]);
 
   const [errorAcceso, setErrorAcceso] = useState('');
 
@@ -107,6 +89,82 @@ function App() {
     setErrorAcceso(error);
   };
 
+  /**
+   * Trae convenios y solicitudes desde la planilla.
+   *
+   * Se usa al entrar y también desde el botón "Reintentar"/"Actualizar": que
+   * la planilla se haya caído una vez no puede dejar a la app en modo local
+   * para siempre, que era lo que pasaba antes.
+   *
+   * Si falla se conserva lo que haya en localStorage —así se puede seguir
+   * consultando— pero la app queda en 'sin-conexion' y no deja escribir.
+   */
+  const recargarDatos = async ({ silencioso = false } = {}) => {
+    if (!sheetsConfigurado() || !sesion) return false;
+    setCargando(true);
+    try {
+      const { data, error, noAutorizado } = await fetchTodo();
+      if (data) {
+        setConvenios(data.convenios.map(normalizarConvenio).filter(Boolean));
+        setSolicitudes(data.solicitudes.map(normalizarSolicitud).filter(Boolean));
+        setPlanillaCaida(false);
+        if (!silencioso) setToast({ type: 'success', message: 'Datos actualizados desde la planilla' });
+        return true;
+      }
+      if (noAutorizado) {
+        manejarNoAutorizado(error);
+        return false;
+      }
+      setPlanillaCaida(true);
+      setToast({
+        type: 'error',
+        message: `No se pudo leer la planilla (${error}). Puedes consultar la copia local, `
+          + 'pero no registrar cambios hasta recuperar la conexión.',
+      });
+      return false;
+    } catch (e) {
+      setPlanillaCaida(true);
+      console.warn('Error cargando desde la planilla:', e.message);
+      return false;
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { recargarDatos({ silencioso: true }); }, [sesion]);
+
+  // Respaldo local (también cuando se usa la planilla)
+  useEffect(() => { guardarLocal(convenios); }, [convenios]);
+  useEffect(() => { guardarSolicitudesLocal(solicitudes); }, [solicitudes]);
+
+  /**
+   * Guardia de escritura. Sin conexión con la planilla no se escribe nada:
+   * un registro guardado sólo en local llevaría un id inventado que la
+   * planilla no conoce, y la siguiente carga exitosa se lo llevaría por
+   * delante después de haber dicho "guardado ✓".
+   */
+  const bloqueadoSinConexion = (accion) => {
+    if (permiteEscribir(modoDatos)) return false;
+    setToast({ type: 'error', message: mensajeSinConexion(accion) });
+    return true;
+  };
+
+  // Un fallo de escritura contra la planilla la marca como caída, salvo que sea
+  // un rechazo de identidad (eso se resuelve volviendo a entrar, no reintentando).
+  const registrarFalloRemoto = ({ noAutorizado, error }) => {
+    if (noAutorizado) manejarNoAutorizado(error);
+    else setPlanillaCaida(true);
+  };
+
+  // En un lote basta con que UNO de los fallos sea por identidad para que haya
+  // que volver a entrar: mirar sólo el primero dejaría pasar el caso en que la
+  // sesión caduca a mitad del recorrido.
+  const registrarFallosDeLote = (fallidos = []) => {
+    if (fallidos.length === 0) return;
+    const rechazo = huboRechazoDeAcceso(fallidos) ? fallidos.find(f => f.noAutorizado) : null;
+    registrarFalloRemoto(rechazo || fallidos[0]);
+  };
+
   /* ---------------- Convenios institucionales ---------------- */
 
   // El historial guarda el correo verificado por Google: es la identidad real
@@ -124,16 +182,19 @@ function App() {
   };
 
   const handleCrearConvenio = async (nuevo) => {
+    if (bloqueadoSinConexion('crear el convenio')) return;
     // El historial arranca con el ingreso, para que la trazabilidad esté
     // completa desde el primer día.
     const conEventoInicial = {
       ...nuevo,
       historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Convenio ingresado al sistema', usuarioActual())],
     };
-    if (modoDatos === 'sheets') {
+    if (usaPlanilla(modoDatos)) {
       // El id lo asigna la planilla, para que dos personas no lo generen igual.
-      const { ok, datos, error } = await crearConvenioRemoto(conEventoInicial);
+      const respuesta = await crearConvenioRemoto(conEventoInicial);
+      const { ok, datos, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         setToast({ type: 'error', message: `No se pudo crear el convenio en la planilla (${error}).` });
         return;
       }
@@ -150,14 +211,17 @@ function App() {
   };
 
   const handleGuardarConvenio = async (actualizado) => {
+    if (bloqueadoSinConexion('guardar el convenio')) return;
     const anterior = convenios.find(c => c.id === actualizado.id) || null;
     // conHistorial compara ambas versiones y anota cada cambio relevante.
     const conTraza = normalizarConvenio(conHistorial(anterior, actualizado, usuarioActual()));
     setConvenios(prev => prev.map(c => c.id === conTraza.id ? conTraza : c));
     setSelectedConvenio(conTraza);
-    if (modoDatos === 'sheets') {
-      const { ok, error } = await actualizarConvenioRemoto(conTraza);
+    if (usaPlanilla(modoDatos)) {
+      const respuesta = await actualizarConvenioRemoto(conTraza);
+      const { ok, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         if (anterior) {
           setConvenios(prev => prev.map(c => c.id === anterior.id ? anterior : c));
           setSelectedConvenio(anterior);
@@ -171,10 +235,13 @@ function App() {
 
   const handleEliminarConvenio = async () => {
     if (!selectedConvenio) return;
+    if (bloqueadoSinConexion('eliminar el convenio')) return;
     if (!window.confirm(`¿Eliminar el convenio "${selectedConvenio.nombre}"? Esta acción no se puede deshacer.`)) return;
-    if (modoDatos === 'sheets') {
-      const { ok, error } = await eliminarConvenioRemoto(selectedConvenio.id);
+    if (usaPlanilla(modoDatos)) {
+      const respuesta = await eliminarConvenioRemoto(selectedConvenio.id);
+      const { ok, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         setToast({ type: 'error', message: `Error al eliminar el convenio en la planilla (${error}).` });
         return;
       }
@@ -185,9 +252,25 @@ function App() {
     setToast({ type: 'success', message: 'Convenio eliminado' });
   };
 
-  // Importación de respaldo: los convenios entrantes se agregan con IDs nuevos
-  // para no pisar los existentes.
-  const handleImportarConvenios = (importados) => {
+  // Importación de respaldo: los convenios entrantes se agregan como nuevos,
+  // sin pisar los existentes.
+  //
+  // Con planilla configurada tienen que crearse ALLÁ. Antes se agregaban sólo
+  // al estado y a localStorage, así que la importación desaparecía en la
+  // siguiente carga después de haber avisado "importados ✓".
+  const handleImportarConvenios = async (importados) => {
+    if (bloqueadoSinConexion('importar los convenios')) return;
+
+    if (usaPlanilla(modoDatos)) {
+      // El id lo asigna la planilla, así que se descarta el que traiga el archivo.
+      const sinId = importados.map(({ id, ...resto }) => resto); // eslint-disable-line no-unused-vars
+      const { creados, fallidos } = await crearLoteRemoto(sinId, crearConvenioRemoto, normalizarConvenio);
+      if (creados.length > 0) setConvenios(prev => [...prev, ...creados]);
+      registrarFallosDeLote(fallidos);
+      setToast(avisoLote(creados, fallidos, 'importados', 'convenio'));
+      return;
+    }
+
     setConvenios(prev => {
       let siguiente = siguienteIdLocal(prev);
       const nuevos = importados.map(c => normalizarConvenio({ ...c, id: siguiente++ }));
@@ -196,8 +279,25 @@ function App() {
     setToast({ type: 'success', message: `${importados.length} convenio(s) importados` });
   };
 
-  const handleBorrarConvenios = () => {
+  // Igual que la importación: con planilla configurada hay que borrar allá.
+  // Vaciar sólo la pantalla daba un "eliminados ✓" que la siguiente carga
+  // desmentía trayendo todo de vuelta.
+  const handleBorrarConvenios = async () => {
+    if (bloqueadoSinConexion('borrar los convenios')) return;
+    if (convenios.length === 0) return;
     if (!window.confirm('¿Borrar TODOS los convenios registrados? Esta acción no se puede deshacer. Descarga un respaldo antes de continuar.')) return;
+
+    if (usaPlanilla(modoDatos)) {
+      const { eliminados, fallidos } = await eliminarLoteRemoto(convenios, eliminarConvenioRemoto);
+      // Sólo desaparecen de la pantalla los que la planilla dio por borrados.
+      const borrados = new Set(eliminados.map(c => c.id));
+      setConvenios(prev => prev.filter(c => !borrados.has(c.id)));
+      if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
+      registrarFallosDeLote(fallidos);
+      setToast(avisoLote(eliminados, fallidos, 'eliminados', 'convenio'));
+      return;
+    }
+
     setConvenios([]);
     setSelectedConvenio(null);
     setToast({ type: 'success', message: 'Convenios eliminados' });
@@ -208,6 +308,7 @@ function App() {
   // Los ejemplos NO se cargan solos: se piden desde Configuración, para que la
   // app arranque vacía y nunca se confundan con convenios reales.
   const handleCargarEjemplos = async () => {
+    if (bloqueadoSinConexion('cargar los datos de ejemplo')) return;
     const yaHay = convenios.some(esRegistroEjemplo) || solicitudes.some(esRegistroEjemplo);
     const aviso = yaHay
       ? 'Ya hay datos de ejemplo cargados. Se agregará otra copia. ¿Continuar?'
@@ -217,20 +318,13 @@ function App() {
     const nuevosConvenios = generarConveniosEjemplo();
     const nuevasSolicitudes = generarSolicitudesEjemplo();
 
-    if (modoDatos === 'sheets') {
+    if (usaPlanilla(modoDatos)) {
       // Secuencial a propósito: el Apps Script asigna los ids uno por uno y en
       // paralelo se pisarían entre sí.
-      const convCreados = [];
-      for (const c of nuevosConvenios) {
-        const { ok, datos } = await crearConvenioRemoto(c);
-        if (ok) convCreados.push(normalizarConvenio({ ...c, ...datos }));
-      }
-      const soliCreadas = [];
-      for (const s of nuevasSolicitudes) {
-        const { ok, datos } = await crearSolicitudRemota(s);
-        if (ok) soliCreadas.push(normalizarSolicitud({ ...s, ...datos }));
-      }
+      const { creados: convCreados } = await crearLoteRemoto(nuevosConvenios, crearConvenioRemoto, normalizarConvenio);
+      const { creados: soliCreadas } = await crearLoteRemoto(nuevasSolicitudes, crearSolicitudRemota, normalizarSolicitud);
       if (convCreados.length === 0 && soliCreadas.length === 0) {
+        setPlanillaCaida(true);
         setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la planilla.' });
         return;
       }
@@ -253,17 +347,29 @@ function App() {
   };
 
   const handleBorrarEjemplos = async () => {
+    if (bloqueadoSinConexion('quitar los datos de ejemplo')) return;
     const conveniosEjemplo = convenios.filter(esRegistroEjemplo);
     const solicitudesEjemplo = solicitudes.filter(esRegistroEjemplo);
     const total = conveniosEjemplo.length + solicitudesEjemplo.length;
     if (total === 0) return;
     if (!window.confirm(`¿Quitar los ${total} registro(s) de ejemplo? Los convenios y solicitudes reales se conservan.`)) return;
 
-    if (modoDatos === 'sheets') {
+    if (usaPlanilla(modoDatos)) {
       // También secuencial: cada borrado desplaza las filas de la planilla.
-      for (const c of conveniosEjemplo) await eliminarConvenioRemoto(c.id);
-      for (const s of solicitudesEjemplo) await eliminarSolicitudRemota(s.id);
+      const conv = await eliminarLoteRemoto(conveniosEjemplo, eliminarConvenioRemoto);
+      const soli = await eliminarLoteRemoto(solicitudesEjemplo, eliminarSolicitudRemota);
+      // Sólo se sacan de la pantalla los que la planilla dio por borrados.
+      const borrados = new Set(conv.eliminados.map(c => c.id));
+      const borradas = new Set(soli.eliminados.map(s => s.id));
+      setConvenios(prev => prev.filter(c => !borrados.has(c.id)));
+      setSolicitudes(prev => prev.filter(s => !borradas.has(s.id)));
+      if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
+      const fallidos = [...conv.fallidos, ...soli.fallidos];
+      registrarFallosDeLote(fallidos);
+      setToast(avisoLote([...conv.eliminados, ...soli.eliminados], fallidos, 'eliminados', 'registro de ejemplo'));
+      return;
     }
+
     setConvenios(prev => prev.filter(c => !esRegistroEjemplo(c)));
     setSolicitudes(prev => prev.filter(s => !esRegistroEjemplo(s)));
     if (selectedConvenio && esRegistroEjemplo(selectedConvenio)) setSelectedConvenio(null);
@@ -273,13 +379,16 @@ function App() {
   /* ------------- Solicitudes de transparencia (Ley 20.285) ------------- */
 
   const handleCrearSolicitud = async (nueva) => {
+    if (bloqueadoSinConexion('crear la solicitud')) return;
     const conEvento = {
       ...nueva,
       historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Solicitud ingresada al sistema', usuarioActual())],
     };
-    if (modoDatos === 'sheets') {
-      const { ok, datos, error } = await crearSolicitudRemota(conEvento);
+    if (usaPlanilla(modoDatos)) {
+      const respuesta = await crearSolicitudRemota(conEvento);
+      const { ok, datos, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         setToast({ type: 'error', message: `No se pudo crear la solicitud en la planilla (${error}).` });
         return;
       }
@@ -291,6 +400,7 @@ function App() {
   };
 
   const handleGuardarSolicitud = async (actualizada) => {
+    if (bloqueadoSinConexion('guardar la solicitud')) return;
     const anterior = solicitudes.find(s => s.id === actualizada.id) || null;
     const eventos = [];
     if (anterior && anterior.estado !== actualizada.estado) {
@@ -307,9 +417,11 @@ function App() {
       historial: [...(actualizada.historial || []), ...eventos],
     });
     setSolicitudes(prev => prev.map(s => s.id === conTraza.id ? conTraza : s));
-    if (modoDatos === 'sheets') {
-      const { ok, error } = await actualizarSolicitudRemota(conTraza);
+    if (usaPlanilla(modoDatos)) {
+      const respuesta = await actualizarSolicitudRemota(conTraza);
+      const { ok, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         if (anterior) setSolicitudes(prev => prev.map(s => s.id === anterior.id ? anterior : s));
         setToast({ type: 'error', message: `Error al guardar la solicitud en la planilla (${error}). Se revirtieron los cambios.` });
         return;
@@ -320,10 +432,13 @@ function App() {
 
   const handleEliminarSolicitud = async (solicitud) => {
     if (!solicitud) return;
+    if (bloqueadoSinConexion('eliminar la solicitud')) return;
     if (!window.confirm(`¿Eliminar la solicitud ${solicitud.codigo || solicitud.id}?`)) return;
-    if (modoDatos === 'sheets') {
-      const { ok, error } = await eliminarSolicitudRemota(solicitud.id);
+    if (usaPlanilla(modoDatos)) {
+      const respuesta = await eliminarSolicitudRemota(solicitud.id);
+      const { ok, error } = respuesta;
       if (!ok) {
+        registrarFalloRemoto(respuesta);
         setToast({ type: 'error', message: `Error al eliminar la solicitud en la planilla (${error}).` });
         return;
       }
@@ -344,6 +459,19 @@ function App() {
         <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
         <div className="content">
           <div className="page-container">
+            {modoDatos === MODO.SIN_CONEXION && (
+              <div className="aviso-sin-conexion" role="alert">
+                <span aria-hidden="true">⚠️</span>
+                <div>
+                  <strong>Sin conexión con la planilla.</strong> Estás viendo la copia local
+                  guardada en este navegador. No se pueden registrar cambios hasta recuperar
+                  la conexión, para que nada se guarde y después se pierda.
+                </div>
+                <button className="btn btn-primary btn-small" onClick={() => recargarDatos()} disabled={cargando}>
+                  {cargando ? 'Reintentando…' : 'Reintentar'}
+                </button>
+              </div>
+            )}
             <Suspense fallback={<PageLoader />}>
               {activeView === "conv-dashboard" && (
                 <ConveniosDashboard convenios={convenios} onSelectConvenio={handleSelectConvenio} onIrA={irA} />
@@ -392,6 +520,8 @@ function App() {
                   convenios={convenios}
                   solicitudes={solicitudes}
                   dbMode={modoDatos}
+                  cargando={cargando}
+                  onRecargar={recargarDatos}
                   onImportarConvenios={handleImportarConvenios}
                   onBorrarConvenios={handleBorrarConvenios}
                   onCargarEjemplos={handleCargarEjemplos}
