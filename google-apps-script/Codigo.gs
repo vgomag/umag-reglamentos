@@ -45,7 +45,7 @@
 // ⚠ SÚBELO CADA VEZ que cambies algo de este archivo. Hay una prueba
 // (src/config/versionScript.test.js) que falla si te olvidas de subir también
 // VERSION_SCRIPT_ESPERADA en src/config/versionScript.js.
-var VERSION_SCRIPT = '2';
+var VERSION_SCRIPT = '3';
 
 var TOKEN = 'CAMBIA-ESTE-TOKEN-POR-UNO-LARGO-Y-ALEATORIO';
 
@@ -558,21 +558,24 @@ function tokenValido(t) {
   return TOKEN === '' || String(t) === TOKEN;
 }
 
-function doGet(e) {
-  try {
-    var p = (e && e.parameter) || {};
-    if (!tokenValido(p.token)) return responder({ ok: false, error: 'Token inválido' });
-
-    var identidad = verificarIdentidad(p.idToken);
-    if (!identidad.ok) return responder({ ok: false, error: identidad.error, noAutorizado: true });
-
-    if (p.accion === 'ping') {
-      return responder({ ok: true, datos: { pong: true, email: identidad.email, version: VERSION_SCRIPT } });
-    }
-    return responder({ ok: true, datos: listarTodo() });
-  } catch (err) {
-    return responder({ ok: false, error: String(err) });
-  }
+/**
+ * Las lecturas se mudaron a doPost.
+ *
+ * Antes la app pedía los datos por GET con el ID token de Google como
+ * parámetro de la URL. Un parámetro no es un lugar para una credencial: queda
+ * escrito en los registros de ejecución de Apps Script, en el historial del
+ * navegador y en cualquier proxy que haya en medio. En el cuerpo de un POST no
+ * queda en ninguno de los tres.
+ *
+ * Este punto de entrada se conserva sin verificar identidad —no entrega nada—
+ * para que una pestaña con el sitio viejo cargado reciba algo entendible en vez
+ * de un error críptico.
+ */
+function doGet() {
+  return responder({
+    ok: false,
+    error: 'Esta planilla ya no atiende lecturas por GET. Recarga la aplicación para obtener la versión actual.',
+  });
 }
 
 /**
@@ -581,15 +584,27 @@ function doGet(e) {
  * Script no sabe responder. El cuerpo igual es JSON.
  */
 function doPost(e) {
-  var lock = LockService.getScriptLock();
+  var lock = null;
   try {
-    // Sin lock, dos guardados simultáneos pueden pisarse al calcular el id.
-    lock.waitLock(20000);
     var cuerpo = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!tokenValido(cuerpo.token)) return responder({ ok: false, error: 'Token inválido' });
 
     var identidad = verificarIdentidad(cuerpo.idToken);
     if (!identidad.ok) return responder({ ok: false, error: identidad.error, noAutorizado: true });
+
+    // Las lecturas llegan por POST para que el ID token no viaje en la URL.
+    // No toman el lock: no compiten por ids ni reescriben filas, y hacerlas
+    // esperar detrás de un guardado sólo serviría para agotarles el tiempo.
+    if (cuerpo.accion === 'ping') {
+      return responder({ ok: true, datos: { pong: true, email: identidad.email, version: VERSION_SCRIPT } });
+    }
+    if (cuerpo.accion === 'listar') {
+      return responder({ ok: true, datos: listarTodo() });
+    }
+
+    // Sin lock, dos guardados simultáneos pueden pisarse al calcular el id.
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
 
     var d = cuerpo.datos || {};
     var resultado;
@@ -606,7 +621,7 @@ function doPost(e) {
   } catch (err) {
     return responder({ ok: false, error: String(err) });
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
