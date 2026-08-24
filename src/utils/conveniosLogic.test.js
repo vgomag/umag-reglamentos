@@ -4,6 +4,7 @@ import {
   infoPlazo, estadoPlazo, textoPlazo, etapaActual, ubicacionActual, etiquetaUbicacion,
   progresoConvenio, enTramite, pendienteDeRectoria, estaFinalizado, tienePlazoEspecial,
   filtrarConvenios, ordenarConvenios, hayFiltrosActivos, calcularEventos, conHistorial,
+  hayFiltrosAvanzados, CAMPOS_FILTRO_AVANZADO, FILTROS_VACIOS,
   resumenConvenios, pendientesPorUnidad, conteoPorCampo, tiempoPromedioTramitacion,
   ingresadoRecientemente, entregadoARectoria,
 } from './conveniosLogic';
@@ -340,5 +341,31 @@ describe('historial del orden del flujo', () => {
   it('un solo evento aunque se muevan varias unidades', () => {
     const d = descripciones(base(['VRAC', 'VRAF', 'PRO']), base(['PRO', 'VRAF', 'VRAC']));
     expect(d.filter(x => x.startsWith('Orden del flujo'))).toHaveLength(1);
+  });
+});
+
+describe('hayFiltrosAvanzados', () => {
+  it('reconoce los filtros que viven en el panel de fechas', () => {
+    CAMPOS_FILTRO_AVANZADO.forEach(campo => {
+      expect(hayFiltrosAvanzados({ ...FILTROS_VACIOS, [campo]: '2026-01-01' })).toBe(true);
+    });
+  });
+
+  it('un filtro de la barra visible no obliga a abrir el panel', () => {
+    expect(hayFiltrosAvanzados({ ...FILTROS_VACIOS, situacion: 'finalizados' })).toBe(false);
+    expect(hayFiltrosAvanzados({ ...FILTROS_VACIOS, busqueda: 'convenio' })).toBe(false);
+    expect(hayFiltrosAvanzados({ ...FILTROS_VACIOS, plazo: 'vencido' })).toBe(false);
+  });
+
+  it('sin filtros, cerrado', () => {
+    expect(hayFiltrosAvanzados(FILTROS_VACIOS)).toBe(false);
+    expect(hayFiltrosAvanzados({})).toBe(false);
+    expect(hayFiltrosAvanzados()).toBe(false);
+  });
+
+  it('todos sus campos son filtros reconocidos', () => {
+    CAMPOS_FILTRO_AVANZADO.forEach(campo => {
+      expect(Object.keys(FILTROS_VACIOS)).toContain(campo);
+    });
   });
 });

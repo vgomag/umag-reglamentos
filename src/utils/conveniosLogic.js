@@ -236,6 +236,17 @@ export function hayFiltrosActivos(filtros = {}) {
   return Object.keys(FILTROS_VACIOS).some(k => filtros[k]);
 }
 
+// Filtros que viven en el panel plegable de "Filtrar por fechas". Si alguno
+// llega con valor hay que abrirlo, porque si no el listado aparece recortado
+// por un criterio que no se ve en ninguna parte.
+export const CAMPOS_FILTRO_AVANZADO = [
+  'ingresoDesde', 'ingresoHasta', 'entregaDesde', 'entregaHasta', 'prioridad',
+];
+
+export function hayFiltrosAvanzados(filtros = {}) {
+  return CAMPOS_FILTRO_AVANZADO.some(k => filtros[k]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Historial y trazabilidad (regla de negocio N°9)                     */
 /* ------------------------------------------------------------------ */

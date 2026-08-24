@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { ESTADOS_CONVENIO, PRIORIDADES, UNIDADES } from '../config/convenios';
 import {
@@ -15,22 +15,18 @@ const claseEstado = (estado) => (estado || 'ingresado').toLowerCase()
  * Listado de convenios. Por defecto se ordena por fecha de ingreso ascendente,
  * porque el criterio habitual de trabajo es el orden de llegada (regla N°1).
  */
-export default function ConveniosList({ convenios, filtrosIniciales, onSelectConvenio, onNuevo }) {
-  const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, ...filtrosIniciales });
-  const [orden, setOrden] = useState('llegada');
-  const [filtrosAvanzados, setFiltrosAvanzados] = useState(false);
+export default function ConveniosList({ convenios, estado, onEstadoChange, onSelectConvenio, onNuevo }) {
+  // Filtros, orden y panel de fechas los guarda App: esta vista se desmonta al
+  // abrir una ficha, y con el estado acá adentro se perdía todo al volver.
+  const { filtros, orden, avanzados } = estado;
 
-  // Las tarjetas del dashboard navegan hacia acá con un filtro ya aplicado.
-  useEffect(() => {
-    if (filtrosIniciales && Object.keys(filtrosIniciales).length > 0) {
-      setFiltros({ ...FILTROS_VACIOS, ...filtrosIniciales });
-      setFiltrosAvanzados(true);
-    }
-  }, [filtrosIniciales]);
+  const setFiltros = (cambio) => onEstadoChange({ ...estado, filtros: { ...filtros, ...cambio } });
+  const setOrden = (nuevo) => onEstadoChange({ ...estado, orden: nuevo });
+  const setFiltrosAvanzados = (abierto) => onEstadoChange({ ...estado, avanzados: abierto });
 
   const set = (campo) => (e) => {
     const valor = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFiltros(prev => ({ ...prev, [campo]: valor }));
+    setFiltros({ [campo]: valor });
   };
 
   const unidadesOrigen = useMemo(
@@ -43,7 +39,7 @@ export default function ConveniosList({ convenios, filtrosIniciales, onSelectCon
     [convenios, filtros, orden],
   );
 
-  const limpiar = () => setFiltros({ ...FILTROS_VACIOS });
+  const limpiar = () => onEstadoChange({ ...estado, filtros: FILTROS_VACIOS });
 
   return (
     <div className="page-content">
@@ -91,12 +87,12 @@ export default function ConveniosList({ convenios, filtrosIniciales, onSelectCon
         <select className="filter-select" value={orden} onChange={(e) => setOrden(e.target.value)}>
           {ORDENES.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
-        <button className="btn btn-secondary btn-small" onClick={() => setFiltrosAvanzados(v => !v)}>
-          {filtrosAvanzados ? 'Ocultar fechas' : 'Filtrar por fechas'}
+        <button className="btn btn-secondary btn-small" onClick={() => setFiltrosAvanzados(!avanzados)}>
+          {avanzados ? 'Ocultar fechas' : 'Filtrar por fechas'}
         </button>
       </div>
 
-      {filtrosAvanzados && (
+      {avanzados && (
         <div className="filters-bar filtros-fechas">
           <label className="filtro-fecha">
             <span>Ingreso desde</span>
@@ -190,7 +186,12 @@ export default function ConveniosList({ convenios, filtrosIniciales, onSelectCon
 
 ConveniosList.propTypes = {
   convenios: PropTypes.array.isRequired,
-  filtrosIniciales: PropTypes.object,
+  estado: PropTypes.shape({
+    filtros: PropTypes.object.isRequired,
+    orden: PropTypes.string.isRequired,
+    avanzados: PropTypes.bool.isRequired,
+  }).isRequired,
+  onEstadoChange: PropTypes.func.isRequired,
   onSelectConvenio: PropTypes.func.isRequired,
   onNuevo: PropTypes.func.isRequired,
 };
