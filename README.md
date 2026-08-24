@@ -1,13 +1,11 @@
-# UMAG - Transparencia y Convenios Institucionales
+# UMAG - Transparencia
 
 Herramienta de gestión para la Encargada/o de Transparencia y Convenios de la
-Universidad de Magallanes. Incluye tres módulos:
+Universidad de Magallanes. Tiene dos módulos:
 
 1. **Convenios institucionales** — registro, seguimiento por unidad, plazos e historial.
 2. **Transparencia pasiva** — solicitudes de acceso a la información (Ley N°20.285)
    con cálculo automático de plazos en días hábiles.
-3. **Reglamentos** — el sistema original de seguimiento de los nuevos estatutos
-   (DFL 27/2024), que se conserva íntegro.
 
 ## Convenios institucionales
 
@@ -65,18 +63,6 @@ uno pendiente de Rectoría, uno finalizado, una solicitud prorrogada, etc.).
   El calendario de feriados está en [`src/config/feriados.js`](src/config/feriados.js)
   y **debe revisarse cada año**: los feriados movibles y los de elecciones cambian.
 
-## Reglamentos (módulo original, sin cambios)
-
-- Resumen ejecutivo con cuenta regresiva al plazo legal (Art. Primero Transitorio).
-- Dashboard con métricas y distribución por estado/prioridad.
-- Listado + Kanban de 31 reglamentos precargados.
-- Seguimiento de estado (Pendiente, En Proceso, En Revisión, Aprobado).
-- Carta Gantt interactiva de 15 meses (Abr 2026 – Jun 2027).
-- Carga de PDFs con extracción automática de metadatos (decreto, artículos, plazos).
-- Módulo de Normativa: cruza requisitos normativos con reglamentos asociados.
-- Persistencia en Supabase (opcional) con fallback automático a localStorage.
-- Exportación JSON y autenticación básica por contraseña compartida.
-
 ## Integración con Google Calendar
 
 | Capacidad | Estado |
@@ -103,10 +89,8 @@ La UI ya trabaja contra esa interfaz, así que no hay que modificar las vistas.
 
 - React 18 + Vite 5 (bundler moderno, tree-shaking, lazy loading)
 - Google Sheets vía Apps Script — convenios y solicitudes
-- Supabase JS (CDN) — sólo el módulo de Reglamentos
-- pdf.js (CDN) — extracción de texto
 - Vitest — tests unitarios
-- localStorage + IndexedDB para persistencia local
+- localStorage como respaldo
 
 ## Requisitos
 
@@ -146,7 +130,6 @@ npm run test:watch      # modo watch
    - `VITE_AUTH_PASSWORD`
    - `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` (planilla de Google)
    - `VITE_SHEET_URL` y `VITE_DRIVE_FOLDER_URL` (opcionales, sólo enlaces)
-   - `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (opcionales, sólo Reglamentos)
    - `VITE_GOOGLE_CLIENT_ID` y `VITE_GOOGLE_CALENDAR_ID` (opcionales)
 
 ## Dónde viven los datos
@@ -155,9 +138,8 @@ npm run test:watch      # modo watch
 |---|---|---|
 | Convenios | Google Sheets | `localStorage` |
 | Transparencia | Google Sheets | `localStorage` |
-| Reglamentos | Supabase (opcional) | `localStorage` |
 
-Convenios y Transparencia **no usan Supabase**. Viven en una planilla de Google
+Todo vive en una planilla de Google
 a la que la app accede a través de un Apps Script publicado desde la propia
 planilla: no hace falta proyecto en Google Cloud, ni cuenta de servicio, ni que
 nadie inicie sesión con Google.
@@ -207,27 +189,14 @@ La carpeta de Drive asociada guarda los PDFs y documentos de cada convenio. Hoy
 se enlazan a mano desde el campo de enlace del convenio; la subida directa desde
 la app queda pendiente.
 
-## Configuración de Supabase (sólo Reglamentos)
-
-1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. En el SQL Editor ejecuta el script comentado en
-   [`src/config/supabase.js`](src/config/supabase.js) para crear la tabla
-   `regulations`.
-3. **IMPORTANTE** — La app NO usa Supabase Auth; las requests viajan con la
-   clave anónima (`anon`). Usa las policies "Anon ..." del script.
-4. (Opcional) Crea un bucket `reglamentos-pdf` en Storage para los PDFs.
-
-Si no configuras Supabase, Reglamentos funciona igual con `localStorage`.
-
 ## Seguridad
 
 - `VITE_AUTH_PASSWORD` se incluye en el bundle cliente: ofrece obfuscación,
-  no autenticación real. Para acceso sensible usar Supabase Auth u OIDC.
+  no autenticación real. Para acceso sensible hace falta un proveedor de
+  identidad de verdad (OIDC, Google Workspace) detrás de un backend.
 - La app NUNCA guarda la contraseña en localStorage (versiones anteriores
   sí lo hacían; al abrir la app se limpia automáticamente cualquier valor
   legacy `umag_saved_pass`).
-- El anon key de Supabase es público por diseño; la seguridad de datos
-  depende de las policies RLS.
 - `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` viajan en el bundle del cliente:
   ofrecen el mismo nivel de protección que la contraseña de la app, es decir
   disuaden pero no son autenticación fuerte. Quien obtenga ambos puede leer y
@@ -251,12 +220,12 @@ src/
 ├── App.jsx                        # orquestación + login + persistencia
 ├── main.jsx                       # bootstrap React
 ├── components/
-│   ├── Header.jsx, Sidebar.jsx, Toast.jsx, DonutChart.jsx, PdfViewer.jsx
+│   ├── Header.jsx, Sidebar.jsx, Toast.jsx
 │   ├── PlazoBadge.jsx             # semáforo de plazos
 │   ├── FlujoEtapas.jsx            # línea Ingresado → … → Finalizado
 │   └── HistorialTimeline.jsx      # historial cronológico
 ├── pages/
-│   ├── ConveniosDashboard.jsx     # panel principal de convenios
+│   ├── ConveniosDashboard.jsx     # panel principal
 │   ├── ConveniosList.jsx          # listado con búsqueda, filtros y orden
 │   ├── ConvenioDetail.jsx         # ficha: datos, etapas, plazos, historial
 │   ├── NuevoConvenio.jsx          # alta de convenio
@@ -264,26 +233,21 @@ src/
 │   ├── CalendarioView.jsx         # calendario mensual + exportación
 │   ├── TransparenciaView.jsx      # solicitudes Ley 20.285
 │   ├── ReportesView.jsx           # reportes agregados y CSV/JSON
-│   ├── ConfiguracionView.jsx      # reglas, almacenamiento, respaldos
-│   └── (Dashboard, Normativa, Gantt, … del módulo de Reglamentos)
+│   └── ConfiguracionView.jsx      # reglas, almacenamiento, respaldos
 ├── config/
-│   ├── data.js                    # INITIAL_REGULATIONS + PLAZOS_DATA
-│   ├── plazos.js                  # fechas límite legales del estatuto
+│   ├── convenios.js               # unidades, estados, flujo, semáforo
+│   ├── transparencia.js           # plazos y estados de la Ley 20.285
 │   ├── feriados.js                # feriados de Chile (revisar cada año)
 │   ├── datosEjemplo.js            # convenios y solicitudes de demostración
-│   ├── convenios.js               # unidades, estados, flujo, semáforo
 │   ├── sheetsStore.js             # cliente del Apps Script (Google Sheets)
 │   ├── conveniosStore.js          # respaldo local de convenios
-│   ├── transparencia.js           # plazos y estados de la Ley 20.285
-│   ├── transparenciaStore.js      # respaldo local de solicitudes
-│   └── supabase.js                # cliente + helpers + SQL de `regulations`
+│   └── transparenciaStore.js      # respaldo local de solicitudes
 └── utils/
     ├── fechas.js                  # fechas ISO y días hábiles administrativos
     ├── conveniosLogic.js          # semáforo, ubicación, filtros, historial
     ├── transparenciaLogic.js      # plazos legales de las solicitudes
     ├── googleCalendar.js          # eventos, .ics y contrato de sincronización
-    ├── sanitize.js                # sanitización XSS
-    └── pdf.js                     # extracción de texto con pdf.js
+    └── sanitize.js                # sanitización XSS
 
 google-apps-script/
 └── Codigo.gs                      # backend en la planilla de Google
@@ -298,8 +262,6 @@ google-apps-script/
   constante global, para que se pueda alterar convenio por convenio.
 - **Feriados**: la tabla de `src/config/feriados.js` cubre 2025-2027 y debe
   actualizarse cada año; afecta directamente el cálculo de los plazos legales.
-- **Módulo de Reglamentos intacto**: no se eliminó ninguna vista ni dato del
-  sistema original; quedó agrupado en su propia sección del menú.
 - **Escrituras secuenciales**: al cargar datos de ejemplo, la app envía los
   registros de a uno. El Apps Script asigna los `id` leyendo el máximo actual,
   así que en paralelo se pisarían entre sí.
