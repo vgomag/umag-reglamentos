@@ -6,14 +6,13 @@ import Toast from './components/Toast';
 import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
 import { normalizarConvenio, TIPOS_HISTORIAL } from './config/convenios';
 import { conHistorial, crearEvento } from './utils/conveniosLogic';
+import { leerLocal, guardarLocal, siguienteIdLocal } from './config/conveniosStore';
+import { leerSolicitudesLocal, guardarSolicitudesLocal, siguienteIdSolicitud } from './config/transparenciaStore';
 import {
-  fetchConvenios, insertConvenio, upsertConvenio, deleteConvenio,
-  leerLocal, guardarLocal, siguienteIdLocal,
-} from './config/conveniosStore';
-import {
-  fetchSolicitudes, insertSolicitud, upsertSolicitud, deleteSolicitud,
-  leerSolicitudesLocal, guardarSolicitudesLocal, siguienteIdSolicitud,
-} from './config/transparenciaStore';
+  sheetsConfigurado, fetchTodo,
+  crearConvenioRemoto, actualizarConvenioRemoto, eliminarConvenioRemoto,
+  crearSolicitudRemota, actualizarSolicitudRemota, eliminarSolicitudRemota,
+} from './config/sheetsStore';
 import { normalizarSolicitud } from './config/transparencia';
 import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 
@@ -66,6 +65,8 @@ function App() {
   const [solicitudes, setSolicitudes] = useState(() => leerSolicitudesLocal());
   const [selectedConvenio, setSelectedConvenio] = useState(null);
   const [filtrosConvenios, setFiltrosConvenios] = useState(null);
+  // Convenios y solicitudes viven en Google Sheets; localStorage es el respaldo.
+  const [modoDatos, setModoDatos] = useState(sheetsConfigurado() ? 'sheets' : 'local');
   const [toast, setToast] = useState(null);
   const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
   const [isLoading, setIsLoading] = useState(!!supabase);
@@ -114,15 +115,24 @@ function App() {
     });
   }, []);
 
-  // Cargar convenios y solicitudes desde Supabase cuando esté disponible.
-  // Si la tabla no existe todavía, se conserva lo que haya en localStorage.
+  // Cargar convenios y solicitudes desde la planilla de Google.
+  // Si falla, se conserva lo que haya en localStorage y se avisa.
   useEffect(() => {
-    if (!supabase) return;
+    if (!sheetsConfigurado()) return;
     (async () => {
-      const [resConvenios, resSolicitudes] = await Promise.all([fetchConvenios(), fetchSolicitudes()]);
-      if (resConvenios.data) setConvenios(resConvenios.data);
-      if (resSolicitudes.data) setSolicitudes(resSolicitudes.data);
-    })().catch(e => console.warn('Error cargando convenios/solicitudes:', e.message));
+      const { data, error } = await fetchTodo();
+      if (data) {
+        setConvenios(data.convenios.map(normalizarConvenio).filter(Boolean));
+        setSolicitudes(data.solicitudes.map(normalizarSolicitud).filter(Boolean));
+        setModoDatos('sheets');
+      } else if (error) {
+        setModoDatos('local');
+        setToast({ type: 'error', message: `No se pudo leer la planilla (${error}). Usando datos locales.` });
+      }
+    })().catch(e => {
+      setModoDatos('local');
+      console.warn('Error cargando desde la planilla:', e.message);
+    });
   }, []);
 
   // Sincronizar con localStorage como backup
@@ -284,12 +294,14 @@ function App() {
       ...nuevo,
       historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Convenio ingresado al sistema', usuarioActual())],
     };
-    if (dbMode === 'supabase') {
-      const creado = await insertConvenio(conEventoInicial);
-      if (!creado) {
-        setToast({ type: 'error', message: 'No se pudo crear el convenio en la base de datos. Inténtalo nuevamente.' });
+    if (modoDatos === 'sheets') {
+      // El id lo asigna la planilla, para que dos personas no lo generen igual.
+      const { ok, datos, error } = await crearConvenioRemoto(conEventoInicial);
+      if (!ok) {
+        setToast({ type: 'error', message: `No se pudo crear el convenio en la planilla (${error}).` });
         return;
       }
+      const creado = normalizarConvenio({ ...conEventoInicial, ...datos });
       setConvenios(prev => [...prev, creado]);
       setSelectedConvenio(creado);
     } else {
@@ -307,14 +319,14 @@ function App() {
     const conTraza = normalizarConvenio(conHistorial(anterior, actualizado, usuarioActual()));
     setConvenios(prev => prev.map(c => c.id === conTraza.id ? conTraza : c));
     setSelectedConvenio(conTraza);
-    if (dbMode === 'supabase') {
-      const ok = await upsertConvenio(conTraza);
+    if (modoDatos === 'sheets') {
+      const { ok, error } = await actualizarConvenioRemoto(conTraza);
       if (!ok) {
         if (anterior) {
           setConvenios(prev => prev.map(c => c.id === anterior.id ? anterior : c));
           setSelectedConvenio(anterior);
         }
-        setToast({ type: 'error', message: 'Error al guardar el convenio. Se revirtieron los cambios.' });
+        setToast({ type: 'error', message: `Error al guardar en la planilla (${error}). Se revirtieron los cambios.` });
         return;
       }
     }
@@ -324,10 +336,10 @@ function App() {
   const handleEliminarConvenio = async () => {
     if (!selectedConvenio) return;
     if (!window.confirm(`¿Eliminar el convenio "${selectedConvenio.nombre}"? Esta acción no se puede deshacer.`)) return;
-    if (dbMode === 'supabase') {
-      const ok = await deleteConvenio(selectedConvenio.id);
+    if (modoDatos === 'sheets') {
+      const { ok, error } = await eliminarConvenioRemoto(selectedConvenio.id);
       if (!ok) {
-        setToast({ type: 'error', message: 'Error al eliminar el convenio en la base de datos.' });
+        setToast({ type: 'error', message: `Error al eliminar el convenio en la planilla (${error}).` });
         return;
       }
     }
@@ -369,11 +381,21 @@ function App() {
     const nuevosConvenios = generarConveniosEjemplo();
     const nuevasSolicitudes = generarSolicitudesEjemplo();
 
-    if (dbMode === 'supabase') {
-      const convCreados = (await Promise.all(nuevosConvenios.map(insertConvenio))).filter(Boolean);
-      const soliCreadas = (await Promise.all(nuevasSolicitudes.map(insertSolicitud))).filter(Boolean);
+    if (modoDatos === 'sheets') {
+      // Secuencial a propósito: el Apps Script asigna los ids uno por uno y en
+      // paralelo se pisarían entre sí.
+      const convCreados = [];
+      for (const c of nuevosConvenios) {
+        const { ok, datos } = await crearConvenioRemoto(c);
+        if (ok) convCreados.push(normalizarConvenio({ ...c, ...datos }));
+      }
+      const soliCreadas = [];
+      for (const s of nuevasSolicitudes) {
+        const { ok, datos } = await crearSolicitudRemota(s);
+        if (ok) soliCreadas.push(normalizarSolicitud({ ...s, ...datos }));
+      }
       if (convCreados.length === 0 && soliCreadas.length === 0) {
-        setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la base de datos.' });
+        setToast({ type: 'error', message: 'No se pudieron cargar los datos de ejemplo en la planilla.' });
         return;
       }
       setConvenios(prev => [...prev, ...convCreados]);
@@ -401,11 +423,10 @@ function App() {
     if (total === 0) return;
     if (!window.confirm(`¿Quitar los ${total} registro(s) de ejemplo? Los convenios y solicitudes reales se conservan.`)) return;
 
-    if (dbMode === 'supabase') {
-      await Promise.all([
-        ...conveniosEjemplo.map(c => deleteConvenio(c.id)),
-        ...solicitudesEjemplo.map(s => deleteSolicitud(s.id)),
-      ]);
+    if (modoDatos === 'sheets') {
+      // También secuencial: cada borrado desplaza las filas de la planilla.
+      for (const c of conveniosEjemplo) await eliminarConvenioRemoto(c.id);
+      for (const s of solicitudesEjemplo) await eliminarSolicitudRemota(s.id);
     }
     setConvenios(prev => prev.filter(c => !esRegistroEjemplo(c)));
     setSolicitudes(prev => prev.filter(s => !esRegistroEjemplo(s)));
@@ -420,13 +441,13 @@ function App() {
       ...nueva,
       historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Solicitud ingresada al sistema', usuarioActual())],
     };
-    if (dbMode === 'supabase') {
-      const creada = await insertSolicitud(conEvento);
-      if (!creada) {
-        setToast({ type: 'error', message: 'No se pudo crear la solicitud en la base de datos.' });
+    if (modoDatos === 'sheets') {
+      const { ok, datos, error } = await crearSolicitudRemota(conEvento);
+      if (!ok) {
+        setToast({ type: 'error', message: `No se pudo crear la solicitud en la planilla (${error}).` });
         return;
       }
-      setSolicitudes(prev => [...prev, creada]);
+      setSolicitudes(prev => [...prev, normalizarSolicitud({ ...conEvento, ...datos })]);
     } else {
       setSolicitudes(prev => [...prev, normalizarSolicitud({ ...conEvento, id: siguienteIdSolicitud(prev) })]);
     }
@@ -450,11 +471,11 @@ function App() {
       historial: [...(actualizada.historial || []), ...eventos],
     });
     setSolicitudes(prev => prev.map(s => s.id === conTraza.id ? conTraza : s));
-    if (dbMode === 'supabase') {
-      const ok = await upsertSolicitud(conTraza);
+    if (modoDatos === 'sheets') {
+      const { ok, error } = await actualizarSolicitudRemota(conTraza);
       if (!ok) {
         if (anterior) setSolicitudes(prev => prev.map(s => s.id === anterior.id ? anterior : s));
-        setToast({ type: 'error', message: 'Error al guardar la solicitud. Se revirtieron los cambios.' });
+        setToast({ type: 'error', message: `Error al guardar la solicitud en la planilla (${error}). Se revirtieron los cambios.` });
         return;
       }
     }
@@ -464,10 +485,10 @@ function App() {
   const handleEliminarSolicitud = async (solicitud) => {
     if (!solicitud) return;
     if (!window.confirm(`¿Eliminar la solicitud ${solicitud.codigo || solicitud.id}?`)) return;
-    if (dbMode === 'supabase') {
-      const ok = await deleteSolicitud(solicitud.id);
+    if (modoDatos === 'sheets') {
+      const { ok, error } = await eliminarSolicitudRemota(solicitud.id);
       if (!ok) {
-        setToast({ type: 'error', message: 'Error al eliminar la solicitud en la base de datos.' });
+        setToast({ type: 'error', message: `Error al eliminar la solicitud en la planilla (${error}).` });
         return;
       }
     }
@@ -561,7 +582,7 @@ function App() {
                 <ConfiguracionView
                   convenios={convenios}
                   solicitudes={solicitudes}
-                  dbMode={dbMode}
+                  dbMode={modoDatos}
                   onImportarConvenios={handleImportarConvenios}
                   onBorrarConvenios={handleBorrarConvenios}
                   onCargarEjemplos={handleCargarEjemplos}

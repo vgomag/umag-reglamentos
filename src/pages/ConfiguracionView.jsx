@@ -8,6 +8,7 @@ import { PLAZOS_LEY_20285 } from '../config/transparencia';
 import { estadoIntegracion } from '../utils/googleCalendar';
 import { listarFeriados, hoyISO } from '../utils/fechas';
 import { esRegistroEjemplo } from '../config/datosEjemplo';
+import { sheetsConfigurado, probarConexion, SHEET_URL, DRIVE_FOLDER_URL } from '../config/sheetsStore';
 
 /**
  * Configuración: estado del almacenamiento, reglas vigentes del sistema,
@@ -26,6 +27,13 @@ export default function ConfiguracionView({
   // pueden quitar después sin tocar los convenios reales.
   const ejemplos = convenios.filter(esRegistroEjemplo).length
     + solicitudes.filter(esRegistroEjemplo).length;
+  const [prueba, setPrueba] = useState(null);
+
+  const comprobar = async () => {
+    setPrueba({ estado: 'probando' });
+    const { ok, error } = await probarConexion();
+    setPrueba({ estado: ok ? 'ok' : 'error', error });
+  };
 
   const respaldar = () => {
     const data = JSON.stringify({ version: 1, generado: new Date().toISOString(), convenios, solicitudes }, null, 2);
@@ -72,19 +80,43 @@ export default function ConfiguracionView({
           <h3 className="section-title">Almacenamiento</h3>
           <table className="tabla-plazos">
             <tbody>
-              <tr><th>Modo actual</th><td>{dbMode === 'supabase' ? 'Supabase (con respaldo local)' : 'localStorage (sólo este navegador)'}</td></tr>
+              <tr>
+                <th>Modo actual</th>
+                <td>{dbMode === 'sheets' ? 'Google Sheets (con respaldo local)' : 'localStorage (sólo este navegador)'}</td>
+              </tr>
               <tr><th>Convenios registrados</th><td>{convenios.length}</td></tr>
               <tr><th>Solicitudes registradas</th><td>{solicitudes.length}</td></tr>
+              {SHEET_URL && (
+                <tr>
+                  <th>Planilla</th>
+                  <td><a href={SHEET_URL} target="_blank" rel="noopener noreferrer">Abrir en Google Sheets</a></td>
+                </tr>
+              )}
+              {DRIVE_FOLDER_URL && (
+                <tr>
+                  <th>Carpeta de documentos</th>
+                  <td><a href={DRIVE_FOLDER_URL} target="_blank" rel="noopener noreferrer">Abrir en Google Drive</a></td>
+                </tr>
+              )}
             </tbody>
           </table>
-          {dbMode !== 'supabase' && (
+          {sheetsConfigurado() ? (
+            <>
+              <div className="btn-group">
+                <button className="btn btn-secondary btn-small" onClick={comprobar} disabled={prueba?.estado === 'probando'}>
+                  {prueba?.estado === 'probando' ? 'Comprobando…' : '🔌 Comprobar conexión'}
+                </button>
+              </div>
+              {prueba?.estado === 'ok' && <p className="ayuda-campo">✓ La planilla responde correctamente.</p>}
+              {prueba?.estado === 'error' && <p className="ayuda-campo">✕ {prueba.error}</p>}
+            </>
+          ) : (
             <p className="nota-seccion">
-              Sin Supabase configurado los datos viven sólo en este navegador. Para
-              compartirlos entre equipos, crea las tablas <code>convenios</code> y
-              <code> solicitudes_transparencia</code> con el SQL que está comentado en
-              <code> src/config/conveniosStore.js</code> y
-              <code> src/config/transparenciaStore.js</code>, y define
-              <code> VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>.
+              Sin planilla configurada los datos viven sólo en este navegador. Para
+              compartirlos, publica el script de <code>google-apps-script/Codigo.gs</code>
+              como aplicación web desde la propia planilla y define
+              <code> VITE_SHEETS_API_URL</code> y <code>VITE_SHEETS_TOKEN</code>.
+              Los pasos están en el README.
             </p>
           )}
           <div className="btn-group">

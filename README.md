@@ -102,7 +102,8 @@ La UI ya trabaja contra esa interfaz, así que no hay que modificar las vistas.
 ## Tecnologías
 
 - React 18 + Vite 5 (bundler moderno, tree-shaking, lazy loading)
-- Supabase JS (CDN) — tabla `regulations` + Storage `reglamentos-pdf`
+- Google Sheets vía Apps Script — convenios y solicitudes
+- Supabase JS (CDN) — sólo el módulo de Reglamentos
 - pdf.js (CDN) — extracción de texto
 - Vitest — tests unitarios
 - localStorage + IndexedDB para persistencia local
@@ -142,29 +143,81 @@ npm run test:watch      # modo watch
    - Build command: `npm run build`
    - Publish directory: `dist`
 4. Configura las variables de entorno en Netlify:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
    - `VITE_AUTH_PASSWORD`
+   - `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` (planilla de Google)
+   - `VITE_SHEET_URL` y `VITE_DRIVE_FOLDER_URL` (opcionales, sólo enlaces)
+   - `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (opcionales, sólo Reglamentos)
    - `VITE_GOOGLE_CLIENT_ID` y `VITE_GOOGLE_CALENDAR_ID` (opcionales)
 
-## Configuración de Supabase
+## Dónde viven los datos
+
+| Módulo | Almacén | Respaldo |
+|---|---|---|
+| Convenios | Google Sheets | `localStorage` |
+| Transparencia | Google Sheets | `localStorage` |
+| Reglamentos | Supabase (opcional) | `localStorage` |
+
+Convenios y Transparencia **no usan Supabase**. Viven en una planilla de Google
+a la que la app accede a través de un Apps Script publicado desde la propia
+planilla: no hace falta proyecto en Google Cloud, ni cuenta de servicio, ni que
+nadie inicie sesión con Google.
+
+```
+Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google Sheets
+        │
+        └── localStorage (copia local, permite trabajar si la planilla falla)
+```
+
+### Puesta en marcha de la planilla
+
+1. Abre la planilla → **Extensiones → Apps Script**.
+2. Reemplaza `Código.gs` por [`google-apps-script/Codigo.gs`](google-apps-script/Codigo.gs).
+3. Cambia la constante `TOKEN` por una cadena larga y aleatoria propia.
+4. Ejecuta una vez la función `prepararPlanilla` para crear las hojas
+   `Convenios`, `Solicitudes` e `Historial` con sus encabezados.
+5. **Implementar → Nueva implementación → Aplicación web**:
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+
+   Copia la URL que termina en `/exec`.
+6. En Netlify define `VITE_SHEETS_API_URL` (esa URL) y `VITE_SHEETS_TOKEN`
+   (el mismo TOKEN del paso 3). Opcionalmente `VITE_SHEET_URL` y
+   `VITE_DRIVE_FOLDER_URL` para que Configuración muestre los enlaces.
+7. Entra a **Configuración → Comprobar conexión** para verificarlo.
+
+> Si al comprobar aparece *"La respuesta no es JSON"*, casi siempre es que la
+> implementación no quedó con acceso "Cualquier usuario", o que se publicó una
+> versión nueva sin actualizar la URL.
+
+### Cómo se guarda en la planilla
+
+- **Convenios**: una fila por convenio. Las etapas van en columnas planas
+  (`VRAC_inicio`, `VRAC_estado`, …) en vez de JSON, para que la planilla siga
+  siendo legible y editable a mano. Una unidad sin ningún dato se entiende como
+  que no participa en ese convenio.
+- **Historial**: una fila por evento, en su propia hoja. Es append-only.
+- **Solicitudes**: una fila por solicitud de acceso a la información.
+
+Se puede editar la planilla a mano; la app lee esos cambios en la siguiente
+carga. Lo que no conviene es alterar los encabezados ni la columna `id`.
+
+### Documentos adjuntos
+
+La carpeta de Drive asociada guarda los PDFs y documentos de cada convenio. Hoy
+se enlazan a mano desde el campo de enlace del convenio; la subida directa desde
+la app queda pendiente.
+
+## Configuración de Supabase (sólo Reglamentos)
 
 1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. En el SQL Editor ejecuta los scripts que aparecen comentados en:
-   - [`src/config/supabase.js`](src/config/supabase.js) → tabla `regulations`
-   - [`src/config/conveniosStore.js`](src/config/conveniosStore.js) → tabla `convenios`
-   - [`src/config/transparenciaStore.js`](src/config/transparenciaStore.js) → tabla `solicitudes_transparencia`
-
-   Incluyen columnas, trigger de `updated_at` y políticas RLS.
-
-   Si no configuras Supabase, la aplicación funciona igual guardando todo en
-   `localStorage` de ese navegador.
+2. En el SQL Editor ejecuta el script comentado en
+   [`src/config/supabase.js`](src/config/supabase.js) para crear la tabla
+   `regulations`.
 3. **IMPORTANTE** — La app NO usa Supabase Auth; las requests viajan con la
-   clave anónima (`anon`). Usa las policies "Anon ..." del script. Si usas las
-   policies con `auth.role() = 'authenticated'`, la app caerá silenciosamente
-   a localStorage.
-4. (Opcional) Crea un bucket `reglamentos-pdf` en Storage para almacenar los
-   PDFs. Márcalo como público si quieres preview directo.
+   clave anónima (`anon`). Usa las policies "Anon ..." del script.
+4. (Opcional) Crea un bucket `reglamentos-pdf` en Storage para los PDFs.
+
+Si no configuras Supabase, Reglamentos funciona igual con `localStorage`.
 
 ## Seguridad
 
@@ -175,9 +228,16 @@ npm run test:watch      # modo watch
   legacy `umag_saved_pass`).
 - El anon key de Supabase es público por diseño; la seguridad de datos
   depende de las policies RLS.
+- `VITE_SHEETS_API_URL` y `VITE_SHEETS_TOKEN` viajan en el bundle del cliente:
+  ofrecen el mismo nivel de protección que la contraseña de la app, es decir
+  disuaden pero no son autenticación fuerte. Quien obtenga ambos puede leer y
+  escribir en la planilla.
 - ⚠️ Las solicitudes de transparencia contienen **datos personales** del
-  solicitante (nombre, correo, teléfono). Si se almacenan en Supabase, conviene
-  migrar a Supabase Auth real (Opción B del script) en vez de la anon key.
+  solicitante (nombre, correo, teléfono). Si eso es una preocupación real,
+  conviene mover el acceso a una función de Netlify con cuenta de servicio, de
+  modo que las credenciales nunca lleguen al navegador.
+- La planilla y la carpeta de Drive se comparten con los permisos de Google:
+  revisa quién tiene acceso antes de cargar datos reales.
 
 ## Acceso por defecto
 
@@ -212,9 +272,10 @@ src/
 │   ├── feriados.js                # feriados de Chile (revisar cada año)
 │   ├── datosEjemplo.js            # convenios y solicitudes de demostración
 │   ├── convenios.js               # unidades, estados, flujo, semáforo
-│   ├── conveniosStore.js          # persistencia de convenios + SQL
+│   ├── sheetsStore.js             # cliente del Apps Script (Google Sheets)
+│   ├── conveniosStore.js          # respaldo local de convenios
 │   ├── transparencia.js           # plazos y estados de la Ley 20.285
-│   ├── transparenciaStore.js      # persistencia de solicitudes + SQL
+│   ├── transparenciaStore.js      # respaldo local de solicitudes
 │   └── supabase.js                # cliente + helpers + SQL de `regulations`
 └── utils/
     ├── fechas.js                  # fechas ISO y días hábiles administrativos
@@ -223,6 +284,9 @@ src/
     ├── googleCalendar.js          # eventos, .ics y contrato de sincronización
     ├── sanitize.js                # sanitización XSS
     └── pdf.js                     # extracción de texto con pdf.js
+
+google-apps-script/
+└── Codigo.gs                      # backend en la planilla de Google
 ```
 
 ## Decisiones y supuestos
@@ -236,3 +300,6 @@ src/
   actualizarse cada año; afecta directamente el cálculo de los plazos legales.
 - **Módulo de Reglamentos intacto**: no se eliminó ninguna vista ni dato del
   sistema original; quedó agrupado en su propia sección del menú.
+- **Escrituras secuenciales**: al cargar datos de ejemplo, la app envía los
+  registros de a uno. El Apps Script asigna los `id` leyendo el máximo actual,
+  así que en paralelo se pisarían entre sí.
