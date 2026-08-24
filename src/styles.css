@@ -1369,3 +1369,39 @@
     .tabla-seguimiento select { min-width: 130px; width: auto; }
     .tabla-seguimiento input[type="text"] { min-width: 180px; }
     .tabla-seguimiento .acciones-etapa { flex-wrap: nowrap; }
+
+    /* Pantalla de acceso con Google */
+    .login-google {
+      display: flex;
+      justify-content: center;
+      margin: 0.5rem 0 0.75rem;
+      min-height: 44px;
+    }
+
+    .login-nota {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* Se dibuja dentro de .login-card, que es claro: el texto va en rojo oscuro
+       para que se lea, no en el rojo claro que pediría un fondo oscuro. */
+    .login-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      margin-top: 0.75rem;
+      text-align: left;
+    }
+
+    .login-error code {
+      background: rgba(185, 28, 28, 0.1);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+    }
