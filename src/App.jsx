@@ -1,9 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { INITIAL_REGULATIONS } from './config/data';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
-import { supabase, supabaseSeedIfEmpty, supabaseFetchAll, supabaseUpsert, supabaseDelete, supabaseInsert } from './config/supabase';
 import { normalizarConvenio, TIPOS_HISTORIAL } from './config/convenios';
 import { conHistorial, crearEvento } from './utils/conveniosLogic';
 import { leerLocal, guardarLocal, siguienteIdLocal } from './config/conveniosStore';
@@ -16,18 +14,7 @@ import {
 import { normalizarSolicitud } from './config/transparencia';
 import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 
-// Lazy loading de páginas — reduce bundle inicial ~40%
-const ResumenEjecutivo = lazy(() => import('./pages/ResumenEjecutivo'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const RegulationsList = lazy(() => import('./pages/RegulationsList'));
-const RegulationDetail = lazy(() => import('./pages/RegulationDetail'));
-const NewRegulation = lazy(() => import('./pages/NewRegulation'));
-const GanttView = lazy(() => import('./pages/GanttView'));
-const DocumentosView = lazy(() => import('./pages/DocumentosView'));
-const PlazosList = lazy(() => import('./pages/PlazosList'));
-const Normativa = lazy(() => import('./pages/Normativa'));
-
-// Módulo de Transparencia y Convenios
+// Lazy loading de páginas — reduce el bundle inicial
 const ConveniosDashboard = lazy(() => import('./pages/ConveniosDashboard'));
 const ConveniosList = lazy(() => import('./pages/ConveniosList'));
 const ConvenioDetail = lazy(() => import('./pages/ConvenioDetail'));
@@ -38,7 +25,6 @@ const TransparenciaView = lazy(() => import('./pages/TransparenciaView'));
 const ReportesView = lazy(() => import('./pages/ReportesView'));
 const ConfiguracionView = lazy(() => import('./pages/ConfiguracionView'));
 
-// Fallback de carga
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', color: '#94a3b8' }}>
     <div className="spinner" style={{ width: 24, height: 24, border: '3px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: '0.75rem' }}></div>
@@ -48,19 +34,7 @@ const PageLoader = () => (
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem("umag_auth") === "true");
-  const [regulations, setRegulations] = useState(() => {
-    try {
-      const saved = localStorage.getItem("regulations");
-      return saved ? JSON.parse(saved) : INITIAL_REGULATIONS;
-    } catch (e) {
-      console.error("Error al leer regulations de localStorage:", e);
-      return INITIAL_REGULATIONS;
-    }
-  });
-  // La app abre en el panel de convenios: es la tarea diaria del encargado.
   const [activeView, setActiveView] = useState("conv-dashboard");
-  const [selectedRegulation, setSelectedRegulation] = useState(null);
-  // Convenios y solicitudes de transparencia (módulo nuevo)
   const [convenios, setConvenios] = useState(() => leerLocal());
   const [solicitudes, setSolicitudes] = useState(() => leerSolicitudesLocal());
   const [selectedConvenio, setSelectedConvenio] = useState(null);
@@ -68,51 +42,13 @@ function App() {
   // Convenios y solicitudes viven en Google Sheets; localStorage es el respaldo.
   const [modoDatos, setModoDatos] = useState(sheetsConfigurado() ? 'sheets' : 'local');
   const [toast, setToast] = useState(null);
-  const [dbMode, setDbMode] = useState(supabase ? 'supabase' : 'local');
-  const [isLoading, setIsLoading] = useState(!!supabase);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [normativas, setNormativas] = useState(() => {
-    try {
-      const saved = localStorage.getItem('umag_normativas');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Error al leer normativas de localStorage:", e);
-      return [];
-    }
-  });
 
   // Limpieza única de cualquier contraseña guardada por versiones previas de la app
   useEffect(() => {
     if (localStorage.getItem("umag_saved_pass") !== null) {
       localStorage.removeItem("umag_saved_pass");
     }
-  }, []);
-
-  // Cargar datos desde Supabase al inicio
-  useEffect(() => {
-    if (!supabase) return;
-    (async () => {
-      const seedResult = await supabaseSeedIfEmpty(INITIAL_REGULATIONS);
-      if (seedResult.error) {
-        setToast({ type: 'error', message: `No se pudo sembrar la BD: ${seedResult.error}` });
-      }
-      const { data, error } = await supabaseFetchAll();
-      if (data) {
-        setRegulations(data);
-        setDbMode('supabase');
-      } else {
-        setDbMode('local');
-        if (error) {
-          setToast({ type: 'error', message: `Conexión a BD falló (${error}). Usando datos locales.` });
-        }
-      }
-      setIsLoading(false);
-    })().catch(e => {
-      console.warn('Error inicializando Supabase:', e.message);
-      setDbMode('local');
-      setIsLoading(false);
-      setToast({ type: 'error', message: `Error inicializando BD: ${e.message}. Usando datos locales.` });
-    });
   }, []);
 
   // Cargar convenios y solicitudes desde la planilla de Google.
@@ -135,21 +71,9 @@ function App() {
     });
   }, []);
 
-  // Sincronizar con localStorage como backup
-  useEffect(() => {
-    try { localStorage.setItem("regulations", JSON.stringify(regulations)); }
-    catch (e) { console.warn('No se pudo guardar en localStorage:', e.message); }
-  }, [regulations]);
-
-  // Respaldo local de convenios y solicitudes (también cuando se usa Supabase)
+  // Respaldo local (también cuando se usa la planilla)
   useEffect(() => { guardarLocal(convenios); }, [convenios]);
   useEffect(() => { guardarSolicitudesLocal(solicitudes); }, [solicitudes]);
-
-  // Persist normativas to localStorage
-  useEffect(() => {
-    try { localStorage.setItem('umag_normativas', JSON.stringify(normativas)); }
-    catch (e) { console.warn('No se pudo guardar normativas en localStorage:', e.message); }
-  }, [normativas]);
 
   const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || 'umag2026';
   const [loginError, setLoginError] = useState('');
@@ -175,7 +99,6 @@ function App() {
       localStorage.removeItem("umag_remember");
       localStorage.removeItem("umag_saved_user");
     }
-    // Limpiar credenciales legacy que pudieron haberse guardado en versiones previas
     localStorage.removeItem("umag_saved_pass");
     sessionStorage.setItem("umag_auth", "true");
     sessionStorage.setItem("umag_user", loginUser.trim());
@@ -185,92 +108,9 @@ function App() {
   const handleLogout = () => {
     sessionStorage.removeItem("umag_auth");
     sessionStorage.removeItem("umag_user");
-    // Mantenemos el usuario si "Recordarme" está activo, pero nunca la contraseña
     setIsLoggedIn(false);
     setLoginPass('');
     setActiveView("conv-dashboard");
-  };
-
-  const handleSelectRegulation = (reg) => {
-    setSelectedRegulation(reg);
-    setActiveView("detail");
-  };
-
-  const handleSaveRegulation = async (updatedReg) => {
-    const previous = regulations.find(r => r.id === updatedReg.id);
-    setRegulations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
-    setSelectedRegulation(updatedReg);
-    if (dbMode === 'supabase') {
-      const ok = await supabaseUpsert(updatedReg);
-      if (!ok) {
-        // Rollback al estado anterior
-        if (previous) setRegulations(prev => prev.map(r => r.id === updatedReg.id ? previous : r));
-        setSelectedRegulation(previous || updatedReg);
-        setToast({ type: 'error', message: 'Error al guardar en la base de datos. Se revirtieron los cambios.' });
-        return;
-      }
-    }
-    setToast({ type: 'success', message: 'Reglamento guardado' });
-  };
-
-  const handleDeleteRegulation = async () => {
-    if (!selectedRegulation) return;
-    if (!window.confirm(`¿Estás seguro de eliminar "${selectedRegulation.nombre}"? Esta acción no se puede deshacer.`)) return;
-    if (dbMode === 'supabase') {
-      const ok = await supabaseDelete(selectedRegulation.id);
-      if (!ok) {
-        setToast({ type: 'error', message: 'Error al eliminar en la base de datos. Intenta nuevamente.' });
-        return;
-      }
-    }
-    setRegulations(prev => prev.filter(r => r.id !== selectedRegulation.id));
-    setActiveView("regulations");
-    setSelectedRegulation(null);
-    setToast({ type: 'success', message: 'Reglamento eliminado' });
-  };
-
-  const handleCreateRegulation = async (newReg) => {
-    if (dbMode === 'supabase') {
-      const created = await supabaseInsert(newReg);
-      if (created) {
-        setRegulations(prev => [...prev, created]);
-        setActiveView("regulations");
-        setToast({ type: 'success', message: 'Reglamento creado' });
-        return;
-      }
-      // Si Supabase falla, NO creamos el registro localmente para evitar IDs
-      // duplicados o inconsistencias al reconectarse. Informar al usuario.
-      setToast({ type: 'error', message: 'No se pudo crear el reglamento en la base de datos. Inténtalo nuevamente.' });
-      return;
-    }
-    // Modo local: generar ID seguro (basado en el máximo actual)
-    const maxId = regulations.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0);
-    const id = maxId + 1;
-    const created = { ...newReg, id, historial: [], adjuntos: [] };
-    setRegulations(prev => [...prev, created]);
-    setActiveView("regulations");
-    setToast({ type: 'success', message: 'Reglamento creado' });
-  };
-
-  const handleExport = () => {
-    const data = JSON.stringify(regulations, null, 2);
-    // Usar Blob URL evita límites de tamaño de data: URLs en navegadores
-    const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `reglamentos_${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    // Revocar después de un tick para permitir que el navegador inicie la descarga
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
-  const handleReset = () => {
-    setRegulations(INITIAL_REGULATIONS);
-    setActiveView("dashboard");
-    setToast({ type: 'success', message: 'Datos restablecidos' });
   };
 
   /* ---------------- Convenios institucionales ---------------- */
@@ -289,7 +129,7 @@ function App() {
 
   const handleCrearConvenio = async (nuevo) => {
     // El historial arranca con el ingreso, para que la trazabilidad esté
-    // completa desde el primer día (regla de negocio N°9).
+    // completa desde el primer día.
     const conEventoInicial = {
       ...nuevo,
       historial: [crearEvento(TIPOS_HISTORIAL.CREACION, 'Convenio ingresado al sistema', usuarioActual())],
@@ -496,14 +336,6 @@ function App() {
     setToast({ type: 'success', message: 'Solicitud eliminada' });
   };
 
-  const handleAddNormativa = (normativa) => {
-    setNormativas(prev => [...prev, normativa]);
-  };
-
-  const handleDeleteNormativa = (id) => {
-    setNormativas(prev => prev.filter(n => n.id !== id));
-  };
-
   if (!isLoggedIn) {
     return (
       <div className="login-page">
@@ -535,7 +367,6 @@ function App() {
         <div className="content">
           <div className="page-container">
             <Suspense fallback={<PageLoader />}>
-              {/* --- Módulo de Transparencia y Convenios --- */}
               {activeView === "conv-dashboard" && (
                 <ConveniosDashboard convenios={convenios} onSelectConvenio={handleSelectConvenio} onIrA={irA} />
               )}
@@ -587,36 +418,6 @@ function App() {
                   onBorrarConvenios={handleBorrarConvenios}
                   onCargarEjemplos={handleCargarEjemplos}
                   onBorrarEjemplos={handleBorrarEjemplos}
-                />
-              )}
-
-              {/* --- Módulo de Reglamentos (existente) --- */}
-              {activeView === "resumen" && <ResumenEjecutivo regulations={regulations} />}
-              {activeView === "dashboard" && <Dashboard regulations={regulations} onExport={handleExport} onReset={handleReset} />}
-              {activeView === "regulations" && <RegulationsList regulations={regulations} onSelectRegulation={handleSelectRegulation} onUpdateRegulation={handleSaveRegulation} />}
-              {activeView === "detail" && (selectedRegulation ? (
-                <RegulationDetail regulation={selectedRegulation} onBack={() => setActiveView("regulations")} onSave={handleSaveRegulation} onDelete={handleDeleteRegulation} />
-              ) : (
-                <div className="page-content"><p style={{ color: '#94a3b8' }}>Selecciona un reglamento desde la lista.</p><button className="btn btn-secondary" onClick={() => setActiveView("regulations")}>Ir a Reglamentos</button></div>
-              ))}
-              {activeView === "new" && (
-                <NewRegulation onCreate={handleCreateRegulation} onCancel={() => setActiveView("regulations")} />
-              )}
-              {activeView === "gantt" && (
-                <GanttView regulations={regulations} />
-              )}
-              {activeView === "documentos" && (
-                <DocumentosView regulations={regulations} onSelectRegulation={handleSelectRegulation} />
-              )}
-              {activeView === "plazos" && <PlazosList regulations={regulations} />}
-              {activeView === "normativa" && (
-                <Normativa
-                  regulations={regulations}
-                  normativas={normativas}
-                  onAddNormativa={handleAddNormativa}
-                  onDeleteNormativa={handleDeleteNormativa}
-                  onUpdateRegulation={handleSaveRegulation}
-                  showToast={setToast}
                 />
               )}
             </Suspense>

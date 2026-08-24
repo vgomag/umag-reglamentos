@@ -22,7 +22,7 @@ describe('sanitizeText', () => {
   });
 
   it('preserva texto normal', () => {
-    expect(sanitizeText('Reglamento de Facultades Art. 57')).toBe('Reglamento de Facultades Art. 57');
+    expect(sanitizeText('Convenio marco Art. 82')).toBe('Convenio marco Art. 82');
   });
 });
 

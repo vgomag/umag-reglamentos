@@ -1,9 +1,9 @@
 // Dominio de Convenios Institucionales.
 //
-// Base normativa: Reglamento de Tramitación de Convenios y Contratos
-// (Res. N°216/2019, reglamento #28 del listado de normativa) y Estatuto UMAG
-// Art. 82-86. El flujo de visación es secuencial pero NO rígido: según el
-// convenio, algunas unidades no participan y el orden puede variar.
+// Base normativa: Res. N°216/2019 sobre tramitación de convenios y contratos,
+// y Estatuto UMAG Art. 82-86. El flujo de visación es secuencial pero NO
+// rígido: según el convenio, algunas unidades no participan y el orden puede
+// variar.
 
 // Unidades/autoridades que pueden participar en la tramitación.
 export const UNIDADES = [
