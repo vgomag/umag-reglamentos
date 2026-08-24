@@ -265,6 +265,15 @@ Cuando la planilla no está configurada la situación es distinta: ahí
   (`VRAC_inicio`, `VRAC_estado`, …) en vez de JSON, para que la planilla siga
   siendo legible y editable a mano. Una unidad sin ningún dato se entiende como
   que no participa en ese convenio.
+- **Orden del flujo**: cada unidad tiene además una columna `_orden` con su
+  posición **en ese convenio**. Sin ella el flujo volvía siempre en el orden
+  fijo de `UNIDADES` y se perdía el que hubiera armado la ficha. `_orden` no
+  cuenta para decidir si la unidad participa: si contara, una unidad quitada del
+  flujo podría revivir por un orden que quedó suelto.
+- **Columnas nuevas**: cuando el script gana una columna, `hoja()` la agrega
+  **al final** de las planillas que ya existen, sin mover ni renombrar las
+  demás. Las filas anteriores quedan intactas y estrenan celdas vacías; el
+  script mapea por nombre de encabezado, no por posición.
 - **Historial**: una fila por evento, en su propia hoja. Es append-only mientras
   el registro existe; al eliminar un convenio o una solicitud se borran también
   sus filas de historial, para que no queden huérfanas ni sobrevivan datos del

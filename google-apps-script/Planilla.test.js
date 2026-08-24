@@ -30,10 +30,14 @@ function hojaFalsa(nombre) {
         const fila = filas[r - 1 + i] || [];
         return Array.from({ length: nCols }, (_, j) => (fila[c - 1 + j] ?? ''));
       }),
+      // Escribe celda por celda respetando la columna de inicio: la migración
+      // de encabezados escribe a la derecha de los que ya existen, y un mock
+      // que reemplazara la fila entera no la probaría de verdad.
       setValues: (valores) => {
         valores.forEach((v, i) => {
-          while (filas.length < r - 1 + i) filas.push([]);
-          filas[r - 1 + i] = v.slice();
+          const indice = r - 1 + i;
+          while (filas.length <= indice) filas.push([]);
+          v.forEach((valor, j) => { filas[indice][c - 1 + j] = valor; });
         });
       },
       setFontWeight: () => {},
@@ -68,7 +72,8 @@ function cargarScript() {
   const exportar = `; return {
     crearConvenio, actualizarConvenio, eliminarConvenio,
     crearSolicitud, eliminarSolicitud,
-    listarTodo, leerHoja, siguienteId, HOJA_HISTORIAL, HOJA_CONVENIOS,
+    listarTodo, leerHoja, hoja, siguienteId, encabezadosConvenios,
+    HOJA_HISTORIAL, HOJA_CONVENIOS,
   };`;
   // eslint-disable-next-line no-new-func
   const api = new Function(...Object.keys(servicios), codigo + exportar)(...Object.values(servicios));
@@ -196,5 +201,115 @@ describe('borrado del historial', () => {
     });
 
     expect(gs.listarTodo().convenios[0].historial.map(h => h.id)).toEqual(['ev-1', 'ev-2']);
+  });
+});
+
+describe('orden del flujo', () => {
+  const flujo = (unidades) => unidades.map((unidad, orden) => ({
+    unidad, orden, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '',
+  }));
+
+  it('sobrevive al guardado y a la relectura', () => {
+    // La ficha permite reordenar la visación; antes ese orden volvía siempre al
+    // fijo de UNIDADES en la siguiente carga.
+    gs.crearConvenio({ nombre: 'Convenio A', etapas: flujo(['RECTORIA', 'VRAF', 'VRAC']), historial: [] });
+
+    const [leido] = gs.listarTodo().convenios;
+    expect(leido.etapas.map(e => e.unidad)).toEqual(['RECTORIA', 'VRAF', 'VRAC']);
+  });
+
+  it('un reordenamiento posterior también queda guardado', () => {
+    gs.crearConvenio({ nombre: 'Convenio A', etapas: flujo(['VRAC', 'VRAF', 'PRO']), historial: [] });
+
+    gs.actualizarConvenio({
+      id: 1, nombre: 'Convenio A', etapas: flujo(['PRO', 'VRAC', 'VRAF']), historial: [],
+    });
+
+    expect(gs.listarTodo().convenios[0].etapas.map(e => e.unidad)).toEqual(['PRO', 'VRAC', 'VRAF']);
+  });
+
+  it('quitar una unidad no descoloca a las demás', () => {
+    gs.crearConvenio({ nombre: 'Convenio A', etapas: flujo(['RECTORIA', 'VRAF', 'VRAC']), historial: [] });
+    gs.actualizarConvenio({
+      id: 1, nombre: 'Convenio A', etapas: flujo(['RECTORIA', 'VRAC']), historial: [],
+    });
+
+    const [leido] = gs.listarTodo().convenios;
+    expect(leido.etapas.map(e => e.unidad)).toEqual(['RECTORIA', 'VRAC']);
+  });
+});
+
+describe('migración de planillas ya existentes', () => {
+  // Reproduce una hoja escrita por la versión anterior del script: los mismos
+  // encabezados menos las columnas de orden, más una fila de datos.
+  const encabezadosViejos = () => gs.encabezadosConvenios().filter(c => !c.endsWith('_orden'));
+
+  const planillaVieja = (valores = {}) => {
+    gs.hoja(gs.HOJA_CONVENIOS);                 // crea la hoja
+    const h = gs.hojas.Convenios;
+    const viejos = encabezadosViejos();
+    h.filas.length = 0;                          // y se reescribe como la vieja
+    h.filas.push(viejos.slice());
+    const fila = viejos.map(() => '');
+    Object.entries(valores).forEach(([col, v]) => { fila[viejos.indexOf(col)] = v; });
+    h.filas.push(fila);
+    return { h, viejos };
+  };
+
+  it('agrega las columnas que faltan sin tocar las que ya están', () => {
+    const { h, viejos } = planillaVieja({ id: 1, nombre: 'Convenio antiguo', VRAC_estado: 'Aprobado' });
+
+    gs.hoja(gs.HOJA_CONVENIOS); // dispara la migración
+
+    const encabezados = h.filas[0];
+    expect(encabezados.slice(0, viejos.length)).toEqual(viejos); // ninguna se movió
+    gs.encabezadosConvenios().forEach(c => expect(encabezados).toContain(c));
+  });
+
+  it('la fila de datos anterior queda intacta', () => {
+    const { h, viejos } = planillaVieja({ id: 1, nombre: 'Convenio antiguo', VRAC_estado: 'Aprobado' });
+    const filaAntes = h.filas[1].slice();
+
+    gs.hoja(gs.HOJA_CONVENIOS);
+
+    expect(h.filas[1].slice(0, viejos.length)).toEqual(filaAntes);
+  });
+
+  it('los datos anteriores se siguen leyendo, con el orden por defecto', () => {
+    planillaVieja({
+      id: 1, nombre: 'Convenio antiguo',
+      VRAF_estado: 'En Revisión', VRAC_estado: 'Aprobado',
+    });
+
+    const [leido] = gs.listarTodo().convenios;
+
+    expect(leido.nombre).toBe('Convenio antiguo');
+    // Sin columna de orden se cae al flujo por defecto: VRAC (0) antes de VRAF (3).
+    expect(leido.etapas.map(e => e.unidad)).toEqual(['VRAC', 'VRAF']);
+    expect(leido.etapas.map(e => e.orden)).toEqual([0, 3]);
+  });
+
+  it('un convenio guardado después de migrar ya conserva su orden', () => {
+    planillaVieja({ id: 1, nombre: 'Convenio antiguo', VRAC_estado: 'Aprobado' });
+
+    gs.actualizarConvenio({
+      id: 1, nombre: 'Convenio antiguo', historial: [],
+      etapas: [
+        { unidad: 'PRO', orden: 0, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+        { unidad: 'VRAC', orden: 1, fechaInicio: '', fechaTermino: '', estado: 'Aprobado', observaciones: '' },
+      ],
+    });
+
+    expect(gs.listarTodo().convenios[0].etapas.map(e => e.unidad)).toEqual(['PRO', 'VRAC']);
+  });
+
+  it('no vuelve a agregar columnas si ya están todas', () => {
+    gs.hoja(gs.HOJA_CONVENIOS);
+    const anchoInicial = gs.hojas.Convenios.filas[0].length;
+
+    gs.hoja(gs.HOJA_CONVENIOS);
+    gs.hoja(gs.HOJA_CONVENIOS);
+
+    expect(gs.hojas.Convenios.filas[0].length).toBe(anchoInicial);
   });
 });
