@@ -210,3 +210,132 @@ describe('conversión de valores', () => {
     expect(gs.aTexto('  espacios  ')).toBe('espacios');
   });
 });
+
+describe('control de acceso', () => {
+  // verificarIdentidad llama a Google, así que se simula UrlFetchApp para
+  // probar la lógica de autorización sin salir a la red.
+  const cargarConAcceso = ({ respuestaGoogle, autorizados, clientId }) => {
+    const servicios2 = {
+      ...servicios,
+      // verificarIdentidad calcula un hash del token para la clave de cache.
+      Utilities: {
+        ...servicios.Utilities,
+        DigestAlgorithm: { SHA_256: 'SHA_256' },
+        computeDigest: (_alg, texto) => Array.from(String(texto)).map(c => c.charCodeAt(0)),
+        base64EncodeWebSafe: (bytes) => bytes.join('-'),
+      },
+      UrlFetchApp: {
+        fetch: () => ({
+          getResponseCode: () => respuestaGoogle.codigo,
+          getContentText: () => JSON.stringify(respuestaGoogle.cuerpo || {}),
+        }),
+      },
+      CacheService: { getScriptCache: () => ({ get: () => null, put() {} }) },
+    };
+    let fuente = codigo;
+    if (autorizados !== undefined) {
+      fuente = fuente.replace(/var USUARIOS_AUTORIZADOS = \[[\s\S]*?\];/,
+        `var USUARIOS_AUTORIZADOS = ${JSON.stringify(autorizados)};`);
+    }
+    if (clientId !== undefined) {
+      fuente = fuente.replace(/var CLIENT_ID = '[^']*';/, `var CLIENT_ID = '${clientId}';`);
+    }
+    // eslint-disable-next-line no-new-func
+    return new Function(...Object.keys(servicios2),
+      fuente + '; return { verificarIdentidad };')(...Object.values(servicios2));
+  };
+
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const okGoogle = (email, extra = {}) => ({
+    codigo: 200,
+    cuerpo: { aud: CLIENT, email, email_verified: 'true', ...extra },
+  });
+
+  it('deja pasar a una cuenta de la lista', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com'),
+      autorizados: ['veronica@gmail.com', 'camilo@gmail.com'], clientId: CLIENT,
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(true);
+    expect(r.email).toBe('camilo@gmail.com');
+  });
+
+  it('rechaza una cuenta que no está en la lista', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('ajeno@gmail.com'),
+      autorizados: ['veronica@gmail.com'], clientId: CLIENT,
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('no está autorizada');
+  });
+
+  it('no distingue mayúsculas ni espacios en los correos', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com'),
+      autorizados: ['  Camilo@Gmail.com  '], clientId: CLIENT,
+    });
+    expect(gs2.verificarIdentidad('token').ok).toBe(true);
+  });
+
+  it('rechaza un token emitido para otra aplicación', () => {
+    // Sin esta comprobación, un token de cualquier otro sitio con Google
+    // serviría para entrar aquí.
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: { codigo: 200, cuerpo: { aud: 'otra-app.apps.googleusercontent.com', email: 'camilo@gmail.com', email_verified: 'true' } },
+      autorizados: ['camilo@gmail.com'], clientId: CLIENT,
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('no corresponde a esta aplicación');
+  });
+
+  it('rechaza una cuenta con el correo sin verificar', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com', { email_verified: 'false' }),
+      autorizados: ['camilo@gmail.com'], clientId: CLIENT,
+    });
+    expect(gs2.verificarIdentidad('token').ok).toBe(false);
+  });
+
+  it('rechaza un token que Google no reconoce', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: { codigo: 400, cuerpo: {} },
+      autorizados: ['camilo@gmail.com'], clientId: CLIENT,
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('Sesión expirada');
+  });
+
+  it('rechaza cuando no se envía token', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com'),
+      autorizados: ['camilo@gmail.com'], clientId: CLIENT,
+    });
+    expect(gs2.verificarIdentidad('').ok).toBe(false);
+    expect(gs2.verificarIdentidad(null).ok).toBe(false);
+  });
+
+  it('con la lista vacía no entra nadie, y lo dice', () => {
+    // Falla cerrado: ante una configuración incompleta, nadie pasa.
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com'), autorizados: [], clientId: CLIENT,
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('USUARIOS_AUTORIZADOS');
+  });
+
+  it('avisa si falta configurar el ID de cliente', () => {
+    const gs2 = cargarConAcceso({
+      respuestaGoogle: okGoogle('camilo@gmail.com'),
+      autorizados: ['camilo@gmail.com'],
+      clientId: 'PEGA-AQUI-TU-ID-DE-CLIENTE.apps.googleusercontent.com',
+    });
+    const r = gs2.verificarIdentidad('token');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('CLIENT_ID');
+  });
+});
