@@ -117,6 +117,10 @@ export async function montarBotonGoogle(contenedor, onCredencial) {
     auto_select: false,
     cancel_on_tap_outside: true,
   });
+  // Google AÑADE su botón al contenedor, no lo reemplaza: si esta función se
+  // llamara dos veces sobre el mismo nodo quedarían dos botones. Vaciarlo
+  // primero hace que montar de nuevo sea inofensivo.
+  contenedor.innerHTML = '';
   id.renderButton(contenedor, {
     type: 'standard',
     theme: 'filled_blue',
