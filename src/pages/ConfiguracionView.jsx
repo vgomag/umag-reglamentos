@@ -11,6 +11,7 @@ import { listarFeriados, hoyISO } from '../utils/fechas';
 import { esRegistroEjemplo } from '../config/datosEjemplo';
 import { sheetsConfigurado, probarConexion, SHEET_URL, DRIVE_FOLDER_URL } from '../config/sheetsStore';
 import { etiquetaModo } from '../config/modoDatos';
+import { compararVersionScript, VERSION_SCRIPT_ESPERADA } from '../config/versionScript';
 import { usuarioDeSesion } from '../config/auth';
 
 /**
@@ -41,8 +42,10 @@ export default function ConfiguracionView({
 
   const comprobar = async () => {
     setPrueba({ estado: 'probando' });
-    const { ok, error } = await probarConexion();
-    setPrueba({ estado: ok ? 'ok' : 'error', error });
+    const { ok, error, version } = await probarConexion();
+    // La versión llega incluso cuando la planilla rechaza la petición: saber
+    // qué código está publicado es justamente lo que hace falta al diagnosticar.
+    setPrueba({ estado: ok ? 'ok' : 'error', error, version: compararVersionScript(version) });
   };
 
   const respaldar = () => {
@@ -130,6 +133,27 @@ export default function ConfiguracionView({
               </p>
               {prueba?.estado === 'ok' && <p className="ayuda-campo">✓ La planilla responde correctamente.</p>}
               {prueba?.estado === 'error' && <p className="ayuda-campo">✕ {prueba.error}</p>}
+              {prueba?.version && (
+                prueba.version.alDia
+                  ? <p className="ayuda-campo">✓ {prueba.version.mensaje}</p>
+                  : (
+                    <div className="form-error" style={{ marginTop: '0.5rem' }} role="alert">
+                      ⚠️ {prueba.version.mensaje}
+                    </div>
+                  )
+              )}
+              <table className="tabla-plazos" style={{ marginTop: '0.75rem' }}>
+                <tbody>
+                  <tr>
+                    <th>Versión del script que espera esta app</th>
+                    <td>{VERSION_SCRIPT_ESPERADA}</td>
+                  </tr>
+                  <tr>
+                    <th>Versión publicada en la planilla</th>
+                    <td>{prueba?.version?.publicada || (prueba ? 'No informada' : 'Sin comprobar')}</td>
+                  </tr>
+                </tbody>
+              </table>
             </>
           ) : (
             <p className="nota-seccion">

@@ -204,6 +204,21 @@ Navegador (Netlify)  ──HTTP──▶  Apps Script (/exec)  ──▶  Google
         └── localStorage (copia local, permite consultar si la planilla falla)
 ```
 
+### Saber qué versión del script está publicada
+
+Guardar el código en el editor de Apps Script **no** actualiza la aplicación
+web: hay que publicar una versión nueva. Son dos pasos y es fácil hacer sólo el
+primero, con lo que el editor muestra el código nuevo mientras la planilla
+sigue respondiendo con el viejo, sin ninguna señal.
+
+Por eso `Codigo.gs` declara un `VERSION_SCRIPT` que viaja en cada respuesta
+—también en los rechazos, que es cuando más falta hace— y **Configuración →
+🔌 Comprobar conexión** lo compara con lo que espera el sitio.
+
+Al cambiar `Codigo.gs`: sube `VERSION_SCRIPT` y el `VERSION_SCRIPT_ESPERADA` de
+[`src/config/versionScript.js`](src/config/versionScript.js). Si subes uno solo,
+[`versionScript.test.js`](src/config/versionScript.test.js) falla.
+
 ### Si la planilla no responde
 
 La app queda en **sin conexión**: se puede seguir consultando la copia local,

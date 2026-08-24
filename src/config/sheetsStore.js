@@ -42,7 +42,12 @@ async function fetchConTimeout(url, opciones = {}) {
   }
 }
 
-// Lee la respuesta del script, que siempre tiene forma { ok, datos | error }.
+// Lee la respuesta del script, que siempre tiene forma
+// { version, ok, datos | error }.
+//
+// La versión viaja también en los rechazos, así que se conserva en el error:
+// saber qué versión está publicada es justamente lo que hace falta cuando algo
+// no funciona.
 async function leerRespuesta(respuesta, op) {
   if (!respuesta.ok) {
     throw new Error(`HTTP ${respuesta.status} ${respuesta.statusText || ''}`.trim());
@@ -56,14 +61,16 @@ async function leerRespuesta(respuesta, op) {
     // sesión de Google pide iniciar sesión: es el error más habitual al montarlo.
     throw new Error('La respuesta no es JSON. Revisa que la implementación esté publicada con acceso "Cualquier usuario".');
   }
+  const version = (cuerpo.version ?? '').toString();
   if (!cuerpo.ok) {
     const error = new Error(cuerpo.error || 'Error desconocido del script');
     // El script marca así los rechazos por identidad, para que la app pueda
     // pedir que se vuelva a entrar en vez de mostrar un error cualquiera.
     if (cuerpo.noAutorizado) error.noAutorizado = true;
+    error.version = version;
     throw error;
   }
-  return cuerpo.datos;
+  return { datos: cuerpo.datos, version };
 }
 
 /**
@@ -82,11 +89,13 @@ async function enviar(accion, entidad, datos) {
       body: JSON.stringify({ token: SHEETS_TOKEN, idToken: leerSesion(), accion, entidad, datos }),
       redirect: 'follow',
     });
-    return { ok: true, datos: await leerRespuesta(respuesta, `${accion}:${entidad}`) };
+    // Ojo: el parámetro de esta función también se llama `datos`.
+    const respondido = await leerRespuesta(respuesta, `${accion}:${entidad}`);
+    return { ok: true, datos: respondido.datos, version: respondido.version };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError(`${accion}:${entidad}`, mensaje);
-    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
+    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
   }
 }
 
@@ -96,18 +105,19 @@ export async function fetchTodo() {
     const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_TOKEN)}`
       + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
     const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
-    const datos = await leerRespuesta(respuesta, 'listar');
+    const { datos, version } = await leerRespuesta(respuesta, 'listar');
     return {
       data: {
         convenios: Array.isArray(datos?.convenios) ? datos.convenios : [],
         solicitudes: Array.isArray(datos?.solicitudes) ? datos.solicitudes : [],
       },
       error: null,
+      version,
     };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError('listar', mensaje);
-    return { data: null, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
+    return { data: null, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
   }
 }
 
@@ -118,12 +128,13 @@ export async function probarConexion() {
     const url = `${SHEETS_API_URL}?accion=ping&token=${encodeURIComponent(SHEETS_TOKEN)}`
       + `&idToken=${encodeURIComponent(leerSesion() || '')}`;
     const respuesta = await fetchConTimeout(url, { method: 'GET', redirect: 'follow' });
-    await leerRespuesta(respuesta, 'ping');
-    return { ok: true, error: null };
+    const { datos, version } = await leerRespuesta(respuesta, 'ping');
+    // La versión viene en el sobre; el ping la repite dentro por comodidad.
+    return { ok: true, error: null, version: datos?.version || version };
   } catch (e) {
     const mensaje = e.name === 'AbortError' ? 'La planilla no respondió a tiempo' : e.message;
     registrarError('ping', mensaje);
-    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado) };
+    return { ok: false, error: mensaje, noAutorizado: Boolean(e.noAutorizado), version: e.version || '' };
   }
 }
 
