@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
@@ -13,6 +13,10 @@ import {
 } from './config/sheetsStore';
 import { normalizarSolicitud } from './config/transparencia';
 import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
+import {
+  googleConfigurado, montarBotonGoogle, guardarSesion, leerSesion,
+  cerrarSesion, usuarioDeSesion,
+} from './config/auth';
 
 // Lazy loading de páginas — reduce el bundle inicial
 const ConveniosDashboard = lazy(() => import('./pages/ConveniosDashboard'));
@@ -33,7 +37,11 @@ const PageLoader = () => (
 );
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem("umag_auth") === "true");
+  // La sesión es el ID token de Google. Si caducó, leerSesion() devuelve null
+  // y la app vuelve sola a la pantalla de acceso.
+  const [sesion, setSesion] = useState(() => leerSesion());
+  const usuario = usuarioDeSesion(sesion);
+  const isLoggedIn = Boolean(sesion);
   const [activeView, setActiveView] = useState("conv-dashboard");
   const [convenios, setConvenios] = useState(() => leerLocal());
   const [solicitudes, setSolicitudes] = useState(() => leerSolicitudesLocal());
@@ -44,23 +52,25 @@ function App() {
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Limpieza única de cualquier contraseña guardada por versiones previas de la app
+  // Limpieza de los restos del acceso por contraseña de versiones anteriores.
   useEffect(() => {
-    if (localStorage.getItem("umag_saved_pass") !== null) {
-      localStorage.removeItem("umag_saved_pass");
-    }
+    ['umag_saved_pass', 'umag_saved_user', 'umag_remember'].forEach(k => localStorage.removeItem(k));
+    sessionStorage.removeItem('umag_auth');
+    sessionStorage.removeItem('umag_user');
   }, []);
 
   // Cargar convenios y solicitudes desde la planilla de Google.
   // Si falla, se conserva lo que haya en localStorage y se avisa.
   useEffect(() => {
-    if (!sheetsConfigurado()) return;
+    if (!sheetsConfigurado() || !sesion) return;
     (async () => {
-      const { data, error } = await fetchTodo();
+      const { data, error, noAutorizado } = await fetchTodo();
       if (data) {
         setConvenios(data.convenios.map(normalizarConvenio).filter(Boolean));
         setSolicitudes(data.solicitudes.map(normalizarSolicitud).filter(Boolean));
         setModoDatos('sheets');
+      } else if (noAutorizado) {
+        manejarNoAutorizado(error);
       } else if (error) {
         setModoDatos('local');
         setToast({ type: 'error', message: `No se pudo leer la planilla (${error}). Usando datos locales.` });
@@ -69,53 +79,39 @@ function App() {
       setModoDatos('local');
       console.warn('Error cargando desde la planilla:', e.message);
     });
-  }, []);
+  }, [sesion]);
 
   // Respaldo local (también cuando se usa la planilla)
   useEffect(() => { guardarLocal(convenios); }, [convenios]);
   useEffect(() => { guardarSolicitudesLocal(solicitudes); }, [solicitudes]);
 
-  const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || 'umag2026';
-  const [loginError, setLoginError] = useState('');
-  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("umag_remember") === "true");
-  const [loginUser, setLoginUser] = useState(() => localStorage.getItem("umag_saved_user") || 'admin');
-  const [loginPass, setLoginPass] = useState('');
+  const [errorAcceso, setErrorAcceso] = useState('');
 
-  const handleLogin = () => {
-    if (!loginUser.trim()) {
-      setLoginError('Ingresa un nombre de usuario');
-      return;
-    }
-    if (loginPass !== AUTH_PASSWORD) {
-      setLoginError('Contraseña incorrecta');
-      return;
-    }
-    setLoginError('');
-    // "Recordarme" sólo guarda el usuario y bandera, nunca la contraseña
-    if (rememberMe) {
-      localStorage.setItem("umag_remember", "true");
-      localStorage.setItem("umag_saved_user", loginUser.trim());
-    } else {
-      localStorage.removeItem("umag_remember");
-      localStorage.removeItem("umag_saved_user");
-    }
-    localStorage.removeItem("umag_saved_pass");
-    sessionStorage.setItem("umag_auth", "true");
-    sessionStorage.setItem("umag_user", loginUser.trim());
-    setIsLoggedIn(true);
+  const handleLogin = (idToken) => {
+    guardarSesion(idToken);
+    setErrorAcceso('');
+    setSesion(idToken);
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("umag_auth");
-    sessionStorage.removeItem("umag_user");
-    setIsLoggedIn(false);
-    setLoginPass('');
+    cerrarSesion();
+    setSesion(null);
     setActiveView("conv-dashboard");
+  };
+
+  // El Apps Script rechaza a quien no esté en su lista de autorizados. Cuando
+  // eso pasa, no sirve reintentar: hay que cerrar la sesión y avisar.
+  const manejarNoAutorizado = (error) => {
+    cerrarSesion();
+    setSesion(null);
+    setErrorAcceso(error);
   };
 
   /* ---------------- Convenios institucionales ---------------- */
 
-  const usuarioActual = () => sessionStorage.getItem("umag_user") || 'Usuario UMAG';
+  // El historial guarda el correo verificado por Google: es la identidad real
+  // de quien hizo el cambio, no un nombre que alguien escribió a mano.
+  const usuarioActual = () => usuario?.email || 'desconocido';
 
   const irA = (vista, filtros = null) => {
     setFiltrosConvenios(filtros);
@@ -337,30 +333,12 @@ function App() {
   };
 
   if (!isLoggedIn) {
-    return (
-      <div className="login-page">
-        <form className="login-card" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
-          <div className="login-logo">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          </div>
-          <h2 className="login-title">UMAG</h2>
-          <p className="login-subtitle">Transparencia</p>
-          <input type="text" className="login-input" placeholder="Usuario" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} autoComplete="username" />
-          <input type="password" className="login-input" placeholder="Contraseña" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} autoComplete="current-password" />
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
-            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', cursor: 'pointer' }} />
-            Recordar mi usuario
-          </label>
-          {loginError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{loginError}</div>}
-          <button type="submit" className="login-button">Iniciar Sesión</button>
-        </form>
-      </div>
-    );
+    return <PantallaAcceso onLogin={handleLogin} error={errorAcceso} />;
   }
 
   return (
     <div className="app-wrapper">
-      <Header userName={sessionStorage.getItem("umag_user") || "Usuario UMAG"} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Header userName={usuario?.nombre || usuario?.email || "Usuario"} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
         <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
         <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }} sidebarOpen={sidebarOpen} />
@@ -428,5 +406,53 @@ function App() {
     </div>
   );
 }
+
+/**
+ * Pantalla de acceso. El botón lo dibuja Google, así que hay que montarlo
+ * sobre un nodo real del DOM una vez que la librería cargó.
+ */
+function PantallaAcceso({ onLogin, error }) {
+  const contenedorBoton = useRef(null);
+  const [errorCarga, setErrorCarga] = useState('');
+
+  useEffect(() => {
+    if (!googleConfigurado() || !contenedorBoton.current) return;
+    let vigente = true;
+    montarBotonGoogle(contenedorBoton.current, (idToken) => {
+      if (vigente) onLogin(idToken);
+    }).catch(e => { if (vigente) setErrorCarga(e.message); });
+    return () => { vigente = false; };
+  }, [onLogin]);
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <h2 className="login-title">UMAG</h2>
+        <p className="login-subtitle">Transparencia</p>
+
+        {googleConfigurado() ? (
+          <>
+            <div ref={contenedorBoton} className="login-google"></div>
+            <p className="login-nota">
+              El acceso está restringido a las cuentas autorizadas.
+            </p>
+          </>
+        ) : (
+          <div className="login-error">
+            Falta configurar <code>VITE_GOOGLE_CLIENT_ID</code>. Sin ese dato no
+            es posible iniciar sesión. Revisa las variables de entorno en Netlify.
+          </div>
+        )}
+
+        {error && <div className="login-error">{error}</div>}
+        {errorCarga && <div className="login-error">{errorCarga}</div>}
+      </div>
+    </div>
+  );
+}
+
 
 export default App;
