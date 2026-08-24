@@ -4,10 +4,18 @@
 import {
   PLAZOS_LEY_20285, ESTADOS_SOLICITUD_CERRADOS,
 } from '../config/transparencia';
-import { sumarDiasHabiles, diasHabilesHasta, esFechaValida, hoyISO } from './fechas';
+import {
+  sumarDiasHabiles, diasHabilesHasta, esFechaValida, hoyISO,
+  feriadosCubrenRango, ultimoAnioConFeriados,
+} from './fechas';
 
 // Umbral (en días hábiles) para marcar la solicitud como próxima a vencer.
 export const DIAS_HABILES_ALERTA = 5;
+
+export const AVISO_FERIADOS_INCOMPLETOS =
+  'Este plazo cae en un año para el que la tabla de feriados está incompleta. '
+  + 'Los feriados que falten se contaron como días hábiles, así que la fecha real '
+  + 'puede ser posterior a la que se muestra: verifícala antes de responder.';
 
 export function solicitudCerrada(solicitud) {
   return ESTADOS_SOLICITUD_CERRADOS.includes(solicitud?.estado);
@@ -43,22 +51,46 @@ export function fechaTopeAmparo(solicitud) {
   return sumarDiasHabiles(referencia, PLAZOS_LEY_20285.AMPARO.dias);
 }
 
+/**
+ * ¿El cálculo de este plazo se apoyó sólo en años cuyos feriados conocemos?
+ *
+ * Si devuelve false la fecha calculada NO es de fiar: los feriados que la tabla
+ * no tiene se contaron como hábiles, así que el vencimiento real es igual o
+ * posterior al que muestra la app. Se marca en pantalla en vez de disimularlo.
+ */
+export function plazoConFeriadosCompletos(solicitud) {
+  const vencimiento = fechaVencimiento(solicitud);
+  if (!vencimiento) return true;
+  return feriadosCubrenRango(solicitud?.fechaIngreso, vencimiento);
+}
+
+// Año hasta el que la app sabe contar días hábiles. Lo usa Configuración para
+// avisar con tiempo de que hay que cargar los feriados del año siguiente.
+export function anioLimiteDeCalculo() {
+  return ultimoAnioConFeriados();
+}
+
 // Semáforo equivalente al de convenios, pero contado en días hábiles.
 export function infoPlazoSolicitud(solicitud, referencia = hoyISO()) {
   const vencimiento = fechaVencimiento(solicitud);
+  // Se calcula siempre: importa igual si la solicitud está cerrada, porque el
+  // plazo de amparo del solicitante se cuenta desde esta misma fecha.
+  const feriadosIncompletos = !plazoConFeriadosCompletos(solicitud);
+  const info = (datos) => ({ ...datos, feriadosIncompletos });
+
   if (solicitudCerrada(solicitud)) {
-    return { key: 'finalizado', icono: '⚫', label: 'Cerrada', color: '#64748b', vencimiento, diasHabiles: null };
+    return info({ key: 'finalizado', icono: '⚫', label: 'Cerrada', color: '#64748b', vencimiento, diasHabiles: null });
   }
   if (!vencimiento) {
-    return { key: 'sin-plazo', icono: '🔵', label: 'Sin fecha de ingreso', color: '#3b82f6', vencimiento: '', diasHabiles: null };
+    return info({ key: 'sin-plazo', icono: '🔵', label: 'Sin fecha de ingreso', color: '#3b82f6', vencimiento: '', diasHabiles: null });
   }
   const dias = diasHabilesHasta(vencimiento, referencia);
   if (dias === null) {
-    return { key: 'sin-plazo', icono: '🔵', label: 'Sin plazo calculable', color: '#3b82f6', vencimiento, diasHabiles: null };
+    return info({ key: 'sin-plazo', icono: '🔵', label: 'Sin plazo calculable', color: '#3b82f6', vencimiento, diasHabiles: null });
   }
-  if (dias < 0) return { key: 'vencido', icono: '🔴', label: 'Plazo vencido', color: '#ef4444', vencimiento, diasHabiles: dias };
-  if (dias <= DIAS_HABILES_ALERTA) return { key: 'por-vencer', icono: '🟡', label: 'Próximo a vencer', color: '#f59e0b', vencimiento, diasHabiles: dias };
-  return { key: 'en-plazo', icono: '🟢', label: 'En plazo', color: '#10b981', vencimiento, diasHabiles: dias };
+  if (dias < 0) return info({ key: 'vencido', icono: '🔴', label: 'Plazo vencido', color: '#ef4444', vencimiento, diasHabiles: dias });
+  if (dias <= DIAS_HABILES_ALERTA) return info({ key: 'por-vencer', icono: '🟡', label: 'Próximo a vencer', color: '#f59e0b', vencimiento, diasHabiles: dias });
+  return info({ key: 'en-plazo', icono: '🟢', label: 'En plazo', color: '#10b981', vencimiento, diasHabiles: dias });
 }
 
 export function textoPlazoSolicitud(solicitud, referencia = hoyISO()) {

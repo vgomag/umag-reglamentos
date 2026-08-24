@@ -282,11 +282,31 @@ function buscarFila(nombreHoja, id) {
   return -1;
 }
 
+/**
+ * Id nuevo para una hoja. El contador es MONOTÓNICO: nunca vuelve atrás,
+ * aunque se borren filas.
+ *
+ * Con el máximo de la hoja + 1 bastaría si nadie borrara nada, pero al borrar
+ * el registro de id más alto ese id quedaba libre y el siguiente que se creara
+ * lo reutilizaba, heredando el historial del borrado (que se agrupa por
+ * "entidad:id"). Por eso el último id entregado se recuerda aparte.
+ *
+ * Se toma el mayor entre lo recordado y lo que hay en la hoja, para que el
+ * contador siga siendo correcto en planillas anteriores a este cambio y si
+ * alguien agrega filas a mano.
+ */
 function siguienteId(nombreHoja) {
   var datos = leerHoja(nombreHoja);
   var max = 0;
   datos.filas.forEach(function (f) { max = Math.max(max, Number(f[0]) || 0); });
-  return max + 1;
+
+  var props = PropertiesService.getScriptProperties();
+  var clave = 'ultimo_id_' + nombreHoja;
+  var recordado = Number(props.getProperty(clave)) || 0;
+
+  var siguiente = Math.max(max, recordado) + 1;
+  props.setProperty(clave, String(siguiente));
+  return siguiente;
 }
 
 function guardarHistorial(entidad, refId, eventos) {
@@ -314,6 +334,30 @@ function guardarHistorial(entidad, refId, eventos) {
   }
 }
 
+/**
+ * Borra las filas de historial de un registro.
+ *
+ * El historial es append-only mientras el registro existe, pero cuando el
+ * convenio o la solicitud se elimina hay que llevarse su rastro: si quedara
+ * huérfano, seguiría apareciendo bajo la clave "entidad:id" y se lo encontraría
+ * cualquier registro que llegara a ocupar ese id. Además, el historial de una
+ * solicitud contiene datos del solicitante que no deben sobrevivir al borrado.
+ */
+function eliminarHistorial(entidad, refId) {
+  var h = hoja(HOJA_HISTORIAL);
+  var datos = leerHoja(HOJA_HISTORIAL);
+  var idx = {};
+  datos.encabezados.forEach(function (c, i) { idx[c] = i; });
+
+  // De abajo hacia arriba: borrar una fila desplaza a todas las de abajo.
+  for (var i = datos.filas.length - 1; i >= 0; i--) {
+    var f = datos.filas[i];
+    if (aTexto(f[idx.entidad]) === entidad && String(f[idx.ref_id]) === String(refId)) {
+      h.deleteRow(i + 2); // +2: encabezado y base 1
+    }
+  }
+}
+
 function crearConvenio(datos) {
   var h = hoja(HOJA_CONVENIOS);
   var encabezados = leerHoja(HOJA_CONVENIOS).encabezados;
@@ -336,6 +380,7 @@ function actualizarConvenio(datos) {
 function eliminarConvenio(id) {
   var fila = buscarFila(HOJA_CONVENIOS, id);
   if (fila !== -1) hoja(HOJA_CONVENIOS).deleteRow(fila);
+  eliminarHistorial('convenio', id);
   return { id: id };
 }
 
@@ -361,6 +406,7 @@ function actualizarSolicitud(datos) {
 function eliminarSolicitud(id) {
   var fila = buscarFila(HOJA_SOLICITUDES, id);
   if (fila !== -1) hoja(HOJA_SOLICITUDES).deleteRow(fila);
+  eliminarHistorial('solicitud', id);
   return { id: id };
 }
 

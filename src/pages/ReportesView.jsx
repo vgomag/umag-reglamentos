@@ -7,12 +7,7 @@ import {
 } from '../utils/conveniosLogic';
 import { resumenSolicitudes } from '../utils/transparenciaLogic';
 import { formatFecha, duracionDias, hoyISO } from '../utils/fechas';
-
-// Escapa un valor para CSV (comillas dobles y separador).
-function csvCampo(valor) {
-  const s = valor === null || valor === undefined ? '' : String(valor);
-  return `"${s.replace(/"/g, '""')}"`;
-}
+import { generarCSV } from '../utils/csv';
 
 function descargar(nombre, contenido, mime) {
   const blob = new Blob([contenido], { type: `${mime};charset=utf-8` });
@@ -70,9 +65,7 @@ export default function ReportesView({ convenios, solicitudes = [] }) {
       etiquetaUbicacion(c), progresoConvenio(c), SEMAFORO[estadoPlazo(c)]?.label || '',
       etapasActivas(c).length, (c.observaciones || '').replace(/\s+/g, ' '),
     ]);
-    // BOM UTF-8 para que Excel en Windows respete los acentos.
-    const csv = '﻿' + [encabezados, ...filas].map(f => f.map(csvCampo).join(';')).join('\r\n');
-    descargar(`convenios_${hoyISO()}.csv`, csv, 'text/csv');
+    descargar(`convenios_${hoyISO()}.csv`, generarCSV(encabezados, filas), 'text/csv');
   };
 
   const exportarJSON = () => {
