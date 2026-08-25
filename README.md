@@ -369,8 +369,12 @@ google-apps-script/
   El umbral de "próximo a vencer" (7 días corridos) está en `DIAS_ALERTA_VENCIMIENTO`.
 - **Flujo no rígido**: el orden de unidades vive en cada convenio, no en una
   constante global, para que se pueda alterar convenio por convenio.
-- **Feriados**: la tabla de `src/config/feriados.js` cubre 2025-2027 y debe
+- **Feriados**: la tabla de `src/config/feriados.js` cubre 2025-2028 y debe
   actualizarse cada año; afecta directamente el cálculo de los plazos legales.
+  Los movibles se guardan **ya trasladados** a la fecha en que se celebran, y
+  `feriados.test.js` recalcula las reglas (Pascua por el algoritmo de Meeus, los
+  traslados de las leyes 19.973 y 20.299) para que un error de transcripción
+  rompa la suite en vez de correr un plazo en silencio.
   Fuera de ese rango la app **no adivina**: marca el plazo como no verificado en
   vez de dar una fecha que parece exacta y no lo es.
 - **Exportación a CSV**: los campos van entrecomillados y, si empiezan por
