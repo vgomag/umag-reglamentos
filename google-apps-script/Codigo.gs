@@ -45,7 +45,7 @@
 // ⚠ SÚBELO CADA VEZ que cambies algo de este archivo. Hay una prueba
 // (src/config/versionScript.test.js) que falla si te olvidas de subir también
 // VERSION_SCRIPT_ESPERADA en src/config/versionScript.js.
-var VERSION_SCRIPT = '3';
+var VERSION_SCRIPT = '4';
 
 var TOKEN = 'CAMBIA-ESTE-TOKEN-POR-UNO-LARGO-Y-ALEATORIO';
 
@@ -127,7 +127,7 @@ function encabezadosSolicitudes() {
  * Que la columna nueva no quede junto a las de su unidad es feo pero da igual:
  * el script mapea por NOMBRE de encabezado, no por posición.
  */
-function migrarEncabezados(h, esperados) {
+function migrarEncabezados(h, nombre, esperados) {
   var ancho = h.getLastColumn();
   if (ancho === 0) return esperados;
   var actuales = h.getRange(1, 1, 1, ancho).getValues()[0].map(function (c) { return String(c).trim(); });
@@ -137,12 +137,37 @@ function migrarEncabezados(h, esperados) {
 
   h.getRange(1, ancho + 1, 1, faltantes.length).setValues([faltantes]);
   h.getRange(1, ancho + 1, 1, faltantes.length).setFontWeight('bold');
+  olvidarLectura(nombre);
+  delete _encabezados[nombre];
   return actuales.concat(faltantes);
+}
+
+/* ── Memoria de una ejecución ─────────────────────────────────────────
+ *
+ * Cada petición HTTP a un Apps Script corre en un contexto nuevo, así que estas
+ * dos variables viven lo que dura una llamada y no pueden servirle datos viejos
+ * a la siguiente.
+ *
+ * Existen porque un solo guardado hacía once lecturas a la planilla: hoja() se
+ * llamaba cinco veces (cada una comprobando los encabezados) y leerHoja() tres,
+ * trayéndose la hoja entera cada vez para mirar una columna. En Apps Script
+ * cada una de esas llamadas cuesta entre 50 y 200 ms.
+ *
+ * `_leido` se invalida en CADA escritura. Servir una lectura desfasada sería
+ * mucho peor que las lecturas de más que esto ahorra.
+ */
+var _hojas = {};
+var _leido = {};
+var _encabezados = {};
+
+function olvidarLectura(nombre) {
+  delete _leido[nombre];
 }
 
 // Devuelve la hoja pedida, creándola con sus encabezados si no existe y
 // completándolos si le faltan columnas de una versión anterior del script.
 function hoja(nombre) {
+  if (_hojas[nombre]) return _hojas[nombre];
   var libro = SpreadsheetApp.getActiveSpreadsheet();
   var h = libro.getSheetByName(nombre);
   var encabezados = nombre === HOJA_CONVENIOS ? encabezadosConvenios()
@@ -157,8 +182,9 @@ function hoja(nombre) {
     h.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
     h.setFrozenRows(1);
   } else {
-    migrarEncabezados(h, encabezados);
+    migrarEncabezados(h, nombre, encabezados);
   }
+  _hojas[nombre] = h;
   return h;
 }
 
@@ -277,15 +303,32 @@ function solicitudAFila(s, encabezados) {
 
 /* ── Lectura ──────────────────────────────────────────────────────── */
 
+/**
+ * Sólo la fila de encabezados.
+ *
+ * Crear o actualizar un registro necesita saber en qué columna va cada campo,
+ * nada más. Pedirlo a leerHoja() significaba traerse la hoja completa —miles de
+ * celdas— para mirar la primera fila.
+ */
+function encabezadosDe(nombre) {
+  if (_encabezados[nombre]) return _encabezados[nombre];
+  var h = hoja(nombre);
+  _encabezados[nombre] = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0];
+  return _encabezados[nombre];
+}
+
 function leerHoja(nombre) {
+  if (_leido[nombre]) return _leido[nombre];
   var h = hoja(nombre);
   var ultima = h.getLastRow();
-  if (ultima < 2) return { encabezados: h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0], filas: [] };
   var ancho = h.getLastColumn();
-  return {
-    encabezados: h.getRange(1, 1, 1, ancho).getValues()[0],
-    filas: h.getRange(2, 1, ultima - 1, ancho).getValues(),
+  var encabezados = h.getRange(1, 1, 1, ancho).getValues()[0];
+  _encabezados[nombre] = encabezados;
+  _leido[nombre] = {
+    encabezados: encabezados,
+    filas: ultima < 2 ? [] : h.getRange(2, 1, ultima - 1, ancho).getValues(),
   };
+  return _leido[nombre];
 }
 
 // Agrupa el historial por entidad y id de referencia.
@@ -356,9 +399,16 @@ function buscarFila(nombreHoja, id) {
  * alguien agrega filas a mano.
  */
 function siguienteId(nombreHoja) {
-  var datos = leerHoja(nombreHoja);
+  var h = hoja(nombreHoja);
+  var ultima = h.getLastRow();
   var max = 0;
-  datos.filas.forEach(function (f) { max = Math.max(max, Number(f[0]) || 0); });
+  if (ultima >= 2) {
+    // Sólo la columna de ids: traer la fila entera significaba pedir cincuenta
+    // celdas por convenio para mirar una.
+    h.getRange(2, 1, ultima - 1, 1).getValues().forEach(function (f) {
+      max = Math.max(max, Number(f[0]) || 0);
+    });
+  }
 
   var props = PropertiesService.getScriptProperties();
   var clave = 'ultimo_id_' + nombreHoja;
@@ -391,6 +441,7 @@ function guardarHistorial(entidad, refId, eventos) {
     });
   if (nuevas.length > 0) {
     h.getRange(h.getLastRow() + 1, 1, nuevas.length, CAMPOS_HISTORIAL.length).setValues(nuevas);
+    olvidarLectura(HOJA_HISTORIAL);
   }
 }
 
@@ -409,20 +460,34 @@ function eliminarHistorial(entidad, refId) {
   var idx = {};
   datos.encabezados.forEach(function (c, i) { idx[c] = i; });
 
-  // De abajo hacia arriba: borrar una fila desplaza a todas las de abajo.
-  for (var i = datos.filas.length - 1; i >= 0; i--) {
-    var f = datos.filas[i];
+  // Los eventos de un mismo registro se escribieron seguidos, así que casi
+  // siempre forman tramos contiguos: se borran de una llamada por tramo en vez
+  // de una por fila. Un convenio con veinte eventos pasa de veinte llamadas a
+  // la planilla a una.
+  var filas = [];
+  datos.filas.forEach(function (f, i) {
     if (aTexto(f[idx.entidad]) === entidad && String(f[idx.ref_id]) === String(refId)) {
-      h.deleteRow(i + 2); // +2: encabezado y base 1
+      filas.push(i + 2); // +2: encabezado y base 1
     }
+  });
+  if (filas.length === 0) return;
+
+  // De abajo hacia arriba: borrar un tramo desplaza a todos los de abajo.
+  for (var j = filas.length - 1; j >= 0; j--) {
+    var fin = filas[j];
+    var inicio = fin;
+    while (j > 0 && filas[j - 1] === inicio - 1) { inicio = filas[j - 1]; j--; }
+    h.deleteRows(inicio, fin - inicio + 1);
   }
+  olvidarLectura(HOJA_HISTORIAL);
 }
 
 function crearConvenio(datos) {
   var h = hoja(HOJA_CONVENIOS);
-  var encabezados = leerHoja(HOJA_CONVENIOS).encabezados;
+  var encabezados = encabezadosDe(HOJA_CONVENIOS);
   datos.id = siguienteId(HOJA_CONVENIOS);
   h.appendRow(convenioAFila(datos, encabezados));
+  olvidarLectura(HOJA_CONVENIOS);
   guardarHistorial('convenio', datos.id, datos.historial);
   return datos;
 }
@@ -431,24 +496,29 @@ function actualizarConvenio(datos) {
   var fila = buscarFila(HOJA_CONVENIOS, datos.id);
   if (fila === -1) return crearConvenio(datos);
   var h = hoja(HOJA_CONVENIOS);
-  var encabezados = leerHoja(HOJA_CONVENIOS).encabezados;
+  var encabezados = encabezadosDe(HOJA_CONVENIOS);
   h.getRange(fila, 1, 1, encabezados.length).setValues([convenioAFila(datos, encabezados)]);
+  olvidarLectura(HOJA_CONVENIOS);
   guardarHistorial('convenio', datos.id, datos.historial);
   return datos;
 }
 
 function eliminarConvenio(id) {
   var fila = buscarFila(HOJA_CONVENIOS, id);
-  if (fila !== -1) hoja(HOJA_CONVENIOS).deleteRow(fila);
+  if (fila !== -1) {
+    hoja(HOJA_CONVENIOS).deleteRow(fila);
+    olvidarLectura(HOJA_CONVENIOS);
+  }
   eliminarHistorial('convenio', id);
   return { id: id };
 }
 
 function crearSolicitud(datos) {
   var h = hoja(HOJA_SOLICITUDES);
-  var encabezados = leerHoja(HOJA_SOLICITUDES).encabezados;
+  var encabezados = encabezadosDe(HOJA_SOLICITUDES);
   datos.id = siguienteId(HOJA_SOLICITUDES);
   h.appendRow(solicitudAFila(datos, encabezados));
+  olvidarLectura(HOJA_SOLICITUDES);
   guardarHistorial('solicitud', datos.id, datos.historial);
   return datos;
 }
@@ -457,15 +527,19 @@ function actualizarSolicitud(datos) {
   var fila = buscarFila(HOJA_SOLICITUDES, datos.id);
   if (fila === -1) return crearSolicitud(datos);
   var h = hoja(HOJA_SOLICITUDES);
-  var encabezados = leerHoja(HOJA_SOLICITUDES).encabezados;
+  var encabezados = encabezadosDe(HOJA_SOLICITUDES);
   h.getRange(fila, 1, 1, encabezados.length).setValues([solicitudAFila(datos, encabezados)]);
+  olvidarLectura(HOJA_SOLICITUDES);
   guardarHistorial('solicitud', datos.id, datos.historial);
   return datos;
 }
 
 function eliminarSolicitud(id) {
   var fila = buscarFila(HOJA_SOLICITUDES, id);
-  if (fila !== -1) hoja(HOJA_SOLICITUDES).deleteRow(fila);
+  if (fila !== -1) {
+    hoja(HOJA_SOLICITUDES).deleteRow(fila);
+    olvidarLectura(HOJA_SOLICITUDES);
+  }
   eliminarHistorial('solicitud', id);
   return { id: id };
 }
