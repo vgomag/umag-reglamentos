@@ -62,9 +62,9 @@ async function conveniosRegistrados() {
   return Number(fila.querySelector('td').textContent);
 }
 
-// El aviso de "sin conexión" es el único role="alert" de la app. Se busca por
-// rol y no por texto porque Configuración muestra el mismo texto en su tabla.
-const avisoSinConexion = () => screen.queryByRole('alert');
+// Se busca por su clase y no por texto —Configuración repite ese texto en su
+// tabla— ni por role="alert", que ahora comparten otros avisos de esa vista.
+const avisoSinConexion = () => document.querySelector('.aviso-sin-conexion');
 
 let confirmar;
 beforeEach(() => {
@@ -105,7 +105,7 @@ describe('borrar todos los convenios', () => {
 
     // Se borró uno de dos: la pantalla tiene que reflejar la planilla, no el deseo.
     await waitFor(async () => { expect(await conveniosRegistrados()).toBe(1); });
-    expect(await screen.findByText(/quedaron sin cambios en la planilla/)).toBeTruthy();
+    expect(await screen.findByText(/quedó sin cambios en la planilla/)).toBeTruthy();
   });
 
   it('sin confirmar no toca la planilla', async () => {
@@ -161,7 +161,7 @@ describe('importar convenios', () => {
     await irAConfiguracion();
     await importar(container, { convenios: [{ nombre: 'No entra', etapas: [], historial: [] }] });
 
-    expect(await screen.findByText(/No se pudo importar ninguno/)).toBeTruthy();
+    expect(await screen.findByText(/No se pudo importar el convenio/)).toBeTruthy();
     expect(await conveniosRegistrados()).toBe(0);
   });
 });
@@ -175,8 +175,8 @@ describe('planilla sin responder', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('alert')).toHaveProperty(
-      'textContent', expect.stringContaining('Sin conexión con la planilla'));
+    await waitFor(() => { expect(avisoSinConexion()).not.toBeNull(); });
+    expect(avisoSinConexion().textContent).toContain('Sin conexión con la planilla');
   });
 
   it('sigue mostrando la copia local para poder consultar', async () => {
@@ -449,5 +449,39 @@ describe('avisos', () => {
     await waitFor(() => { expect(avisoEnPantalla()).not.toBe(primero); });
 
     expect(avisoEnPantalla().textContent).toContain('Datos actualizados');
+  });
+});
+
+describe('sesión caducada al comprobar la conexión', () => {
+  it('devuelve a la pantalla de acceso, como cualquier otro rechazo', async () => {
+    // Era el único camino que recibía un rechazo de identidad y no hacía nada
+    // con él: dejaba a la persona mirando un error en Configuración.
+    sheets.fetchTodo.mockResolvedValue(planillaCon([]));
+    sheets.probarConexion.mockResolvedValue({
+      ok: false, error: 'Sesión expirada o inválida. Vuelve a entrar.',
+      noAutorizado: true, version: '3',
+    });
+
+    render(<App />);
+    await irAConfiguracion();
+    fireEvent.click(screen.getByRole('button', { name: /Comprobar conexión/ }));
+
+    expect(await screen.findByText(/Sesión expirada o inválida/)).toBeTruthy();
+    // La pantalla de acceso, no la de Configuración.
+    expect(screen.queryByText('Convenios registrados')).toBeNull();
+  });
+
+  it('un fallo de red deja la app en modo sin conexión, no fuera de sesión', async () => {
+    sheets.fetchTodo.mockResolvedValue(planillaCon([]));
+    sheets.probarConexion.mockResolvedValue({
+      ok: false, error: 'La planilla no respondió a tiempo', noAutorizado: false, version: '',
+    });
+
+    render(<App />);
+    await irAConfiguracion();
+    fireEvent.click(screen.getByRole('button', { name: /Comprobar conexión/ }));
+
+    await waitFor(() => { expect(avisoSinConexion()).not.toBeNull(); });
+    expect(await conveniosRegistrados()).toBe(0);   // sigue dentro
   });
 });

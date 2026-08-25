@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   crearLoteRemoto, eliminarLoteRemoto, huboRechazoDeAcceso, avisoLote,
+  ENTIDADES,
 } from './sincronizacion';
 
 // La planilla asigna el id; `normalizar` es la del dominio (acá, la identidad).
@@ -96,28 +97,49 @@ describe('eliminarLoteRemoto', () => {
 
 describe('avisoLote', () => {
   it('todo bien: aviso de éxito con la cuenta', () => {
-    expect(avisoLote([{}, {}], [], 'importados', 'convenio')).toEqual({
+    expect(avisoLote([{}, {}], [], 'importar', ENTIDADES.convenio)).toEqual({
       type: 'success', message: '2 convenios importados.',
     });
   });
 
-  it('uno solo va en singular', () => {
-    expect(avisoLote([{}], [], 'importados', 'convenio').message).toBe('1 convenio importados.');
+  it('uno solo concuerda en singular', () => {
+    // Antes el participio se pasaba ya conjugado en plural y salía
+    // "1 convenio importados"; ahora se forma a partir del infinitivo.
+    expect(avisoLote([{}], [], 'importar', ENTIDADES.convenio).message).toBe('1 convenio importado.');
+    // Y concuerda en género: "solicitud" es femenino.
+    expect(avisoLote([{}], [], 'eliminar', ENTIDADES.solicitud).message).toBe('1 solicitud eliminada.');
+    expect(avisoLote([{}, {}], [], 'eliminar', ENTIDADES.solicitud).message).toBe('2 solicitudes eliminadas.');
   });
 
   it('nada bien: aviso de error, sin fingir que pasó algo', () => {
-    const aviso = avisoLote([], [{ error: 'HTTP 500' }, { error: 'HTTP 500' }], 'importados', 'convenio');
+    const aviso = avisoLote([], [{ error: 'HTTP 500' }, { error: 'HTTP 500' }], 'importar', ENTIDADES.convenio);
 
     expect(aviso.type).toBe('error');
-    expect(aviso.message).toContain('ninguno');
-    expect(aviso.message).toContain('HTTP 500');
+    expect(aviso.message).toBe('No se pudo importar ninguno de los 2 convenios. Primer error: HTTP 500.');
+  });
+
+  it('cuando falla uno solo no se habla de "ninguno de los 1"', () => {
+    const aviso = avisoLote([], [{ error: 'HTTP 500' }], 'importar', ENTIDADES.convenio);
+
+    expect(aviso.message).toBe('No se pudo importar el convenio. Primer error: HTTP 500.');
   });
 
   it('a medias: dice cuántos quedaron sin cambios en la planilla', () => {
-    const aviso = avisoLote([{}, {}], [{ error: 'HTTP 500' }], 'eliminados', 'convenio');
+    const aviso = avisoLote([{}, {}], [{ error: 'HTTP 500' }], 'eliminar', ENTIDADES.convenio);
 
     expect(aviso.type).toBe('error');
-    expect(aviso.message).toContain('2 de 3');
-    expect(aviso.message).toContain('1 quedaron sin cambios');
+    expect(aviso.message).toBe(
+      '2 de 3 convenios eliminados. 1 quedó sin cambios en la planilla. Primer error: HTTP 500.');
+  });
+
+  it('a medias con varios fallidos concuerda en plural', () => {
+    const aviso = avisoLote([{}], [{ error: 'x' }, { error: 'x' }], 'eliminar', ENTIDADES.convenio);
+
+    expect(aviso.message).toContain('1 de 3 convenios eliminado.');
+    expect(aviso.message).toContain('2 quedaron sin cambios');
+  });
+
+  it('un lote vacío no dice "0 convenios"', () => {
+    expect(avisoLote([], [], 'eliminar', ENTIDADES.convenio).message).toBe('No había nada que eliminar.');
   });
 });

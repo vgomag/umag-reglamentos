@@ -151,9 +151,24 @@ export function normalizarConvenio(raw) {
   const etapas = Array.isArray(raw.etapas) && raw.etapas.length > 0
     ? raw.etapas.map((e, i) => ({ ...crearEtapa(e.unidad, i), ...e, orden: Number.isFinite(e.orden) ? e.orden : i }))
     : crearEtapas();
+
+  // Una unidad no puede aparecer dos veces en el mismo flujo. Los formularios
+  // ya lo impiden y la planilla también, pero un respaldo JSON editado a mano sí
+  // puede traerlas repetidas, y entonces calcularEventos —que indexa las etapas
+  // por unidad— comparaba una contra otra y anotaba en el historial un cambio de
+  // estado que nadie hizo. Se conserva la primera del flujo.
+  const vistas = new Set();
+  const unicas = [...etapas]
+    .sort((a, b) => a.orden - b.orden)
+    .filter(e => {
+      if (vistas.has(e.unidad)) return false;
+      vistas.add(e.unidad);
+      return true;
+    });
+
   return {
     ...crearConvenio(raw),
-    etapas: [...etapas].sort((a, b) => a.orden - b.orden),
+    etapas: unicas,
     historial: Array.isArray(raw.historial) ? raw.historial : [],
     adjuntos: Array.isArray(raw.adjuntos) ? raw.adjuntos : [],
   };

@@ -19,7 +19,7 @@ import { usuarioDeSesion } from '../config/auth';
  * integración de calendario e importación/exportación de respaldos.
  */
 export default function ConfiguracionView({
-  convenios, solicitudes, dbMode, cargando, onRecargar,
+  convenios, solicitudes, dbMode, cargando, onRecargar, onFalloRemoto,
   onImportarConvenios, onBorrarConvenios, onCargarEjemplos, onBorrarEjemplos,
 }) {
   const inputRef = useRef(null);
@@ -42,10 +42,15 @@ export default function ConfiguracionView({
 
   const comprobar = async () => {
     setPrueba({ estado: 'probando' });
-    const { ok, error, version } = await probarConexion();
+    const respuesta = await probarConexion();
+    const { ok, error, version } = respuesta;
     // La versión llega incluso cuando la planilla rechaza la petición: saber
     // qué código está publicado es justamente lo que hace falta al diagnosticar.
     setPrueba({ estado: ok ? 'ok' : 'error', error, version: compararVersionScript(version) });
+    // Este era el único camino que recibía un rechazo de identidad y no hacía
+    // nada con él: la sesión caducada dejaba a la persona mirando un error en
+    // Configuración, sin la vuelta a la pantalla de acceso que da el resto.
+    if (!ok) onFalloRemoto(respuesta);
   };
 
   const respaldar = () => {
@@ -303,6 +308,7 @@ ConfiguracionView.propTypes = {
   dbMode: PropTypes.string.isRequired,
   cargando: PropTypes.bool,
   onRecargar: PropTypes.func.isRequired,
+  onFalloRemoto: PropTypes.func.isRequired,
   onImportarConvenios: PropTypes.func.isRequired,
   onBorrarConvenios: PropTypes.func.isRequired,
   onCargarEjemplos: PropTypes.func.isRequired,
