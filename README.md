@@ -381,6 +381,11 @@ google-apps-script/
   `= + - @`, con un apóstrofo delante. Entrecomillar no basta: Excel evalúa el
   contenido de la celda igual, y el texto de convenios y solicitudes lo escriben
   personas. Está en [`src/utils/csv.js`](src/utils/csv.js).
+- **Coste de cada petición**: el script guarda en memoria, mientras dura la
+  petición, las hojas y lo que ya leyó de ellas, y las escrituras necesitan
+  sólo la fila de encabezados en vez de la hoja entera. Toda escritura invalida
+  la lectura de su hoja: servir un dato desfasado sería mucho peor que la
+  lectura de más que esto ahorra.
 - **Escrituras secuenciales**: al cargar datos de ejemplo, la app envía los
   registros de a uno. El Apps Script asigna los `id` leyendo el máximo actual,
   así que en paralelo se pisarían entre sí.

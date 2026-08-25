@@ -25,6 +25,7 @@ function hojaFalsa(nombre) {
     setFrozenRows: () => {},
     appendRow: (f) => { filas.push(f.slice()); },
     deleteRow: (n) => { filas.splice(n - 1, 1); },
+    deleteRows: (n, cuantas) => { filas.splice(n - 1, cuantas); },
     getRange: (r, c, nFilas, nCols) => ({
       getValues: () => Array.from({ length: nFilas }, (_, i) => {
         const fila = filas[r - 1 + i] || [];
@@ -286,15 +287,17 @@ describe('migración de planillas ya existentes', () => {
   // encabezados menos las columnas de orden, más una fila de datos.
   const encabezadosViejos = () => gs.encabezadosConvenios().filter(c => !c.endsWith('_orden'));
 
+  // La hoja vieja se arma SIN pasar por hoja(), porque en producción ya existe
+  // antes de la primera llamada de la petición: hoja() migra una sola vez por
+  // ejecución, y montarla después no reproduciría el caso real.
   const planillaVieja = (valores = {}) => {
-    gs.hoja(gs.HOJA_CONVENIOS);                 // crea la hoja
-    const h = gs.hojas.Convenios;
     const viejos = encabezadosViejos();
-    h.filas.length = 0;                          // y se reescribe como la vieja
+    const h = hojaFalsa(gs.HOJA_CONVENIOS);
     h.filas.push(viejos.slice());
     const fila = viejos.map(() => '');
     Object.entries(valores).forEach(([col, v]) => { fila[viejos.indexOf(col)] = v; });
     h.filas.push(fila);
+    gs.hojas[gs.HOJA_CONVENIOS] = h;
     return { h, viejos };
   };
 
@@ -432,5 +435,92 @@ describe('doGet ya no atiende lecturas', () => {
   it('explica qué hacer en vez de dar un error críptico', () => {
     // Una pestaña con el sitio viejo cargado sigue pidiendo por GET.
     expect(gs.getear().error).toContain('Recarga la aplicación');
+  });
+});
+
+describe('el cache de ejecución no puede servir datos viejos', () => {
+  // Cada `it` usa una instancia recién cargada, que es lo que dura una petición
+  // HTTP. Dentro de un mismo `it` todo ocurre en la MISMA ejecución, así que es
+  // ahí donde el cache podría quedar desfasado. Si alguien agrega una escritura
+  // y olvida invalidar, estas pruebas lo delatan.
+
+  it('un convenio creado se ve de inmediato al listar', () => {
+    gs.crearConvenio(convenio('Recién creado'));
+
+    expect(gs.listarTodo().convenios.map(c => c.nombre)).toEqual(['Recién creado']);
+  });
+
+  it('dos creaciones seguidas no comparten id ni se pisan', () => {
+    const a = gs.crearConvenio(convenio('Primero'));
+    const b = gs.crearConvenio(convenio('Segundo'));
+
+    expect([a.id, b.id]).toEqual([1, 2]);
+    expect(gs.listarTodo().convenios.map(c => c.nombre)).toEqual(['Primero', 'Segundo']);
+  });
+
+  it('un convenio actualizado se relee con los datos nuevos', () => {
+    gs.crearConvenio(convenio('Nombre viejo'));
+    gs.actualizarConvenio({ id: 1, nombre: 'Nombre nuevo', etapas: [], historial: [] });
+
+    expect(gs.listarTodo().convenios[0].nombre).toBe('Nombre nuevo');
+  });
+
+  it('un convenio eliminado desaparece de la misma lectura', () => {
+    gs.crearConvenio(convenio('Efímero'));
+    gs.eliminarConvenio(1);
+
+    expect(gs.listarTodo().convenios).toEqual([]);
+  });
+
+  it('el historial recién escrito viaja en la respuesta', () => {
+    gs.crearConvenio(convenio('Con historia', [evento('ev-1', 'Ingresa')]));
+
+    expect(gs.listarTodo().convenios[0].historial.map(h => h.descripcion)).toEqual(['Ingresa']);
+  });
+
+  it('el historial borrado tampoco reaparece', () => {
+    gs.crearConvenio(convenio('A', [evento('ev-a', 'Ingresa A')]));
+    gs.crearConvenio(convenio('B', [evento('ev-b', 'Ingresa B')]));
+    gs.eliminarConvenio(1);
+
+    const [queda] = gs.listarTodo().convenios;
+    expect(queda.nombre).toBe('B');
+    expect(gs.leerHoja(gs.HOJA_HISTORIAL).filas).toHaveLength(1);
+  });
+
+  it('las solicitudes llevan su propia cuenta, sin contaminarse', () => {
+    gs.crearConvenio(convenio('Un convenio'));
+    gs.crearSolicitud({ materia: 'Una solicitud', historial: [] });
+
+    const todo = gs.listarTodo();
+    expect(todo.convenios).toHaveLength(1);
+    expect(todo.solicitudes).toHaveLength(1);
+  });
+});
+
+describe('borrado del historial por tramos', () => {
+  it('quita todos los eventos aunque no estén seguidos en la hoja', () => {
+    // A y B se intercalan, así que las filas de A no son contiguas.
+    gs.crearConvenio(convenio('A', [evento('a1', 'A uno')]));
+    gs.crearConvenio(convenio('B', [evento('b1', 'B uno')]));
+    gs.actualizarConvenio({
+      id: 1, nombre: 'A', etapas: [],
+      historial: [evento('a1', 'A uno'), evento('a2', 'A dos')],
+    });
+
+    gs.eliminarConvenio(1);
+
+    const quedan = gs.leerHoja(gs.HOJA_HISTORIAL).filas.map(f => f[2]);
+    expect(quedan).toEqual(['b1']);
+  });
+
+  it('un tramo largo y contiguo se borra entero', () => {
+    const muchos = Array.from({ length: 12 }, (_, i) => evento(`e${i}`, `Evento ${i}`));
+    gs.crearConvenio(convenio('Con doce', muchos));
+    gs.crearConvenio(convenio('Otro', [evento('otro', 'Otro')]));
+
+    gs.eliminarConvenio(1);
+
+    expect(gs.leerHoja(gs.HOJA_HISTORIAL).filas.map(f => f[2])).toEqual(['otro']);
   });
 });
