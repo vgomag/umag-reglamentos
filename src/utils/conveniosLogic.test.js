@@ -419,3 +419,40 @@ describe('la tarjeta del dashboard y el listado cuentan lo mismo', () => {
     expect(filtrarConvenios([activo], { unidadActual: 'VRAF' })).toHaveLength(1);
   });
 });
+
+describe('una unidad repetida no corrompe el historial', () => {
+  // Los formularios y la planilla impiden duplicar unidades, pero un respaldo
+  // JSON editado a mano sí puede traerlas, y ése es el camino por el que entran
+  // datos que nadie validó.
+  const conDuplicada = () => normalizarConvenio({
+    id: 1, nombre: 'Importado a mano',
+    etapas: [
+      { unidad: 'VRAC', orden: 0, fechaInicio: '', fechaTermino: '', estado: 'Aprobado', observaciones: '' },
+      { unidad: 'VRAC', orden: 1, fechaInicio: '', fechaTermino: '', estado: 'En Revisión', observaciones: '' },
+      { unidad: 'PRO', orden: 2, fechaInicio: '', fechaTermino: '', estado: 'Pendiente', observaciones: '' },
+    ],
+  });
+
+  it('normalizar deja una sola etapa por unidad', () => {
+    expect(conDuplicada().etapas.map(e => e.unidad)).toEqual(['VRAC', 'PRO']);
+  });
+
+  it('conserva la primera del flujo, no la última', () => {
+    expect(conDuplicada().etapas[0].estado).toBe('Aprobado');
+  });
+
+  it('ya no inventa un cambio de estado que nadie hizo', () => {
+    // Antes, quitar la duplicada producía "VRAC: En Revisión → Aprobado":
+    // calcularEventos indexa por unidad y comparaba una copia contra la otra.
+    const convenio = conDuplicada();
+    const sinPro = { ...convenio, etapas: convenio.etapas.filter(e => e.unidad !== 'PRO') };
+    const descripciones = calcularEventos(convenio, sinPro, 'ana@umag.cl').map(e => e.descripcion);
+
+    expect(descripciones.some(d => d.includes('VRAC:'))).toBe(false);
+    expect(descripciones).toContain('Se quitó la etapa PRO del flujo');
+  });
+
+  it('el orden se reindexa sin huecos ni saltos', () => {
+    expect(conDuplicada().etapas.map(e => e.orden)).toEqual([0, 2]);
+  });
+});

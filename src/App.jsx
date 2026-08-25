@@ -13,7 +13,7 @@ import {
 } from './config/sheetsStore';
 import { normalizarSolicitud } from './config/transparencia';
 import { MODO, calcularModo, usaPlanilla, permiteEscribir, mensajeSinConexion } from './config/modoDatos';
-import { crearLoteRemoto, eliminarLoteRemoto, avisoLote, huboRechazoDeAcceso } from './config/sincronizacion';
+import { crearLoteRemoto, eliminarLoteRemoto, avisoLote, huboRechazoDeAcceso, ENTIDADES } from './config/sincronizacion';
 import { generarConveniosEjemplo, generarSolicitudesEjemplo, esRegistroEjemplo } from './config/datosEjemplo';
 import {
   googleConfigurado, montarBotonGoogle, guardarSesion, leerSesion,
@@ -301,7 +301,7 @@ function App() {
       const { creados, fallidos } = await crearLoteRemoto(sinId, crearConvenioRemoto, normalizarConvenio);
       if (creados.length > 0) setConvenios(prev => [...prev, ...creados]);
       registrarFallosDeLote(fallidos);
-      avisar(avisoLote(creados, fallidos, 'importados', 'convenio'));
+      avisar(avisoLote(creados, fallidos, 'importar', ENTIDADES.convenio));
       return;
     }
 
@@ -328,7 +328,7 @@ function App() {
       setConvenios(prev => prev.filter(c => !borrados.has(c.id)));
       if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
       registrarFallosDeLote(fallidos);
-      avisar(avisoLote(eliminados, fallidos, 'eliminados', 'convenio'));
+      avisar(avisoLote(eliminados, fallidos, 'eliminar', ENTIDADES.convenio));
       return;
     }
 
@@ -400,7 +400,7 @@ function App() {
       if (selectedConvenio && borrados.has(selectedConvenio.id)) setSelectedConvenio(null);
       const fallidos = [...conv.fallidos, ...soli.fallidos];
       registrarFallosDeLote(fallidos);
-      avisar(avisoLote([...conv.eliminados, ...soli.eliminados], fallidos, 'eliminados', 'registro de ejemplo'));
+      avisar(avisoLote([...conv.eliminados, ...soli.eliminados], fallidos, 'eliminar', ENTIDADES.ejemplo));
       return;
     }
 
@@ -557,6 +557,7 @@ function App() {
                   dbMode={modoDatos}
                   cargando={cargando}
                   onRecargar={recargarDatos}
+                  onFalloRemoto={registrarFalloRemoto}
                   onImportarConvenios={handleImportarConvenios}
                   onBorrarConvenios={handleBorrarConvenios}
                   onCargarEjemplos={handleCargarEjemplos}

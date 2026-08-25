@@ -56,27 +56,64 @@ export function huboRechazoDeAcceso(fallidos = []) {
 }
 
 /**
+ * Los sustantivos que la app cuenta en lotes, con su plural y su género.
+ *
+ * Van escritos, no deducidos: el plural de "solicitud" es "solicitudes" y el de
+ * "registro de ejemplo" es "registros de ejemplo", así que ninguna regla
+ * automática acierta las tres. Y sin el género salen cosas como "1 solicitud
+ * eliminado".
+ */
+export const ENTIDADES = {
+  convenio: { una: 'convenio', varias: 'convenios', femenino: false },
+  solicitud: { una: 'solicitud', varias: 'solicitudes', femenino: true },
+  ejemplo: { una: 'registro de ejemplo', varias: 'registros de ejemplo', femenino: false },
+};
+
+// Participio de un verbo regular: importar → importado, añadir → añadido.
+// Se forma acá en vez de recibirlo ya conjugado, que era de donde salían los
+// "1 convenio importados".
+function participio(infinitivo) {
+  const raiz = infinitivo.slice(0, -2);
+  return infinitivo.endsWith('ar') ? `${raiz}ado` : `${raiz}ido`;
+}
+
+/**
  * Aviso para el usuario después de un lote. Distingue los tres desenlaces
  * porque son tres cosas distintas: todo salió, salió una parte, o no salió nada.
  *
- * @param accion  participio plural: 'importados', 'eliminados'
+ * @param accion   infinitivo del verbo: 'importar', 'eliminar'
+ * @param entidad  una entrada de ENTIDADES
  */
-export function avisoLote(hechos, fallidos, accion, entidad = 'registro') {
-  const plural = (n) => (n === 1 ? entidad : `${entidad}s`);
-  if (fallidos.length === 0) {
-    return { type: 'success', message: `${hechos.length} ${plural(hechos.length)} ${accion}.` };
-  }
+export function avisoLote(hechos, fallidos, accion, entidad = ENTIDADES.convenio) {
+  const { una, varias, femenino } = entidad;
+  const nombre = (n) => (n === 1 ? una : varias);
+  const hecho = (n) => {
+    const base = participio(accion);
+    const concordado = femenino ? `${base.slice(0, -1)}a` : base;
+    return n === 1 ? concordado : `${concordado}s`;
+  };
+  const articulo = femenino ? 'la' : 'el';
+  const ninguno = femenino ? 'ninguna de las' : 'ninguno de los';
   const detalle = fallidos[0]?.error ? ` Primer error: ${fallidos[0].error}.` : '';
-  if (hechos.length === 0) {
-    return {
-      type: 'error',
-      message: `No se pudo ${accion === 'importados' ? 'importar' : 'eliminar'} `
-        + `ninguno de los ${fallidos.length} ${plural(fallidos.length)}.${detalle}`,
-    };
+
+  if (fallidos.length === 0) {
+    if (hechos.length === 0) return { type: 'success', message: `No había nada que ${accion}.` };
+    return { type: 'success', message: `${hechos.length} ${nombre(hechos.length)} ${hecho(hechos.length)}.` };
   }
+
+  if (hechos.length === 0) {
+    const cuantos = fallidos.length === 1
+      ? `${articulo} ${una}`
+      : `${ninguno} ${fallidos.length} ${nombre(fallidos.length)}`;
+    return { type: 'error', message: `No se pudo ${accion} ${cuantos}.${detalle}` };
+  }
+
+  const total = hechos.length + fallidos.length;
+  const quedaron = fallidos.length === 1
+    ? '1 quedó sin cambios en la planilla'
+    : `${fallidos.length} quedaron sin cambios en la planilla`;
   return {
     type: 'error',
-    message: `${hechos.length} de ${hechos.length + fallidos.length} ${plural(2)} ${accion}. `
-      + `${fallidos.length} quedaron sin cambios en la planilla.${detalle}`,
+    message: `${hechos.length} de ${total} ${nombre(total)} ${hecho(hechos.length)}. ${quedaron}.${detalle}`,
   };
 }
